@@ -151,4 +151,132 @@ describe('AppServerClient - startup_failed event (Section 10.4)', () => {
     expect(startupFailed).toBeDefined()
     expect((startupFailed?.payload as { reason: string })?.reason).toContain('turn_start_failed')
   })
+
+  it('emits session_started and turn_completed on successful turn', async () => {
+    const scriptPath = join(tmpRoot, 'fake-agent-ok.sh')
+    writeFileSync(scriptPath, [
+      '#!/usr/bin/env bash',
+      'while IFS= read -r line; do',
+      '  id=$(printf \'%s\' "$line" | grep -o \'"id":[0-9]*\' | grep -o \'[0-9]*\' | head -1)',
+      '  case "$id" in',
+      '    1) printf \'%s\\n\' \'{"id":1,"result":{"capabilities":{}}}\';;',
+      '    2) printf \'%s\\n\' \'{"id":2,"result":{"thread":{"id":"t-1"}}}\';;',
+      '    3) printf \'%s\\n\' \'{"id":3,"result":{"turn":{"id":"turn-1"}}}\'',
+      '       printf \'%s\\n\' \'{"method":"turn/completed","params":{}}\';;',
+      '  esac',
+      'done',
+    ].join('\n'), { mode: 0o755 })
+
+    const wsPath = join(tmpRoot, 'ws-ok')
+    mkdirSync(wsPath)
+
+    const config = buildConfig({
+      config: {
+        tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
+        workspace: { root: tmpRoot },
+        claude: { command: scriptPath, read_timeout_ms: 2000, turn_timeout_ms: 5000 },
+      },
+      prompt_template: '',
+    })
+
+    const client = new AppServerClient(config, wsPath)
+    const session = await client.startSession()
+    expect(session instanceof Error).toBe(false)
+    if (session instanceof Error)
+      return
+
+    const messages: AgentMessage[] = []
+    const result = await client.runTurn(
+      session,
+      'hello',
+      {
+        id: 'i1',
+        identifier: 'MT-1',
+        title: 'Test Issue',
+        description: null,
+        priority: null,
+        state: 'In Progress',
+        branch_name: null,
+        url: null,
+        labels: [],
+        blocked_by: [],
+        created_at: null,
+        updated_at: null,
+      },
+      msg => messages.push(msg),
+    )
+    client.stopSession()
+
+    expect(result instanceof Error).toBe(false)
+    const sessionStarted = messages.find(m => m.event === 'session_started')
+    const turnCompleted = messages.find(m => m.event === 'turn_completed')
+    expect(sessionStarted).toBeDefined()
+    expect(turnCompleted).toBeDefined()
+    if (result instanceof Error)
+      return
+    expect(result.session_id).toBeDefined()
+    expect(result.turn_id).toBeDefined()
+  })
+
+  it('non-JSON stderr lines do not crash session (Section 17.5)', async () => {
+    const scriptPath = join(tmpRoot, 'fake-agent-stderr.sh')
+    writeFileSync(scriptPath, [
+      '#!/usr/bin/env bash',
+      'printf \'%s\\n\' \'not valid json at all\' >&2',
+      'while IFS= read -r line; do',
+      '  id=$(printf \'%s\' "$line" | grep -o \'"id":[0-9]*\' | grep -o \'[0-9]*\' | head -1)',
+      '  case "$id" in',
+      '    1) printf \'%s\\n\' \'{"id":1,"result":{"capabilities":{}}}\';;',
+      '    2) printf \'%s\\n\' \'{"id":2,"result":{"thread":{"id":"t-1"}}}\';;',
+      '    3) printf \'%s\\n\' \'{"id":3,"result":{"turn":{"id":"turn-2"}}}\'',
+      '       printf \'%s\\n\' \'{"method":"turn/completed","params":{}}\';;',
+      '  esac',
+      'done',
+    ].join('\n'), { mode: 0o755 })
+
+    const wsPath = join(tmpRoot, 'ws-stderr')
+    mkdirSync(wsPath)
+
+    const config = buildConfig({
+      config: {
+        tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
+        workspace: { root: tmpRoot },
+        claude: { command: scriptPath, read_timeout_ms: 2000, turn_timeout_ms: 5000 },
+      },
+      prompt_template: '',
+    })
+
+    const client = new AppServerClient(config, wsPath)
+    const session = await client.startSession()
+    expect(session instanceof Error).toBe(false)
+    if (session instanceof Error)
+      return
+
+    const messages: AgentMessage[] = []
+    const result = await client.runTurn(
+      session,
+      'hello',
+      {
+        id: 'i2',
+        identifier: 'MT-2',
+        title: 'Stderr Test',
+        description: null,
+        priority: null,
+        state: 'In Progress',
+        branch_name: null,
+        url: null,
+        labels: [],
+        blocked_by: [],
+        created_at: null,
+        updated_at: null,
+      },
+      msg => messages.push(msg),
+    )
+    client.stopSession()
+
+    // Session completes successfully despite stderr noise
+    expect(result instanceof Error).toBe(false)
+    const turnCompleted = messages.find(m => m.event === 'turn_completed')
+    expect(turnCompleted).toBeDefined()
+  })
 })

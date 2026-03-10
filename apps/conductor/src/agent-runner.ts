@@ -63,6 +63,7 @@ export class AppServerClient {
     onMessage: (msg: AgentMessage) => void,
   ): Promise<SessionResult | Error> {
     this.messageHandler = onMessage
+    this.pendingTurnCompletion = null
 
     let turnResult: string | Error
     try {
@@ -323,10 +324,19 @@ export class AppServerClient {
     })
   }
 
-  // Turn completion promise
+  // Turn completion promise machinery
   private turnCompletionResolve: ((err: Error | null) => void) | null = null
+  // Buffers a completion signal that arrives before awaitTurnCompletion is called
+  private pendingTurnCompletion: { err: Error | null } | null = null
 
   private awaitTurnCompletion(_onMessage: (msg: AgentMessage) => void): Promise<null | Error> {
+    // If turn/completed arrived before we set up the listener, resolve immediately
+    if (this.pendingTurnCompletion !== null) {
+      const { err } = this.pendingTurnCompletion
+      this.pendingTurnCompletion = null
+      return Promise.resolve(err)
+    }
+
     return new Promise((resolve) => {
       const timeoutMs = this.config.claude.turn_timeout_ms
       const timer = setTimeout(() => {
@@ -350,7 +360,13 @@ export class AppServerClient {
   }
 
   private resolveTurnCompletion(err: Error | null): void {
-    this.turnCompletionResolve?.(err)
+    if (this.turnCompletionResolve) {
+      this.turnCompletionResolve(err)
+    }
+    else {
+      // Buffer the signal for when awaitTurnCompletion is called
+      this.pendingTurnCompletion = { err }
+    }
   }
 
   private handleToolCall(payload: JsonRpcMessage): void {
