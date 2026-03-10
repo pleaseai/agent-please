@@ -1,10 +1,9 @@
+import type { Options } from '@anthropic-ai/claude-agent-sdk'
 import type { AgentMessage, Issue, ServiceConfig } from './types'
-import { spawn } from 'node:child_process'
+import { randomUUID } from 'node:crypto'
 import { resolve, sep } from 'node:path'
-import { createInterface } from 'node:readline'
-import { executeTool, getToolSpecs } from './tools'
-
-const STDERR_ERROR_RE = /error|warn|fail|fatal/i
+import { query as sdkQuery } from '@anthropic-ai/claude-agent-sdk'
+import { createToolsMcpServer, getToolSpecs } from './tools'
 
 export interface SessionResult {
   thread_id: string
@@ -17,107 +16,175 @@ export interface AgentSession {
   workspace: string
 }
 
-type JsonRpcMessage = Record<string, unknown>
+type QueryFn = (params: { prompt: string, options?: Options }) => AsyncIterable<unknown>
+
+// Minimal discriminated shape for SDK messages received in the for-await loop
+interface SdkMsgBase { type: string }
+interface SdkMsgInit extends SdkMsgBase { type: 'system', subtype: 'init', session_id: string }
+interface SdkMsgSuccess extends SdkMsgBase { type: 'result', subtype: 'success', usage: { input_tokens: number, output_tokens: number } }
+interface SdkMsgError extends SdkMsgBase { type: 'result', subtype: string, errors: string[] }
+interface SdkMsgRateLimit extends SdkMsgBase { type: 'rate_limit_event', rate_limit_info: unknown }
+type SdkMsg = SdkMsgInit | SdkMsgSuccess | SdkMsgError | SdkMsgRateLimit | SdkMsgBase
 
 export class AppServerClient {
-  private proc: ReturnType<typeof spawn> | null = null
-  private pendingResponses = new Map<number | string, {
-    resolve: (val: unknown) => void
-    reject: (err: Error) => void
-  }>()
-
-  private messageHandler: ((msg: AgentMessage) => void) | null = null
+  private sessionId: string | null = null
+  private abortController: AbortController | null = null
   private workspace: string
   private config: ServiceConfig
-  private onProcessExit: ((code: number | null) => void) | null = null
+  private queryFn: QueryFn
 
-  constructor(config: ServiceConfig, workspace: string) {
+  constructor(config: ServiceConfig, workspace: string, queryFn: QueryFn = sdkQuery) {
     this.config = config
     this.workspace = workspace
+    this.queryFn = queryFn
   }
 
   async startSession(): Promise<AgentSession | Error> {
     const validationErr = this.validateWorkspaceCwd()
     if (validationErr)
       return validationErr
-
-    const startErr = this.startProcess()
-    if (startErr)
-      return startErr
-
-    const initErr = await this.sendInitialize()
-    if (initErr instanceof Error)
-      return initErr
-
-    const threadResult = await this.startThread()
-    if (threadResult instanceof Error)
-      return threadResult
-
-    return { threadId: threadResult, workspace: this.workspace }
+    return { threadId: randomUUID(), workspace: this.workspace }
   }
 
   async runTurn(
     session: AgentSession,
     prompt: string,
-    issue: Issue,
+    _issue: Issue,
     onMessage: (msg: AgentMessage) => void,
   ): Promise<SessionResult | Error> {
-    this.messageHandler = onMessage
-    this.pendingTurnCompletion = null
+    const controller = new AbortController()
+    this.abortController = controller
 
-    let turnResult: string | Error
+    const timeoutHandle = setTimeout(
+      () => controller.abort(new Error('turn_timeout')),
+      this.config.claude.turn_timeout_ms,
+    )
+
+    const options: Options = {
+      cwd: session.workspace,
+      permissionMode: this.config.claude.permission_mode as Options['permissionMode'],
+      abortController: controller,
+    }
+
+    if (this.config.claude.permission_mode === 'bypassPermissions') {
+      options.allowDangerouslySkipPermissions = true
+    }
+
+    if (this.config.claude.allowed_tools.length > 0) {
+      options.allowedTools = this.config.claude.allowed_tools
+    }
+
+    if (this.sessionId) {
+      options.resume = this.sessionId
+    }
+
+    if (this.config.claude.command !== 'claude') {
+      options.pathToClaudeCodeExecutable = this.config.claude.command
+    }
+
+    const toolSpecs = getToolSpecs(this.config)
+    if (toolSpecs.length > 0) {
+      options.mcpServers = {
+        'work-please-tools': createToolsMcpServer(this.config),
+      }
+    }
+
+    const turnId = randomUUID()
+    let sessionId: string | null = null
+    let gotError = false
+
     try {
-      turnResult = await this.startTurn(session.threadId, prompt, issue)
+      const q = this.queryFn({ prompt, options })
+
+      for await (const rawMsg of q) {
+        const msg = rawMsg as SdkMsg
+        if (msg.type === 'system' && (msg as SdkMsgInit).subtype === 'init') {
+          const initMsg = msg as SdkMsgInit
+          sessionId = initMsg.session_id
+          this.sessionId = sessionId
+          onMessage({
+            event: 'session_started',
+            timestamp: new Date(),
+            session_id: sessionId,
+            thread_id: session.threadId,
+            turn_id: turnId,
+          })
+        }
+        else if (msg.type === 'result') {
+          const resultMsg = msg as SdkMsgSuccess | SdkMsgError
+          if (resultMsg.subtype === 'success') {
+            const successMsg = resultMsg as SdkMsgSuccess
+            onMessage({
+              event: 'turn_completed',
+              timestamp: new Date(),
+              usage: {
+                input_tokens: successMsg.usage.input_tokens,
+                output_tokens: successMsg.usage.output_tokens,
+                total_tokens: successMsg.usage.input_tokens + successMsg.usage.output_tokens,
+              },
+            })
+          }
+          else {
+            const errMsg = resultMsg as SdkMsgError
+            gotError = true
+            onMessage({
+              event: 'turn_failed',
+              timestamp: new Date(),
+              payload: { subtype: errMsg.subtype, errors: errMsg.errors },
+            })
+          }
+        }
+        else if (msg.type === 'rate_limit_event') {
+          const rlMsg = msg as SdkMsgRateLimit
+          onMessage({
+            event: 'notification',
+            timestamp: new Date(),
+            rate_limits: rlMsg.rate_limit_info,
+          })
+        }
+        else {
+          onMessage({
+            event: 'notification',
+            timestamp: new Date(),
+            payload: rawMsg,
+          })
+        }
+      }
+
+      clearTimeout(timeoutHandle)
+
+      if (gotError) {
+        return new Error('turn_failed')
+      }
+
+      if (!sessionId) {
+        const err = new Error('no_session_started')
+        onMessage({
+          event: 'startup_failed',
+          timestamp: new Date(),
+          payload: { reason: err.message },
+        })
+        return err
+      }
+
+      return { thread_id: session.threadId, turn_id: turnId, session_id: sessionId }
     }
     catch (err) {
+      clearTimeout(timeoutHandle)
       const error = err instanceof Error ? err : new Error(String(err))
       onMessage({
         event: 'startup_failed',
         timestamp: new Date(),
-        agent_app_server_pid: this.getProcessPid(),
         payload: { reason: error.message },
       })
       return error
     }
-
-    if (turnResult instanceof Error) {
-      onMessage({
-        event: 'startup_failed',
-        timestamp: new Date(),
-        agent_app_server_pid: this.getProcessPid(),
-        payload: { reason: turnResult.message },
-      })
-      return turnResult
-    }
-
-    const turn_id = turnResult
-    const session_id = `${session.threadId}-${turn_id}`
-
-    onMessage({
-      event: 'session_started',
-      timestamp: new Date(),
-      agent_app_server_pid: this.getProcessPid(),
-      session_id,
-      thread_id: session.threadId,
-      turn_id,
-    })
-
-    const turnCompletion = await this.awaitTurnCompletion(onMessage)
-    if (turnCompletion instanceof Error)
-      return turnCompletion
-
-    return { thread_id: session.threadId, turn_id, session_id }
   }
 
   stopSession(): void {
-    if (this.proc) {
-      try {
-        this.proc.kill('SIGTERM')
-      }
-      catch {}
-      this.proc = null
-    }
-    this.pendingResponses.clear()
+    this.abortController?.abort()
+    this.sessionId = null
+    this.abortController = null
   }
 
   private validateWorkspaceCwd(): Error | null {
@@ -125,392 +192,16 @@ export class AppServerClient {
     const root = resolve(this.config.workspace.root)
     const rootWithSep = root + sep
 
-    if (wsPath === root) {
+    if (wsPath === root)
       return new Error(`invalid_workspace_cwd: workspace_root ${wsPath}`)
-    }
-    if (!wsPath.startsWith(rootWithSep)) {
+    if (!wsPath.startsWith(rootWithSep))
       return new Error(`invalid_workspace_cwd: outside_workspace_root ${wsPath}`)
-    }
     return null
-  }
-
-  private startProcess(): Error | null {
-    const { command } = this.config.claude
-    try {
-      this.proc = spawn('bash', ['-lc', command], {
-        cwd: this.workspace,
-        stdio: ['pipe', 'pipe', 'pipe'],
-      })
-
-      this.proc.on('exit', (code) => {
-        this.onProcessExit?.(code)
-        this.rejectAllPending(new Error(`port_exit: ${code}`))
-      })
-
-      if (!this.proc.stdout)
-        return new Error('no stdout on subprocess')
-
-      const rl = createInterface({ input: this.proc.stdout, crlfDelay: Infinity })
-      rl.on('line', line => this.handleLine(line))
-
-      if (this.proc.stderr) {
-        const errRl = createInterface({ input: this.proc.stderr, crlfDelay: Infinity })
-        errRl.on('line', (line) => {
-          const trimmed = line.trim()
-          if (trimmed) {
-            // log stderr but do not parse as protocol
-            if (STDERR_ERROR_RE.test(trimmed)) {
-              console.error(`[agent stderr] ${trimmed}`)
-            }
-          }
-        })
-      }
-
-      return null
-    }
-    catch (err) {
-      return err instanceof Error ? err : new Error(String(err))
-    }
-  }
-
-  private handleLine(line: string): void {
-    const trimmed = line.trim()
-    if (!trimmed)
-      return
-
-    let payload: JsonRpcMessage
-    try {
-      payload = JSON.parse(trimmed)
-    }
-    catch {
-      this.messageHandler?.({
-        event: 'malformed',
-        timestamp: new Date(),
-        agent_app_server_pid: this.getProcessPid(),
-        raw: trimmed,
-      })
-      return
-    }
-
-    // Check if it's a response to a pending request
-    const id = payload.id as number | string | undefined
-    if (id !== undefined) {
-      const pending = this.pendingResponses.get(id)
-      if (pending) {
-        this.pendingResponses.delete(id)
-        if (payload.error) {
-          pending.reject(new Error(`response_error: ${JSON.stringify(payload.error)}`))
-        }
-        else {
-          pending.resolve(payload.result)
-        }
-        return
-      }
-    }
-
-    // It's a notification/method call
-    this.handleNotification(payload)
-  }
-
-  private handleNotification(payload: JsonRpcMessage): void {
-    const method = payload.method as string | undefined
-    if (!method) {
-      this.messageHandler?.({
-        event: 'other_message',
-        timestamp: new Date(),
-        agent_app_server_pid: this.getProcessPid(),
-        payload,
-      })
-      return
-    }
-
-    // Turn completion signals
-    if (method === 'turn/completed') {
-      this.resolveTurnCompletion(null)
-      this.messageHandler?.({
-        event: 'turn_completed',
-        timestamp: new Date(),
-        agent_app_server_pid: this.getProcessPid(),
-        payload,
-        ...extractUsage(payload),
-      })
-      return
-    }
-
-    if (method === 'turn/failed') {
-      const err = new Error(`turn_failed: ${JSON.stringify(payload.params)}`)
-      this.resolveTurnCompletion(err)
-      this.messageHandler?.({
-        event: 'turn_failed',
-        timestamp: new Date(),
-        agent_app_server_pid: this.getProcessPid(),
-        payload,
-      })
-      return
-    }
-
-    if (method === 'turn/cancelled') {
-      const err = new Error(`turn_cancelled: ${JSON.stringify(payload.params)}`)
-      this.resolveTurnCompletion(err)
-      this.messageHandler?.({
-        event: 'turn_cancelled',
-        timestamp: new Date(),
-        agent_app_server_pid: this.getProcessPid(),
-        payload,
-      })
-      return
-    }
-
-    // Approval requests
-    if (method === 'item/commandExecution/requestApproval'
-      || method === 'execCommandApproval'
-      || method === 'applyPatchApproval'
-      || method === 'item/fileChange/requestApproval') {
-      const id = payload.id as string | number
-      this.sendMessage({ id, result: { decision: 'acceptForSession' } })
-      this.messageHandler?.({
-        event: 'approval_auto_approved',
-        timestamp: new Date(),
-        agent_app_server_pid: this.getProcessPid(),
-        payload,
-      })
-      return
-    }
-
-    // Dynamic tool calls
-    if (method === 'item/tool/call') {
-      this.handleToolCall(payload)
-      return
-    }
-
-    // User input required
-    if (method === 'item/tool/requestUserInput' || isInputRequired(method, payload)) {
-      const id = payload.id as string | number | undefined
-      if (id !== undefined) {
-        this.sendMessage({ id, result: { success: false, error: 'non_interactive_session' } })
-      }
-      const err = new Error(`turn_input_required`)
-      this.resolveTurnCompletion(err)
-      this.messageHandler?.({
-        event: 'turn_input_required',
-        timestamp: new Date(),
-        agent_app_server_pid: this.getProcessPid(),
-        payload,
-      })
-      return
-    }
-
-    // Thread token usage updates
-    if (method === 'thread/tokenUsage/updated') {
-      this.messageHandler?.({
-        event: 'notification',
-        timestamp: new Date(),
-        agent_app_server_pid: this.getProcessPid(),
-        payload,
-        ...extractUsage(payload),
-        ...extractRateLimits(payload),
-      })
-      return
-    }
-
-    // General notification
-    this.messageHandler?.({
-      event: 'notification',
-      timestamp: new Date(),
-      agent_app_server_pid: this.getProcessPid(),
-      payload,
-      ...extractUsage(payload),
-      ...extractRateLimits(payload),
-    })
-  }
-
-  // Turn completion promise machinery
-  private turnCompletionResolve: ((err: Error | null) => void) | null = null
-  // Buffers a completion signal that arrives before awaitTurnCompletion is called
-  private pendingTurnCompletion: { err: Error | null } | null = null
-
-  private awaitTurnCompletion(_onMessage: (msg: AgentMessage) => void): Promise<null | Error> {
-    // If turn/completed arrived before we set up the listener, resolve immediately
-    if (this.pendingTurnCompletion !== null) {
-      const { err } = this.pendingTurnCompletion
-      this.pendingTurnCompletion = null
-      return Promise.resolve(err)
-    }
-
-    return new Promise((resolve) => {
-      const timeoutMs = this.config.claude.turn_timeout_ms
-      const timer = setTimeout(() => {
-        this.turnCompletionResolve = null
-        resolve(new Error('turn_timeout'))
-      }, timeoutMs)
-
-      this.turnCompletionResolve = (err) => {
-        clearTimeout(timer)
-        this.turnCompletionResolve = null
-        resolve(err)
-      }
-
-      // Handle process exit during turn
-      this.onProcessExit = (code) => {
-        clearTimeout(timer)
-        this.turnCompletionResolve = null
-        resolve(new Error(`port_exit: ${code}`))
-      }
-    })
-  }
-
-  private resolveTurnCompletion(err: Error | null): void {
-    if (this.turnCompletionResolve) {
-      this.turnCompletionResolve(err)
-    }
-    else {
-      // Buffer the signal for when awaitTurnCompletion is called
-      this.pendingTurnCompletion = { err }
-    }
-  }
-
-  private handleToolCall(payload: JsonRpcMessage): void {
-    const id = payload.id as string | number
-    const params = payload.params as Record<string, unknown> | undefined
-    const toolName = typeof params?.name === 'string' ? params.name : null
-    const rawArgs = params?.arguments ?? params?.input ?? {}
-
-    if (!toolName) {
-      this.sendMessage({ id, result: { success: false, error: 'unsupported_tool_call' } })
-      this.messageHandler?.({
-        event: 'unsupported_tool_call',
-        timestamp: new Date(),
-        agent_app_server_pid: this.getProcessPid(),
-        payload,
-      })
-      return
-    }
-
-    const toolSpecs = getToolSpecs(this.config)
-    const isSupported = toolSpecs.some(s => s.name === toolName)
-
-    if (!isSupported) {
-      this.sendMessage({ id, result: { success: false, error: 'unsupported_tool_call' } })
-      this.messageHandler?.({
-        event: 'unsupported_tool_call',
-        timestamp: new Date(),
-        agent_app_server_pid: this.getProcessPid(),
-        payload,
-      })
-      return
-    }
-
-    // Execute supported tool asynchronously; send result when done
-    executeTool(this.config, toolName, rawArgs).then((result) => {
-      this.sendMessage({ id, result })
-      this.messageHandler?.({
-        event: result.success ? 'notification' : 'tool_call_failed',
-        timestamp: new Date(),
-        agent_app_server_pid: this.getProcessPid(),
-        payload,
-      })
-    }).catch((err) => {
-      this.sendMessage({ id, result: { success: false, error: String(err) } })
-    })
-  }
-
-  private async sendInitialize(): Promise<null | Error> {
-    const result = await this.sendRequest(1, 'initialize', {
-      capabilities: { experimentalApi: true },
-      clientInfo: { name: 'work-please', version: '1.0' },
-    })
-    if (result instanceof Error)
-      return result
-
-    this.sendMessage({ method: 'initialized', params: {} })
-    return null
-  }
-
-  private async startThread(): Promise<string | Error> {
-    const { permission_mode } = this.config.claude
-    const toolSpecs = getToolSpecs(this.config)
-    const params: Record<string, unknown> = {
-      approvalPolicy: permission_mode === 'bypassPermissions' ? 'never' : 'always',
-      sandbox: 'workspace-write',
-      cwd: this.workspace,
-    }
-    if (toolSpecs.length > 0) {
-      params.dynamicTools = toolSpecs
-    }
-    const result = await this.sendRequest(2, 'thread/start', params)
-
-    if (result instanceof Error)
-      return result
-
-    const thread = (result as { thread?: { id?: string } })?.thread
-    if (!thread?.id) {
-      return new Error(`invalid_thread_payload: ${JSON.stringify(result)}`)
-    }
-    return thread.id
-  }
-
-  private async startTurn(threadId: string, prompt: string, issue: Issue): Promise<string | Error> {
-    const { permission_mode } = this.config.claude
-    const result = await this.sendRequest(3, 'turn/start', {
-      threadId,
-      input: [{ type: 'text', text: prompt }],
-      cwd: this.workspace,
-      title: `${issue.identifier}: ${issue.title}`,
-      approvalPolicy: permission_mode === 'bypassPermissions' ? 'never' : 'always',
-      sandboxPolicy: { type: 'workspaceWrite', writableRoots: [this.workspace] },
-    })
-
-    if (result instanceof Error)
-      return result
-
-    const turn = (result as { turn?: { id?: string } })?.turn
-    if (!turn?.id) {
-      return new Error(`invalid_turn_payload: ${JSON.stringify(result)}`)
-    }
-    return turn.id
-  }
-
-  private sendRequest(id: number, method: string, params: unknown): Promise<unknown> {
-    return new Promise((resolve, reject) => {
-      const timeoutMs = this.config.claude.read_timeout_ms
-      const timer = setTimeout(() => {
-        this.pendingResponses.delete(id)
-        reject(new Error('response_timeout'))
-      }, timeoutMs)
-
-      this.pendingResponses.set(id, {
-        resolve: (val) => {
-          clearTimeout(timer)
-          resolve(val)
-        },
-        reject: (err) => {
-          clearTimeout(timer)
-          reject(err)
-        },
-      })
-
-      this.sendMessage({ id, method, params })
-    })
-  }
-
-  private sendMessage(msg: JsonRpcMessage): void {
-    if (!this.proc?.stdin)
-      return
-    const line = `${JSON.stringify(msg)}\n`
-    this.proc.stdin.write(line)
-  }
-
-  private rejectAllPending(err: Error): void {
-    for (const pending of this.pendingResponses.values()) {
-      pending.reject(err)
-    }
-    this.pendingResponses.clear()
-  }
-
-  private getProcessPid(): string | null {
-    return this.proc?.pid ? String(this.proc.pid) : null
   }
 }
+
+// Utility exports (kept for backward compatibility with tests and orchestrator)
+type JsonRpcMessage = Record<string, unknown>
 
 export function extractRateLimits(payload: JsonRpcMessage): { rate_limits?: unknown } {
   const params = payload.params as Record<string, unknown> | undefined

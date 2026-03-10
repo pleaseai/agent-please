@@ -1,6 +1,6 @@
 import type { ServiceConfig } from './types'
 import { describe, expect, mock, test } from 'bun:test'
-import { executeTool, getToolSpecs } from './tools'
+import { createToolsMcpServer, executeTool, getToolSpecs } from './tools'
 
 function makeConfig(trackerKind: 'asana' | 'github_projects', apiKey: string | null = 'test-key'): ServiceConfig {
   const base: ServiceConfig = {
@@ -250,6 +250,60 @@ describe('executeTool - github_graphql validation', () => {
         'github_graphql',
         { query: 'query { viewer { login } }' },
       )
+      expect(result.success).toBe(true)
+      expect(result.contentItems[0].text).toContain('testuser')
+    }
+    finally {
+      globalThis.fetch = origFetch
+    }
+  })
+})
+
+describe('createToolsMcpServer - MCP server factory (Section 18.2)', () => {
+  test('creates a server with instance for asana config', () => {
+    const config = makeConfig('asana')
+    const server = createToolsMcpServer(config)
+    expect(server).toBeDefined()
+    expect(server.instance).toBeDefined()
+  })
+
+  test('creates a server with instance for github_projects config', () => {
+    const config = makeConfig('github_projects')
+    const server = createToolsMcpServer(config)
+    expect(server).toBeDefined()
+    expect(server.instance).toBeDefined()
+  })
+
+  test('asana tool handler delegates to executeTool and produces text content', async () => {
+    const origFetch = globalThis.fetch
+    globalThis.fetch = mock(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ data: { gid: 't1', name: 'Task One' } }),
+    })) as unknown as typeof fetch
+
+    try {
+      const config = makeConfig('asana')
+      const result = await executeTool(config, 'asana_api', { method: 'GET', path: '/tasks/t1' })
+      expect(result.success).toBe(true)
+      expect(result.contentItems[0].text).toContain('Task One')
+    }
+    finally {
+      globalThis.fetch = origFetch
+    }
+  })
+
+  test('github tool handler delegates to executeTool and produces text content', async () => {
+    const origFetch = globalThis.fetch
+    globalThis.fetch = mock(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ data: { viewer: { login: 'testuser' } } }),
+    })) as unknown as typeof fetch
+
+    try {
+      const config = makeConfig('github_projects')
+      const result = await executeTool(config, 'github_graphql', { query: 'query { viewer { login } }' })
       expect(result.success).toBe(true)
       expect(result.contentItems[0].text).toContain('testuser')
     }

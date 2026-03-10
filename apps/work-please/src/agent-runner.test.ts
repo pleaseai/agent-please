@@ -1,5 +1,5 @@
 import type { AgentMessage } from './types'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
@@ -136,31 +136,140 @@ describe('isInputRequired - compatible payload variants (Section 17.5)', () => {
   })
 })
 
-describe('AppServerClient - startup_failed event (Section 10.4)', () => {
+// --- SDK-based AppServerClient integration tests ---
+
+// Minimal fake SDKMessage factory helpers
+function makeInitMsg(session_id: string, cwd = '/tmp/ws') {
+  return {
+    type: 'system' as const,
+    subtype: 'init' as const,
+    session_id,
+    cwd,
+    tools: [],
+    mcp_servers: [],
+    model: 'claude-sonnet-4-6',
+    permissionMode: 'bypassPermissions' as const,
+    slash_commands: [],
+    output_style: 'text',
+    skills: [],
+    plugins: [],
+    apiKeySource: 'user' as const,
+    betas: [],
+    claude_code_version: '1.0.0',
+    uuid: 'uuid-init' as `${string}-${string}-${string}-${string}-${string}`,
+  }
+}
+
+function makeSuccessMsg(session_id: string) {
+  return {
+    type: 'result' as const,
+    subtype: 'success' as const,
+    session_id,
+    is_error: false,
+    num_turns: 1,
+    result: 'done',
+    stop_reason: 'end_turn',
+    total_cost_usd: 0.001,
+    duration_ms: 1000,
+    duration_api_ms: 900,
+    usage: { input_tokens: 100, output_tokens: 50, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
+    modelUsage: {},
+    permission_denials: [],
+    uuid: 'uuid-result' as `${string}-${string}-${string}-${string}-${string}`,
+  }
+}
+
+function makeErrorMsg(session_id: string, subtype: 'error_during_execution' | 'error_max_turns' = 'error_during_execution') {
+  return {
+    type: 'result' as const,
+    subtype,
+    session_id,
+    is_error: true,
+    num_turns: 1,
+    stop_reason: null,
+    total_cost_usd: 0,
+    duration_ms: 100,
+    duration_api_ms: 80,
+    usage: { input_tokens: 10, output_tokens: 5, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
+    modelUsage: {},
+    permission_denials: [],
+    errors: ['execution failed'],
+    uuid: 'uuid-error' as `${string}-${string}-${string}-${string}-${string}`,
+  }
+}
+
+function makeRateLimitMsg(session_id: string) {
+  return {
+    type: 'rate_limit_event' as const,
+    session_id,
+    rate_limit_info: { status: 'allowed' as const },
+    uuid: 'uuid-rl' as `${string}-${string}-${string}-${string}-${string}`,
+  }
+}
+
+function makeIssue() {
+  return {
+    id: 'i1',
+    identifier: 'MT-1',
+    title: 'Test Issue',
+    description: null,
+    priority: null,
+    state: 'In Progress',
+    branch_name: null,
+    url: null,
+    labels: [],
+    blocked_by: [],
+    created_at: null,
+    updated_at: null,
+  }
+}
+
+describe('AppServerClient - startSession workspace validation (Section 17.5)', () => {
   let tmpRoot: string
 
   beforeEach(() => {
-    tmpRoot = mkdtempSync(join(tmpdir(), 'work-please-runner-test-'))
+    tmpRoot = mkdtempSync(join(tmpdir(), 'work-please-sdk-test-'))
   })
 
   afterEach(() => {
     rmSync(tmpRoot, { recursive: true, force: true })
   })
 
-  it('emits startup_failed event when turn/start fails', async () => {
-    const scriptPath = join(tmpRoot, 'fake-agent.sh')
-    writeFileSync(scriptPath, [
-      '#!/usr/bin/env bash',
-      'while IFS= read -r line; do',
-      '  id=$(printf \'%s\' "$line" | grep -o \'"id":[0-9]*\' | grep -o \'[0-9]*\' | head -1)',
-      '  case "$id" in',
-      '    1) printf \'%s\\n\' \'{"id":1,"result":{"capabilities":{}}}\';;',
-      '    2) printf \'%s\\n\' \'{"id":2,"result":{"thread":{"id":"t-1"}}}\';;',
-      '    3) printf \'%s\\n\' \'{"id":3,"error":{"code":-32000,"message":"turn_start_failed"}}\';;',
-      '  esac',
-      'done',
-    ].join('\n'), { mode: 0o755 })
+  it('returns Error when workspace equals workspace root', async () => {
+    const config = buildConfig({
+      config: {
+        tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
+        workspace: { root: tmpRoot },
+        claude: { command: 'claude', read_timeout_ms: 2000, turn_timeout_ms: 5000 },
+      },
+      prompt_template: '',
+    })
 
+    const client = new AppServerClient(config, tmpRoot)
+    const result = await client.startSession()
+    expect(result instanceof Error).toBe(true)
+    if (result instanceof Error)
+      expect(result.message).toContain('invalid_workspace_cwd')
+  })
+
+  it('returns Error when workspace is outside workspace root', async () => {
+    const config = buildConfig({
+      config: {
+        tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
+        workspace: { root: tmpRoot },
+        claude: { command: 'claude', read_timeout_ms: 2000, turn_timeout_ms: 5000 },
+      },
+      prompt_template: '',
+    })
+
+    const client = new AppServerClient(config, '/tmp/outside-root')
+    const result = await client.startSession()
+    expect(result instanceof Error).toBe(true)
+    if (result instanceof Error)
+      expect(result.message).toContain('outside_workspace_root')
+  })
+
+  it('returns AgentSession with UUID threadId on valid workspace', async () => {
     const wsPath = join(tmpRoot, 'ws')
     mkdirSync(wsPath)
 
@@ -168,795 +277,452 @@ describe('AppServerClient - startup_failed event (Section 10.4)', () => {
       config: {
         tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
         workspace: { root: tmpRoot },
-        claude: { command: scriptPath, read_timeout_ms: 2000, turn_timeout_ms: 5000 },
+        claude: { command: 'claude', read_timeout_ms: 2000, turn_timeout_ms: 5000 },
       },
       prompt_template: '',
     })
 
     const client = new AppServerClient(config, wsPath)
+    const result = await client.startSession()
+    expect(result instanceof Error).toBe(false)
+    if (result instanceof Error)
+      return
+    expect(typeof result.threadId).toBe('string')
+    expect(result.threadId.length).toBeGreaterThan(0)
+    expect(result.workspace).toBe(wsPath)
+  })
+})
+
+describe('AppServerClient - runTurn with SDK mock (Section 17.5)', () => {
+  let tmpRoot: string
+  let wsPath: string
+
+  beforeEach(() => {
+    tmpRoot = mkdtempSync(join(tmpdir(), 'work-please-sdk-test-'))
+    wsPath = join(tmpRoot, 'ws')
+    mkdirSync(wsPath)
+  })
+
+  afterEach(() => {
+    rmSync(tmpRoot, { recursive: true, force: true })
+  })
+
+  function makeConfig() {
+    return buildConfig({
+      config: {
+        tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
+        workspace: { root: tmpRoot },
+        claude: { command: 'claude', read_timeout_ms: 2000, turn_timeout_ms: 5000 },
+      },
+      prompt_template: '',
+    })
+  }
+
+  it('emits session_started and turn_completed on successful SDK turn', async () => {
+    const sessionId = 'sdk-session-1'
+
+    async function* mockQuery() {
+      yield makeInitMsg(sessionId, wsPath)
+      yield makeSuccessMsg(sessionId)
+    }
+
+    const config = makeConfig()
+    const client = new AppServerClient(config, wsPath, () => mockQuery())
     const session = await client.startSession()
     expect(session instanceof Error).toBe(false)
     if (session instanceof Error)
       return
 
     const messages: AgentMessage[] = []
-    const result = await client.runTurn(
-      session,
-      'hello',
-      {
-        id: 'i1',
-        identifier: 'MT-1',
-        title: 'Test Issue',
-        description: null,
-        priority: null,
-        state: 'In Progress',
-        branch_name: null,
-        url: null,
-        labels: [],
-        blocked_by: [],
-        created_at: null,
-        updated_at: null,
-      },
-      msg => messages.push(msg),
-    )
+    const result = await client.runTurn(session, 'hello', makeIssue(), msg => messages.push(msg))
+    client.stopSession()
+
+    expect(result instanceof Error).toBe(false)
+    const sessionStarted = messages.find(m => m.event === 'session_started')
+    expect(sessionStarted).toBeDefined()
+    expect(sessionStarted?.session_id).toBe(sessionId)
+    expect(sessionStarted?.thread_id).toBe(session.threadId)
+
+    const turnCompleted = messages.find(m => m.event === 'turn_completed')
+    expect(turnCompleted).toBeDefined()
+    expect(turnCompleted?.usage?.input_tokens).toBe(100)
+    expect(turnCompleted?.usage?.output_tokens).toBe(50)
+
+    if (result instanceof Error)
+      return
+    expect(result.session_id).toBe(sessionId)
+    expect(result.thread_id).toBe(session.threadId)
+    expect(typeof result.turn_id).toBe('string')
+  })
+
+  it('emits startup_failed and returns Error when query throws', async () => {
+    async function* mockQuery() {
+      throw new Error('claude_not_found')
+
+      yield makeInitMsg('s1')
+    }
+
+    const config = makeConfig()
+    const client = new AppServerClient(config, wsPath, () => mockQuery())
+    const session = await client.startSession()
+    if (session instanceof Error)
+      return
+
+    const messages: AgentMessage[] = []
+    const result = await client.runTurn(session, 'hello', makeIssue(), msg => messages.push(msg))
     client.stopSession()
 
     expect(result instanceof Error).toBe(true)
     const startupFailed = messages.find(m => m.event === 'startup_failed')
     expect(startupFailed).toBeDefined()
-    expect((startupFailed?.payload as { reason: string })?.reason).toContain('turn_start_failed')
+    expect((startupFailed?.payload as { reason: string })?.reason).toContain('claude_not_found')
   })
 
-  it('emits session_started and turn_completed on successful turn', async () => {
-    const scriptPath = join(tmpRoot, 'fake-agent-ok.sh')
-    writeFileSync(scriptPath, [
-      '#!/usr/bin/env bash',
-      'while IFS= read -r line; do',
-      '  id=$(printf \'%s\' "$line" | grep -o \'"id":[0-9]*\' | grep -o \'[0-9]*\' | head -1)',
-      '  case "$id" in',
-      '    1) printf \'%s\\n\' \'{"id":1,"result":{"capabilities":{}}}\';;',
-      '    2) printf \'%s\\n\' \'{"id":2,"result":{"thread":{"id":"t-1"}}}\';;',
-      '    3) printf \'%s\\n\' \'{"id":3,"result":{"turn":{"id":"turn-1"}}}\'',
-      '       printf \'%s\\n\' \'{"method":"turn/completed","params":{}}\';;',
-      '  esac',
-      'done',
-    ].join('\n'), { mode: 0o755 })
+  it('emits startup_failed when query yields no system init message', async () => {
+    async function* mockQuery() {
+      // yields result without init — SDK error path
+      yield makeSuccessMsg('s-no-init')
+    }
 
-    const wsPath = join(tmpRoot, 'ws-ok')
-    mkdirSync(wsPath)
-
-    const config = buildConfig({
-      config: {
-        tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
-        workspace: { root: tmpRoot },
-        claude: { command: scriptPath, read_timeout_ms: 2000, turn_timeout_ms: 5000 },
-      },
-      prompt_template: '',
-    })
-
-    const client = new AppServerClient(config, wsPath)
+    const config = makeConfig()
+    const client = new AppServerClient(config, wsPath, () => mockQuery())
     const session = await client.startSession()
-    expect(session instanceof Error).toBe(false)
     if (session instanceof Error)
       return
 
     const messages: AgentMessage[] = []
-    const result = await client.runTurn(
-      session,
-      'hello',
-      {
-        id: 'i1',
-        identifier: 'MT-1',
-        title: 'Test Issue',
-        description: null,
-        priority: null,
-        state: 'In Progress',
-        branch_name: null,
-        url: null,
-        labels: [],
-        blocked_by: [],
-        created_at: null,
-        updated_at: null,
-      },
-      msg => messages.push(msg),
-    )
-    client.stopSession()
+    const result = await client.runTurn(session, 'hello', makeIssue(), msg => messages.push(msg))
 
-    expect(result instanceof Error).toBe(false)
-    const sessionStarted = messages.find(m => m.event === 'session_started')
-    const turnCompleted = messages.find(m => m.event === 'turn_completed')
-    expect(sessionStarted).toBeDefined()
-    expect(turnCompleted).toBeDefined()
+    expect(result instanceof Error).toBe(true)
+    const startupFailed = messages.find(m => m.event === 'startup_failed')
+    expect(startupFailed).toBeDefined()
     if (result instanceof Error)
-      return
-    // session_id format is "{threadId}-{turnId}" (Section 17.5)
-    expect(result.session_id).toBe('t-1-turn-1')
-    expect(result.thread_id).toBe('t-1')
-    expect(result.turn_id).toBe('turn-1')
+      expect(result.message).toBe('no_session_started')
   })
 
-  it('non-JSON stderr lines do not crash session (Section 17.5)', async () => {
-    const scriptPath = join(tmpRoot, 'fake-agent-stderr.sh')
-    writeFileSync(scriptPath, [
-      '#!/usr/bin/env bash',
-      'printf \'%s\\n\' \'not valid json at all\' >&2',
-      'while IFS= read -r line; do',
-      '  id=$(printf \'%s\' "$line" | grep -o \'"id":[0-9]*\' | grep -o \'[0-9]*\' | head -1)',
-      '  case "$id" in',
-      '    1) printf \'%s\\n\' \'{"id":1,"result":{"capabilities":{}}}\';;',
-      '    2) printf \'%s\\n\' \'{"id":2,"result":{"thread":{"id":"t-1"}}}\';;',
-      '    3) printf \'%s\\n\' \'{"id":3,"result":{"turn":{"id":"turn-2"}}}\'',
-      '       printf \'%s\\n\' \'{"method":"turn/completed","params":{}}\';;',
-      '  esac',
-      'done',
-    ].join('\n'), { mode: 0o755 })
+  it('emits turn_failed and returns Error when SDKResultError received', async () => {
+    const sessionId = 'sdk-error-session'
 
-    const wsPath = join(tmpRoot, 'ws-stderr')
-    mkdirSync(wsPath)
+    async function* mockQuery() {
+      yield makeInitMsg(sessionId, wsPath)
+      yield makeErrorMsg(sessionId, 'error_during_execution')
+    }
 
-    const config = buildConfig({
-      config: {
-        tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
-        workspace: { root: tmpRoot },
-        claude: { command: scriptPath, read_timeout_ms: 2000, turn_timeout_ms: 5000 },
-      },
-      prompt_template: '',
-    })
-
-    const client = new AppServerClient(config, wsPath)
+    const config = makeConfig()
+    const client = new AppServerClient(config, wsPath, () => mockQuery())
     const session = await client.startSession()
-    expect(session instanceof Error).toBe(false)
     if (session instanceof Error)
       return
 
     const messages: AgentMessage[] = []
-    const result = await client.runTurn(
-      session,
-      'hello',
-      {
-        id: 'i2',
-        identifier: 'MT-2',
-        title: 'Stderr Test',
-        description: null,
-        priority: null,
-        state: 'In Progress',
-        branch_name: null,
-        url: null,
-        labels: [],
-        blocked_by: [],
-        created_at: null,
-        updated_at: null,
-      },
-      msg => messages.push(msg),
-    )
-    client.stopSession()
-
-    // Session completes successfully despite stderr noise
-    expect(result instanceof Error).toBe(false)
-    const turnCompleted = messages.find(m => m.event === 'turn_completed')
-    expect(turnCompleted).toBeDefined()
-  })
-
-  it('auto-approves command execution approval requests (Section 17.5)', async () => {
-    const scriptPath = join(tmpRoot, 'fake-agent-approval.sh')
-    writeFileSync(scriptPath, [
-      '#!/usr/bin/env bash',
-      'while IFS= read -r line; do',
-      '  id=$(printf \'%s\' "$line" | grep -o \'"id":[0-9]*\' | grep -o \'[0-9]*\' | head -1)',
-      '  idStr=$(printf \'%s\' "$line" | grep -o \'"id":"[^"]*"\' | head -1)',
-      '  if printf \'%s\' "$line" | grep -q "acceptForSession"; then',
-      // Client sent acceptForSession response — now complete the turn
-      '    printf \'%s\\n\' \'{"method":"turn/completed","params":{}}\'',
-      '    break',
-      '  fi',
-      '  case "$id" in',
-      '    1) printf \'%s\\n\' \'{"id":1,"result":{"capabilities":{}}}\';;',
-      '    2) printf \'%s\\n\' \'{"id":2,"result":{"thread":{"id":"t-1"}}}\';;',
-      '    3) printf \'%s\\n\' \'{"id":3,"result":{"turn":{"id":"turn-4"}}}\'',
-      '       printf \'%s\\n\' \'{"id":"approval-1","method":"item/commandExecution/requestApproval","params":{}}\';;',
-      '  esac',
-      'done',
-    ].join('\n'), { mode: 0o755 })
-
-    const wsPath = join(tmpRoot, 'ws-approval')
-    mkdirSync(wsPath)
-
-    const config = buildConfig({
-      config: {
-        tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
-        workspace: { root: tmpRoot },
-        claude: { command: scriptPath, read_timeout_ms: 2000, turn_timeout_ms: 5000 },
-      },
-      prompt_template: '',
-    })
-
-    const client = new AppServerClient(config, wsPath)
-    const session = await client.startSession()
-    expect(session instanceof Error).toBe(false)
-    if (session instanceof Error)
-      return
-
-    const messages: AgentMessage[] = []
-    const result = await client.runTurn(
-      session,
-      'hello',
-      {
-        id: 'i4',
-        identifier: 'MT-4',
-        title: 'Approval Test',
-        description: null,
-        priority: null,
-        state: 'In Progress',
-        branch_name: null,
-        url: null,
-        labels: [],
-        blocked_by: [],
-        created_at: null,
-        updated_at: null,
-      },
-      msg => messages.push(msg),
-    )
-    client.stopSession()
-
-    expect(result instanceof Error).toBe(false)
-    const autoApproved = messages.find(m => m.event === 'approval_auto_approved')
-    expect(autoApproved).toBeDefined()
-    const turnCompleted = messages.find(m => m.event === 'turn_completed')
-    expect(turnCompleted).toBeDefined()
-  })
-
-  it('returns Error with response_timeout when agent does not respond to turn/start within read_timeout_ms (Section 17.5)', async () => {
-    const scriptPath = join(tmpRoot, 'fake-agent-slow.sh')
-    writeFileSync(scriptPath, [
-      '#!/usr/bin/env bash',
-      'while IFS= read -r line; do',
-      '  id=$(printf \'%s\' "$line" | grep -o \'"id":[0-9]*\' | grep -o \'[0-9]*\' | head -1)',
-      '  case "$id" in',
-      '    1) printf \'%s\\n\' \'{"id":1,"result":{"capabilities":{}}}\';;',
-      '    2) printf \'%s\\n\' \'{"id":2,"result":{"thread":{"id":"t-1"}}}\';;',
-      // id=3 (turn/start) intentionally not handled — agent hangs
-      '  esac',
-      'done',
-    ].join('\n'), { mode: 0o755 })
-
-    const wsPath = join(tmpRoot, 'ws-slow')
-    mkdirSync(wsPath)
-
-    const config = buildConfig({
-      config: {
-        tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
-        workspace: { root: tmpRoot },
-        claude: { command: scriptPath, read_timeout_ms: 500, turn_timeout_ms: 5000 },
-      },
-      prompt_template: '',
-    })
-
-    const client = new AppServerClient(config, wsPath)
-    const session = await client.startSession()
-    expect(session instanceof Error).toBe(false)
-    if (session instanceof Error)
-      return
-
-    const messages: AgentMessage[] = []
-    const result = await client.runTurn(
-      session,
-      'hello',
-      {
-        id: 'i5',
-        identifier: 'MT-5',
-        title: 'Timeout Test',
-        description: null,
-        priority: null,
-        state: 'In Progress',
-        branch_name: null,
-        url: null,
-        labels: [],
-        blocked_by: [],
-        created_at: null,
-        updated_at: null,
-      },
-      msg => messages.push(msg),
-    )
+    const result = await client.runTurn(session, 'hello', makeIssue(), msg => messages.push(msg))
     client.stopSession()
 
     expect(result instanceof Error).toBe(true)
-    if (!(result instanceof Error))
+    const sessionStarted = messages.find(m => m.event === 'session_started')
+    expect(sessionStarted).toBeDefined()
+    const turnFailed = messages.find(m => m.event === 'turn_failed')
+    expect(turnFailed).toBeDefined()
+    expect((turnFailed?.payload as { subtype: string })?.subtype).toBe('error_during_execution')
+  })
+
+  it('emits turn_failed for error_max_turns result', async () => {
+    const sessionId = 'sdk-max-turns-session'
+
+    async function* mockQuery() {
+      yield makeInitMsg(sessionId, wsPath)
+      yield makeErrorMsg(sessionId, 'error_max_turns')
+    }
+
+    const config = makeConfig()
+    const client = new AppServerClient(config, wsPath, () => mockQuery())
+    const session = await client.startSession()
+    if (session instanceof Error)
       return
-    expect(result.message).toContain('response_timeout')
+
+    const messages: AgentMessage[] = []
+    const result = await client.runTurn(session, 'hello', makeIssue(), msg => messages.push(msg))
+
+    expect(result instanceof Error).toBe(true)
+    const turnFailed = messages.find(m => m.event === 'turn_failed')
+    expect(turnFailed).toBeDefined()
+    expect((turnFailed?.payload as { subtype: string })?.subtype).toBe('error_max_turns')
+  })
+
+  it('aborts query and returns Error on turn_timeout', async () => {
+    const config = buildConfig({
+      config: {
+        tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
+        workspace: { root: tmpRoot },
+        claude: { command: 'claude', read_timeout_ms: 200, turn_timeout_ms: 300 },
+      },
+      prompt_template: '',
+    })
+
+    // Generator that hangs until aborted via the AbortSignal in options
+    const client = new AppServerClient(config, wsPath, ({ options }) => (async function* () {
+      await new Promise<void>((_resolve, reject) => {
+        options?.abortController?.signal.addEventListener('abort', () => reject(new Error('turn_timeout')))
+      })
+      yield makeInitMsg('s-timeout')
+    })())
+    const session = await client.startSession()
+    if (session instanceof Error)
+      return
+
+    const messages: AgentMessage[] = []
+    const result = await client.runTurn(session, 'hello', makeIssue(), msg => messages.push(msg))
+    client.stopSession()
+
+    expect(result instanceof Error).toBe(true)
     const startupFailed = messages.find(m => m.event === 'startup_failed')
     expect(startupFailed).toBeDefined()
   })
 
-  it('enforces turn_timeout_ms when agent never sends turn/completed (Section 17.5)', async () => {
-    const scriptPath = join(tmpRoot, 'fake-agent-noturn.sh')
-    writeFileSync(scriptPath, [
-      '#!/usr/bin/env bash',
-      'while IFS= read -r line; do',
-      '  id=$(printf \'%s\' "$line" | grep -o \'"id":[0-9]*\' | grep -o \'[0-9]*\' | head -1)',
-      '  case "$id" in',
-      '    1) printf \'%s\\n\' \'{"id":1,"result":{"capabilities":{}}}\';;',
-      '    2) printf \'%s\\n\' \'{"id":2,"result":{"thread":{"id":"t-1"}}}\';;',
-      '    3) printf \'%s\\n\' \'{"id":3,"result":{"turn":{"id":"turn-timeout"}}}\';;',
-      // turn/completed is never sent — agent silently hangs
-      '  esac',
-      'done',
-    ].join('\n'), { mode: 0o755 })
-
-    const wsPath = join(tmpRoot, 'ws-noturn')
-    mkdirSync(wsPath)
-
+  it('stopSession aborts the active query', async () => {
     const config = buildConfig({
       config: {
         tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
         workspace: { root: tmpRoot },
-        claude: { command: scriptPath, read_timeout_ms: 2000, turn_timeout_ms: 500 },
+        claude: { command: 'claude', read_timeout_ms: 2000, turn_timeout_ms: 5000 },
       },
       prompt_template: '',
     })
 
-    const client = new AppServerClient(config, wsPath)
+    // Use a mock that aborts when the AbortController fires
+    let capturedController: AbortController | null = null
+    const client = new AppServerClient(config, wsPath, ({ options }) => {
+      capturedController = options?.abortController ?? null
+      return (async function* () {
+        yield makeInitMsg('s-stop', wsPath)
+        // Simulate waiting — stopSession should abort this
+        await new Promise<void>((_resolve, reject) => {
+          options?.abortController?.signal.addEventListener('abort', () => reject(new Error('aborted')))
+        })
+      })()
+    })
+
     const session = await client.startSession()
-    expect(session instanceof Error).toBe(false)
     if (session instanceof Error)
       return
 
     const messages: AgentMessage[] = []
-    const result = await client.runTurn(
-      session,
-      'hello',
-      {
-        id: 'i6',
-        identifier: 'MT-6',
-        title: 'Turn Timeout Test',
-        description: null,
-        priority: null,
-        state: 'In Progress',
-        branch_name: null,
-        url: null,
-        labels: [],
-        blocked_by: [],
-        created_at: null,
-        updated_at: null,
-      },
-      msg => messages.push(msg),
-    )
+    const turnPromise = client.runTurn(session, 'hello', makeIssue(), msg => messages.push(msg))
+
+    // Give it a moment to start
+    await new Promise(resolve => setTimeout(resolve, 50))
+    expect(capturedController).not.toBeNull()
+
+    // Stop the session
     client.stopSession()
 
+    const result = await turnPromise
     expect(result instanceof Error).toBe(true)
-    if (!(result instanceof Error))
-      return
-    expect(result.message).toContain('turn_timeout')
-    const sessionStarted = messages.find(m => m.event === 'session_started')
-    expect(sessionStarted).toBeDefined()
   })
 
-  it('rejects unsupported dynamic tool calls without stalling (Section 17.5)', async () => {
-    const scriptPath = join(tmpRoot, 'fake-agent-unsupported-tool.sh')
-    writeFileSync(scriptPath, [
-      '#!/usr/bin/env bash',
-      'while IFS= read -r line; do',
-      '  id=$(printf \'%s\' "$line" | grep -o \'"id":[0-9]*\' | grep -o \'[0-9]*\' | head -1)',
-      '  idStr=$(printf \'%s\' "$line" | grep -o \'"id":"[^"]*"\' | head -1)',
-      // Check if we received the rejection response for tool-call-99
-      '  if printf \'%s\' "$line" | grep -q "unsupported_tool_call"; then',
-      '    printf \'%s\\n\' \'{"method":"turn/completed","params":{}}\'',
-      '    break',
-      '  fi',
-      '  case "$id" in',
-      '    1) printf \'%s\\n\' \'{"id":1,"result":{"capabilities":{}}}\';;',
-      '    2) printf \'%s\\n\' \'{"id":2,"result":{"thread":{"id":"t-1"}}}\';;',
-      '    3) printf \'%s\\n\' \'{"id":3,"result":{"turn":{"id":"turn-tool"}}}\'',
-      '       printf \'%s\\n\' \'{"id":"tool-99","method":"item/tool/call","params":{"name":"unknown_tool","arguments":{}}}\';;',
-      '  esac',
-      'done',
-    ].join('\n'), { mode: 0o755 })
+  it('resumes previous session on 2nd turn (passes resume option)', async () => {
+    const sessionId = 'sdk-resume-session'
+    const capturedOptions: { resume?: string }[] = []
 
-    const wsPath = join(tmpRoot, 'ws-unsupported-tool')
-    mkdirSync(wsPath)
+    const config = makeConfig()
+    const client = new AppServerClient(config, wsPath, ({ options }) => {
+      capturedOptions.push({ resume: options?.resume })
+      return (async function* () {
+        yield makeInitMsg(sessionId, wsPath)
+        yield makeSuccessMsg(sessionId)
+      })()
+    })
+
+    const session = await client.startSession()
+    if (session instanceof Error)
+      return
+
+    // First turn — no resume
+    await client.runTurn(session, 'turn 1', makeIssue(), () => {})
+    expect(capturedOptions[0]?.resume).toBeUndefined()
+
+    // Second turn — should resume previous session
+    await client.runTurn(session, 'turn 2', makeIssue(), () => {})
+    expect(capturedOptions[1]?.resume).toBe(sessionId)
+  })
+
+  it('passes bypassPermissions and allowDangerouslySkipPermissions when configured', async () => {
+    const sessionId = 'sdk-bypass-session'
+    let capturedPermMode: string | undefined
+    let capturedBypass: boolean | undefined
 
     const config = buildConfig({
       config: {
         tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
         workspace: { root: tmpRoot },
-        claude: { command: scriptPath, read_timeout_ms: 2000, turn_timeout_ms: 5000 },
+        claude: { command: 'claude', permission_mode: 'bypassPermissions', read_timeout_ms: 2000, turn_timeout_ms: 5000 },
       },
       prompt_template: '',
     })
 
-    const client = new AppServerClient(config, wsPath)
+    const client = new AppServerClient(config, wsPath, ({ options }) => {
+      capturedPermMode = options?.permissionMode
+      capturedBypass = options?.allowDangerouslySkipPermissions
+      return (async function* () {
+        yield makeInitMsg(sessionId, wsPath)
+        yield makeSuccessMsg(sessionId)
+      })()
+    })
+
     const session = await client.startSession()
-    expect(session instanceof Error).toBe(false)
+    if (session instanceof Error)
+      return
+
+    await client.runTurn(session, 'hello', makeIssue(), () => {})
+    expect(capturedPermMode).toBe('bypassPermissions')
+    expect(capturedBypass).toBe(true)
+  })
+
+  it('sets cwd to session workspace', async () => {
+    const sessionId = 'sdk-cwd-session'
+    let capturedCwd: string | undefined
+
+    const config = makeConfig()
+    const client = new AppServerClient(config, wsPath, ({ options }) => {
+      capturedCwd = options?.cwd
+      return (async function* () {
+        yield makeInitMsg(sessionId, wsPath)
+        yield makeSuccessMsg(sessionId)
+      })()
+    })
+
+    const session = await client.startSession()
+    if (session instanceof Error)
+      return
+
+    await client.runTurn(session, 'hello', makeIssue(), () => {})
+    expect(capturedCwd).toBe(wsPath)
+  })
+
+  it('sets mcpServers when tracker has tool specs', async () => {
+    const sessionId = 'sdk-mcp-session'
+    let capturedMcpServers: unknown
+
+    const config = makeConfig() // asana tracker → has asana_api tool
+    const client = new AppServerClient(config, wsPath, ({ options }) => {
+      capturedMcpServers = options?.mcpServers
+      return (async function* () {
+        yield makeInitMsg(sessionId, wsPath)
+        yield makeSuccessMsg(sessionId)
+      })()
+    })
+
+    const session = await client.startSession()
+    if (session instanceof Error)
+      return
+
+    await client.runTurn(session, 'hello', makeIssue(), () => {})
+    expect(capturedMcpServers).toBeDefined()
+    expect(typeof capturedMcpServers).toBe('object')
+    expect(Object.keys(capturedMcpServers as object)).toContain('work-please-tools')
+  })
+
+  it('emits notification for rate_limit_event', async () => {
+    const sessionId = 'sdk-ratelimit-session'
+
+    async function* mockQuery() {
+      yield makeInitMsg(sessionId, wsPath)
+      yield makeRateLimitMsg(sessionId)
+      yield makeSuccessMsg(sessionId)
+    }
+
+    const config = makeConfig()
+    const client = new AppServerClient(config, wsPath, () => mockQuery())
+    const session = await client.startSession()
     if (session instanceof Error)
       return
 
     const messages: AgentMessage[] = []
-    const result = await client.runTurn(
-      session,
-      'hello',
-      {
-        id: 'i7',
-        identifier: 'MT-7',
-        title: 'Unsupported Tool Test',
-        description: null,
-        priority: null,
-        state: 'In Progress',
-        branch_name: null,
-        url: null,
-        labels: [],
-        blocked_by: [],
-        created_at: null,
-        updated_at: null,
-      },
-      msg => messages.push(msg),
-    )
+    const result = await client.runTurn(session, 'hello', makeIssue(), msg => messages.push(msg))
     client.stopSession()
 
     expect(result instanceof Error).toBe(false)
-    const unsupportedToolCall = messages.find(m => m.event === 'unsupported_tool_call')
-    expect(unsupportedToolCall).toBeDefined()
-    const turnCompleted = messages.find(m => m.event === 'turn_completed')
-    expect(turnCompleted).toBeDefined()
+    const rateLimitNotif = messages.find(m => m.event === 'notification' && m.rate_limits != null)
+    expect(rateLimitNotif).toBeDefined()
+    expect((rateLimitNotif?.rate_limits as { status: string })?.status).toBe('allowed')
   })
 
-  it('buffers partial JSON lines until newline arrives (Section 17.5)', async () => {
-    const scriptPath = join(tmpRoot, 'fake-agent-chunked.sh')
-    writeFileSync(scriptPath, [
-      '#!/usr/bin/env bash',
-      'while IFS= read -r line; do',
-      '  id=$(printf \'%s\' "$line" | grep -o \'"id":[0-9]*\' | grep -o \'[0-9]*\' | head -1)',
-      '  case "$id" in',
-      '    1) printf \'%s\\n\' \'{"id":1,"result":{"capabilities":{}}}\';;',
-      '    2) printf \'%s\\n\' \'{"id":2,"result":{"thread":{"id":"t-1"}}}\';;',
-      // Write the turn/start response in two separate writes with no newline after the first
-      '    3) printf \'%s\' \'{"id":3,"result":{"turn":{"id":"turn-chunk"}}}\'',
-      '       sleep 0.01',
-      '       printf \'\\n\'',
-      '       printf \'%s\\n\' \'{"method":"turn/completed","params":{}}\';;',
-      '  esac',
-      'done',
-    ].join('\n'), { mode: 0o755 })
+  it('emits notification for other SDK message types', async () => {
+    const sessionId = 'sdk-other-session'
 
-    const wsPath = join(tmpRoot, 'ws-chunked')
-    mkdirSync(wsPath)
+    async function* mockQuery() {
+      yield makeInitMsg(sessionId, wsPath)
+      // Emit a status message (simpler SDK message type)
+      yield {
+        type: 'status' as const,
+        status: 'thinking' as const,
+        session_id: sessionId,
+        uuid: 'uuid-status' as `${string}-${string}-${string}-${string}-${string}`,
+      }
+      yield makeSuccessMsg(sessionId)
+    }
 
-    const config = buildConfig({
-      config: {
-        tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
-        workspace: { root: tmpRoot },
-        claude: { command: scriptPath, read_timeout_ms: 2000, turn_timeout_ms: 5000 },
-      },
-      prompt_template: '',
-    })
-
-    const client = new AppServerClient(config, wsPath)
+    const config = makeConfig()
+    const client = new AppServerClient(config, wsPath, () => mockQuery())
     const session = await client.startSession()
-    expect(session instanceof Error).toBe(false)
     if (session instanceof Error)
       return
 
     const messages: AgentMessage[] = []
-    const result = await client.runTurn(
-      session,
-      'hello',
-      {
-        id: 'i8',
-        identifier: 'MT-8',
-        title: 'Chunked Test',
-        description: null,
-        priority: null,
-        state: 'In Progress',
-        branch_name: null,
-        url: null,
-        labels: [],
-        blocked_by: [],
-        created_at: null,
-        updated_at: null,
-      },
-      msg => messages.push(msg),
-    )
-    client.stopSession()
+    const result = await client.runTurn(session, 'hello', makeIssue(), msg => messages.push(msg))
 
-    // Session should complete successfully despite chunked JSON response
     expect(result instanceof Error).toBe(false)
-    const turnCompleted = messages.find(m => m.event === 'turn_completed')
-    expect(turnCompleted).toBeDefined()
-    if (result instanceof Error)
-      return
-    expect(result.turn_id).toBe('turn-chunk')
+    const notifications = messages.filter(m => m.event === 'notification')
+    expect(notifications.length).toBeGreaterThan(0)
   })
 
-  it('emits turn_input_required and returns Error when agent requests user input (Section 17.5)', async () => {
-    const scriptPath = join(tmpRoot, 'fake-agent-input.sh')
-    writeFileSync(scriptPath, [
-      '#!/usr/bin/env bash',
-      'while IFS= read -r line; do',
-      '  id=$(printf \'%s\' "$line" | grep -o \'"id":[0-9]*\' | grep -o \'[0-9]*\' | head -1)',
-      '  case "$id" in',
-      '    1) printf \'%s\\n\' \'{"id":1,"result":{"capabilities":{}}}\';;',
-      '    2) printf \'%s\\n\' \'{"id":2,"result":{"thread":{"id":"t-1"}}}\';;',
-      '    3) printf \'%s\\n\' \'{"id":3,"result":{"turn":{"id":"turn-3"}}}\'',
-      '       printf \'%s\\n\' \'{"id":"req-1","method":"item/tool/requestUserInput","params":{}}\';;',
-      '  esac',
-      'done',
-    ].join('\n'), { mode: 0o755 })
-
-    const wsPath = join(tmpRoot, 'ws-input')
-    mkdirSync(wsPath)
+  it('sets pathToClaudeCodeExecutable when command differs from default', async () => {
+    const sessionId = 'sdk-path-session'
+    let capturedPath: string | undefined
 
     const config = buildConfig({
       config: {
         tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
         workspace: { root: tmpRoot },
-        claude: { command: scriptPath, read_timeout_ms: 2000, turn_timeout_ms: 5000 },
+        claude: { command: '/usr/local/bin/custom-claude', read_timeout_ms: 2000, turn_timeout_ms: 5000 },
       },
       prompt_template: '',
     })
 
-    const client = new AppServerClient(config, wsPath)
+    const client = new AppServerClient(config, wsPath, ({ options }) => {
+      capturedPath = options?.pathToClaudeCodeExecutable
+      return (async function* () {
+        yield makeInitMsg(sessionId, wsPath)
+        yield makeSuccessMsg(sessionId)
+      })()
+    })
+
     const session = await client.startSession()
-    expect(session instanceof Error).toBe(false)
     if (session instanceof Error)
       return
 
-    const messages: AgentMessage[] = []
-    const result = await client.runTurn(
-      session,
-      'hello',
-      {
-        id: 'i3',
-        identifier: 'MT-3',
-        title: 'Input Test',
-        description: null,
-        priority: null,
-        state: 'In Progress',
-        branch_name: null,
-        url: null,
-        labels: [],
-        blocked_by: [],
-        created_at: null,
-        updated_at: null,
-      },
-      msg => messages.push(msg),
-    )
-    client.stopSession()
-
-    expect(result instanceof Error).toBe(true)
-    if (!(result instanceof Error))
-      return
-    expect(result.message).toContain('turn_input_required')
-    const inputRequired = messages.find(m => m.event === 'turn_input_required')
-    expect(inputRequired).toBeDefined()
+    await client.runTurn(session, 'hello', makeIssue(), () => {})
+    expect(capturedPath).toBe('/usr/local/bin/custom-claude')
   })
 
-  it('executes supported dynamic tool calls and returns the result to the agent (Section 17.5)', async () => {
-    const scriptPath = join(tmpRoot, 'fake-agent-supported-tool.sh')
-    writeFileSync(scriptPath, [
-      '#!/usr/bin/env bash',
-      'while IFS= read -r line; do',
-      '  id=$(printf \'%s\' "$line" | grep -o \'"id":[0-9]*\' | grep -o \'[0-9]*\' | head -1)',
-      // After receiving tool call result (contentItems is in the response body), send turn/completed
-      '  if printf \'%s\' "$line" | grep -q \'contentItems\'; then',
-      '    printf \'%s\\n\' \'{"method":"turn/completed","params":{}}\'',
-      '    break',
-      '  fi',
-      '  case "$id" in',
-      '    1) printf \'%s\\n\' \'{"id":1,"result":{"capabilities":{}}}\';;',
-      '    2) printf \'%s\\n\' \'{"id":2,"result":{"thread":{"id":"t-1"}}}\';;',
-      '    3) printf \'%s\\n\' \'{"id":3,"result":{"turn":{"id":"turn-st"}}}\'',
-      '       printf \'%s\\n\' \'{"id":"tc-1","method":"item/tool/call","params":{"name":"asana_api","arguments":{"method":"GET","path":"/tasks/t1"}}}\';;',
-      '  esac',
-      'done',
-    ].join('\n'), { mode: 0o755 })
+  it('does not set pathToClaudeCodeExecutable when command is default "claude"', async () => {
+    const sessionId = 'sdk-default-path-session'
+    let capturedPath: string | undefined = 'INITIAL'
 
-    const wsPath = join(tmpRoot, 'ws-supported-tool')
-    mkdirSync(wsPath)
-
-    const origFetch = globalThis.fetch
-    globalThis.fetch = (async () => ({
-      ok: true,
-      json: async () => ({ data: { gid: 't1', name: 'Task One' } }),
-    })) as unknown as typeof fetch
-
-    const config = buildConfig({
-      config: {
-        tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
-        workspace: { root: tmpRoot },
-        claude: { command: scriptPath, read_timeout_ms: 2000, turn_timeout_ms: 8000 },
-      },
-      prompt_template: '',
+    const config = makeConfig()
+    const client = new AppServerClient(config, wsPath, ({ options }) => {
+      capturedPath = options?.pathToClaudeCodeExecutable
+      return (async function* () {
+        yield makeInitMsg(sessionId, wsPath)
+        yield makeSuccessMsg(sessionId)
+      })()
     })
 
-    const client = new AppServerClient(config, wsPath)
     const session = await client.startSession()
-    try {
-      expect(session instanceof Error).toBe(false)
-      if (session instanceof Error)
-        return
-
-      const messages: AgentMessage[] = []
-      const result = await client.runTurn(
-        session,
-        'hello',
-        {
-          id: 'i9',
-          identifier: 'MT-9',
-          title: 'Supported Tool',
-          description: null,
-          priority: null,
-          state: 'In Progress',
-          branch_name: null,
-          url: null,
-          labels: [],
-          blocked_by: [],
-          created_at: null,
-          updated_at: null,
-        },
-        msg => messages.push(msg),
-      )
-      client.stopSession()
-
-      expect(result instanceof Error).toBe(false)
-      const turnCompleted = messages.find(m => m.event === 'turn_completed')
-      expect(turnCompleted).toBeDefined()
-      // Tool call notification event (success=true)
-      const toolNotification = messages.find(m => m.event === 'notification')
-      expect(toolNotification).toBeDefined()
-    }
-    finally {
-      globalThis.fetch = origFetch
-      client.stopSession()
-    }
-  })
-
-  it('emits tool_call_failed event when supported tool returns success=false (Section 17.5)', async () => {
-    const scriptPath = join(tmpRoot, 'fake-agent-tool-fail.sh')
-    writeFileSync(scriptPath, [
-      '#!/usr/bin/env bash',
-      'while IFS= read -r line; do',
-      '  id=$(printf \'%s\' "$line" | grep -o \'"id":[0-9]*\' | grep -o \'[0-9]*\' | head -1)',
-      // After receiving tool call result (contentItems in response), send turn/completed
-      '  if printf \'%s\' "$line" | grep -q \'contentItems\'; then',
-      '    printf \'%s\\n\' \'{"method":"turn/completed","params":{}}\'',
-      '    break',
-      '  fi',
-      '  case "$id" in',
-      '    1) printf \'%s\\n\' \'{"id":1,"result":{"capabilities":{}}}\';;',
-      '    2) printf \'%s\\n\' \'{"id":2,"result":{"thread":{"id":"t-1"}}}\';;',
-      // Send tool call with empty args (missing method/path = validation failure = success:false)
-      '    3) printf \'%s\\n\' \'{"id":3,"result":{"turn":{"id":"turn-tf"}}}\'',
-      '       printf \'%s\\n\' \'{"id":"tc-2","method":"item/tool/call","params":{"name":"asana_api","arguments":{}}}\';;',
-      '  esac',
-      'done',
-    ].join('\n'), { mode: 0o755 })
-
-    const wsPath = join(tmpRoot, 'ws-tool-fail')
-    mkdirSync(wsPath)
-
-    const config = buildConfig({
-      config: {
-        tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
-        workspace: { root: tmpRoot },
-        claude: { command: scriptPath, read_timeout_ms: 2000, turn_timeout_ms: 8000 },
-      },
-      prompt_template: '',
-    })
-
-    const client = new AppServerClient(config, wsPath)
-    const session = await client.startSession()
-    try {
-      expect(session instanceof Error).toBe(false)
-      if (session instanceof Error)
-        return
-
-      const messages: AgentMessage[] = []
-      const result = await client.runTurn(
-        session,
-        'hello',
-        {
-          id: 'i10',
-          identifier: 'MT-10',
-          title: 'Tool Fail',
-          description: null,
-          priority: null,
-          state: 'In Progress',
-          branch_name: null,
-          url: null,
-          labels: [],
-          blocked_by: [],
-          created_at: null,
-          updated_at: null,
-        },
-        msg => messages.push(msg),
-      )
-      client.stopSession()
-
-      expect(result instanceof Error).toBe(false)
-      // Tool failure emits tool_call_failed, not a generic notification
-      const toolCallFailed = messages.find(m => m.event === 'tool_call_failed')
-      expect(toolCallFailed).toBeDefined()
-      // Turn still completes after tool failure
-      const turnCompleted = messages.find(m => m.event === 'turn_completed')
-      expect(turnCompleted).toBeDefined()
-    }
-    finally {
-      client.stopSession()
-    }
-  })
-
-  it('launches subprocess with bash -lc and workspace cwd, sends valid initialize payload (Section 17.5)', async () => {
-    const traceFile = join(tmpRoot, 'trace.jsonl')
-    const scriptPath = join(tmpRoot, 'trace-agent.sh')
-
-    // Script writes each received JSON line to traceFile, then responds
-    writeFileSync(scriptPath, [
-      '#!/usr/bin/env bash',
-      `TRACE="${traceFile}"`,
-      'count=0',
-      'while IFS= read -r line; do',
-      '  printf \'%s\\n\' "$line" >> "$TRACE"',
-      '  count=$((count + 1))',
-      '  id=$(printf \'%s\' "$line" | grep -o \'"id":[0-9]*\' | grep -o \'[0-9]*\' | head -1)',
-      '  case "$id" in',
-      '    1) printf \'%s\\n\' \'{"id":1,"result":{"capabilities":{}}}\';;',
-      '    2) printf \'%s\\n\' \'{"id":2,"result":{"thread":{"id":"t-trace"}}}\';;',
-      '    3) printf \'%s\\n\' \'{"id":3,"result":{"turn":{"id":"turn-trace"}}}\'',
-      '       printf \'%s\\n\' \'{"method":"turn/completed","params":{}}\';;',
-      '  esac',
-      'done',
-    ].join('\n'), { mode: 0o755 })
-
-    const wsPath = join(tmpRoot, 'ws-trace')
-    mkdirSync(wsPath)
-
-    const config = buildConfig({
-      config: {
-        tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
-        workspace: { root: tmpRoot },
-        claude: { command: scriptPath, read_timeout_ms: 3000, turn_timeout_ms: 5000 },
-      },
-      prompt_template: '',
-    })
-
-    const client = new AppServerClient(config, wsPath)
-    const session = await client.startSession()
-    expect(session instanceof Error).toBe(false)
     if (session instanceof Error)
       return
 
-    const result = await client.runTurn(
-      session,
-      'trace prompt',
-      { id: 'i-trace', identifier: 'MT-TRACE', title: 'Trace Test', description: null, priority: null, state: 'In Progress', branch_name: null, url: null, labels: [], blocked_by: [], created_at: null, updated_at: null },
-      () => {},
-    )
-    client.stopSession()
-
-    expect(result instanceof Error).toBe(false)
-
-    // Read trace file to verify protocol messages
-    const { readFileSync } = await import('node:fs')
-    const lines = readFileSync(traceFile, 'utf8').trim().split('\n').filter(Boolean)
-    const payloads = lines.map(l => JSON.parse(l) as Record<string, unknown>)
-
-    // Verify initialize payload (id=1)
-    const initMsg = payloads.find(p => p.id === 1)
-    expect(initMsg).toBeDefined()
-    expect(initMsg?.method).toBe('initialize')
-    const initParams = initMsg?.params as Record<string, unknown>
-    expect((initParams?.capabilities as Record<string, unknown>)?.experimentalApi).toBe(true)
-    expect((initParams?.clientInfo as Record<string, unknown>)?.name).toBe('work-please')
-
-    // Verify thread/start uses workspace cwd
-    const threadStart = payloads.find(p => p.method === 'thread/start')
-    expect(threadStart).toBeDefined()
-    const threadParams = threadStart?.params as Record<string, unknown>
-    expect(threadParams?.cwd).toBe(wsPath)
-
-    // Verify turn/start uses workspace cwd and issue title
-    const turnStart = payloads.find(p => p.method === 'turn/start')
-    expect(turnStart).toBeDefined()
-    const turnParams = turnStart?.params as Record<string, unknown>
-    expect(turnParams?.cwd).toBe(wsPath)
-    expect(String(turnParams?.title)).toContain('MT-TRACE')
+    await client.runTurn(session, 'hello', makeIssue(), () => {})
+    expect(capturedPath).toBeUndefined()
   })
 })

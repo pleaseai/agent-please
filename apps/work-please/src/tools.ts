@@ -1,4 +1,7 @@
+import type { AnyZodRawShape, SdkMcpToolDefinition } from '@anthropic-ai/claude-agent-sdk'
 import type { ServiceConfig } from './types'
+import { createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk'
+import { z } from 'zod'
 
 const NETWORK_TIMEOUT_MS = 30_000
 const MULTIPLE_OPERATIONS_RE = /\b(query|mutation|subscription)\b/gi
@@ -275,4 +278,48 @@ function failureResult(payload: unknown): ToolResult {
     success: false,
     contentItems: [{ type: 'inputText', text: JSON.stringify(payload, null, 2) }],
   }
+}
+
+export function createToolsMcpServer(config: ServiceConfig): ReturnType<typeof createSdkMcpServer> {
+  const { kind } = config.tracker
+  const tools: SdkMcpToolDefinition<AnyZodRawShape>[] = []
+
+  if (kind === 'asana') {
+    tools.push(tool(
+      'asana_api',
+      ASANA_API_SPEC.description,
+      {
+        method: z.string(),
+        path: z.string(),
+        params: z.record(z.string(), z.unknown()).optional(),
+      },
+      async (args) => {
+        const result = await executeTool(config, 'asana_api', args)
+        return {
+          content: [{ type: 'text' as const, text: result.contentItems[0]?.text ?? '' }],
+          isError: !result.success,
+        }
+      },
+    ) as unknown as SdkMcpToolDefinition<AnyZodRawShape>)
+  }
+
+  if (kind === 'github_projects') {
+    tools.push(tool(
+      'github_graphql',
+      GITHUB_GRAPHQL_SPEC.description,
+      {
+        query: z.string(),
+        variables: z.record(z.string(), z.unknown()).optional(),
+      },
+      async (args) => {
+        const result = await executeTool(config, 'github_graphql', args)
+        return {
+          content: [{ type: 'text' as const, text: result.contentItems[0]?.text ?? '' }],
+          isError: !result.success,
+        }
+      },
+    ) as unknown as SdkMcpToolDefinition<AnyZodRawShape>)
+  }
+
+  return createSdkMcpServer({ name: 'work-please-tools', tools })
 }

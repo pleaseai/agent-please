@@ -12,8 +12,10 @@
     "test": "bun test"
   },
   "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.2.72",
     "js-yaml": "^4.1.1",
-    "liquidjs": "^10.25.0"
+    "liquidjs": "^10.25.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
