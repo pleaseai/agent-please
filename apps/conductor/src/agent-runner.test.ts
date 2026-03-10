@@ -882,4 +882,81 @@ describe('AppServerClient - startup_failed event (Section 10.4)', () => {
       client.stopSession()
     }
   })
+
+  it('launches subprocess with bash -lc and workspace cwd, sends valid initialize payload (Section 17.5)', async () => {
+    const traceFile = join(tmpRoot, 'trace.jsonl')
+    const scriptPath = join(tmpRoot, 'trace-agent.sh')
+
+    // Script writes each received JSON line to traceFile, then responds
+    writeFileSync(scriptPath, [
+      '#!/usr/bin/env bash',
+      `TRACE="${traceFile}"`,
+      'count=0',
+      'while IFS= read -r line; do',
+      '  printf \'%s\\n\' "$line" >> "$TRACE"',
+      '  count=$((count + 1))',
+      '  id=$(printf \'%s\' "$line" | grep -o \'"id":[0-9]*\' | grep -o \'[0-9]*\' | head -1)',
+      '  case "$id" in',
+      '    1) printf \'%s\\n\' \'{"id":1,"result":{"capabilities":{}}}\';;',
+      '    2) printf \'%s\\n\' \'{"id":2,"result":{"thread":{"id":"t-trace"}}}\';;',
+      '    3) printf \'%s\\n\' \'{"id":3,"result":{"turn":{"id":"turn-trace"}}}\'',
+      '       printf \'%s\\n\' \'{"method":"turn/completed","params":{}}\';;',
+      '  esac',
+      'done',
+    ].join('\n'), { mode: 0o755 })
+
+    const wsPath = join(tmpRoot, 'ws-trace')
+    mkdirSync(wsPath)
+
+    const config = buildConfig({
+      config: {
+        tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
+        workspace: { root: tmpRoot },
+        claude: { command: scriptPath, read_timeout_ms: 3000, turn_timeout_ms: 5000 },
+      },
+      prompt_template: '',
+    })
+
+    const client = new AppServerClient(config, wsPath)
+    const session = await client.startSession()
+    expect(session instanceof Error).toBe(false)
+    if (session instanceof Error)
+      return
+
+    const result = await client.runTurn(
+      session,
+      'trace prompt',
+      { id: 'i-trace', identifier: 'MT-TRACE', title: 'Trace Test', description: null, priority: null, state: 'In Progress', branch_name: null, url: null, labels: [], blocked_by: [], created_at: null, updated_at: null },
+      () => {},
+    )
+    client.stopSession()
+
+    expect(result instanceof Error).toBe(false)
+
+    // Read trace file to verify protocol messages
+    const { readFileSync } = await import('node:fs')
+    const lines = readFileSync(traceFile, 'utf8').trim().split('\n').filter(Boolean)
+    const payloads = lines.map(l => JSON.parse(l) as Record<string, unknown>)
+
+    // Verify initialize payload (id=1)
+    const initMsg = payloads.find(p => p.id === 1)
+    expect(initMsg).toBeDefined()
+    expect(initMsg?.method).toBe('initialize')
+    const initParams = initMsg?.params as Record<string, unknown>
+    expect((initParams?.capabilities as Record<string, unknown>)?.experimentalApi).toBe(true)
+    expect((initParams?.clientInfo as Record<string, unknown>)?.name).toBe('conductor')
+
+    // Verify thread/start uses workspace cwd
+    const threadStart = payloads.find(p => p.method === 'thread/start')
+    expect(threadStart).toBeDefined()
+    const threadParams = threadStart?.params as Record<string, unknown>
+    expect(threadParams?.cwd).toBe(wsPath)
+
+    // Verify turn/start uses workspace cwd and issue title
+    const turnStart = payloads.find(p => p.method === 'turn/start')
+    expect(turnStart).toBeDefined()
+    const turnParams = turnStart?.params as Record<string, unknown>
+    expect(turnParams?.cwd).toBe(wsPath)
+    expect(String(turnParams?.title)).toContain('MT-TRACE')
+  })
 })
