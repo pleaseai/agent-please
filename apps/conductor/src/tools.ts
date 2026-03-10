@@ -250,6 +250,12 @@ function parseGitHubArgs(raw: unknown): { query: string, variables: Record<strin
     return { error: { message: 'github_graphql: query must contain exactly one GraphQL operation.' } }
   }
 
+  if (args.variables !== undefined && args.variables !== null) {
+    if (typeof args.variables !== 'object' || Array.isArray(args.variables)) {
+      return { error: { message: 'github_graphql.variables must be a JSON object when provided.' } }
+    }
+  }
+
   const variables = args.variables && typeof args.variables === 'object' && !Array.isArray(args.variables)
     ? args.variables as Record<string, unknown>
     : null

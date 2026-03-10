@@ -38,11 +38,14 @@ describe('getToolSpecs', () => {
 })
 
 describe('executeTool - unsupported', () => {
-  test('returns failure for unknown tool name', async () => {
+  test('returns failure for unknown tool name with supportedTools list', async () => {
     const result = await executeTool(makeConfig('asana'), 'unknown_tool', {})
     expect(result.success).toBe(false)
     const text = result.contentItems[0].text
     expect(text).toContain('Unsupported tool')
+    const parsed = JSON.parse(text)
+    expect(Array.isArray(parsed.error.supportedTools)).toBe(true)
+    expect(parsed.error.supportedTools).toContain('asana_api')
   })
 
   test('returns failure for github_graphql when tracker is asana', async () => {
@@ -115,6 +118,22 @@ describe('executeTool - asana_api validation', () => {
       globalThis.fetch = origFetch
     }
   })
+
+  test('returns failure when fetch throws (transport error)', async () => {
+    const origFetch = globalThis.fetch
+    globalThis.fetch = mock(async () => {
+      throw new Error('network failure')
+    }) as unknown as typeof fetch
+
+    try {
+      const result = await executeTool(makeConfig('asana'), 'asana_api', { method: 'GET', path: '/tasks/task1' })
+      expect(result.success).toBe(false)
+      expect(result.contentItems[0].text).toContain('network failure')
+    }
+    finally {
+      globalThis.fetch = origFetch
+    }
+  })
 })
 
 describe('executeTool - github_graphql validation', () => {
@@ -156,6 +175,36 @@ describe('executeTool - github_graphql validation', () => {
     const result = await executeTool(makeConfig('github_projects'), 'github_graphql', { query: multiOp })
     expect(result.success).toBe(false)
     expect(result.contentItems[0].text).toContain('exactly one')
+  })
+
+  test('fails when variables is an array (not a JSON object)', async () => {
+    const result = await executeTool(makeConfig('github_projects'), 'github_graphql', {
+      query: 'query { viewer { login } }',
+      variables: ['bad', 'array'],
+    })
+    expect(result.success).toBe(false)
+    expect(result.contentItems[0].text).toContain('variables')
+    expect(result.contentItems[0].text).toContain('JSON object')
+  })
+
+  test('ignores operationName field (legacy compat)', async () => {
+    const origFetch = globalThis.fetch
+    globalThis.fetch = (async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ data: { viewer: { login: 'testuser' } } }),
+    })) as unknown as typeof fetch
+
+    try {
+      const result = await executeTool(makeConfig('github_projects'), 'github_graphql', {
+        query: 'query Viewer { viewer { login } }',
+        operationName: 'Viewer',
+      })
+      expect(result.success).toBe(true)
+    }
+    finally {
+      globalThis.fetch = origFetch
+    }
   })
 
   test('marks GraphQL error response as failure while preserving body in contentItems', async () => {
