@@ -107,6 +107,35 @@ describe('createWorkspace', () => {
     expect(existsSync(join(result.path, 'existing.txt'))).toBe(true)
   })
 
+  it('replaces existing non-directory file at workspace path', async () => {
+    const wsPath = join(tmpRoot, 'MT-888')
+    writeFileSync(wsPath, 'not a directory')
+
+    const config = makeConfig(tmpRoot)
+    const result = await createWorkspace(config, 'MT-888')
+    expect(result instanceof Error).toBe(false)
+    if (result instanceof Error)
+      return
+
+    expect(existsSync(result.path)).toBe(true)
+    expect(result.created_now).toBe(true)
+  })
+
+  it('removes artifact directories (tmp, .elixir_ls) during workspace prep', async () => {
+    const wsPath = join(tmpRoot, 'MT-999')
+    mkdirSync(wsPath)
+    mkdirSync(join(wsPath, 'tmp'))
+    mkdirSync(join(wsPath, '.elixir_ls'))
+    writeFileSync(join(wsPath, 'keep.txt'), 'data')
+
+    const config = makeConfig(tmpRoot)
+    await createWorkspace(config, 'MT-999')
+
+    expect(existsSync(join(wsPath, 'tmp'))).toBe(false)
+    expect(existsSync(join(wsPath, '.elixir_ls'))).toBe(false)
+    expect(existsSync(join(wsPath, 'keep.txt'))).toBe(true)
+  })
+
   it('runs after_create hook only when workspace is newly created', async () => {
     const flagFile = join(tmpRoot, 'hook-ran')
     const config = makeConfig(tmpRoot, {
