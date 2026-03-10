@@ -102,6 +102,44 @@ describe('retry backoff', () => {
   })
 })
 
+describe('stall detection elapsed_ms logic', () => {
+  function computeElapsedMs(
+    lastTimestamp: Date | null,
+    startedAt: Date,
+    nowMs: number,
+  ): number {
+    const lastActivity = lastTimestamp ?? startedAt
+    return nowMs - lastActivity.getTime()
+  }
+
+  it('uses last_agent_timestamp when available', () => {
+    const startedAt = new Date(1000)
+    const lastTimestamp = new Date(5000)
+    const elapsed = computeElapsedMs(lastTimestamp, startedAt, 10000)
+    expect(elapsed).toBe(5000)
+  })
+
+  it('falls back to started_at when no last_agent_timestamp', () => {
+    const startedAt = new Date(1000)
+    const elapsed = computeElapsedMs(null, startedAt, 11000)
+    expect(elapsed).toBe(10000)
+  })
+
+  it('exceeds stall threshold triggers stall detection', () => {
+    const stallTimeoutMs = 300_000
+    const startedAt = new Date(Date.now() - 400_000)
+    const elapsed = computeElapsedMs(null, startedAt, Date.now())
+    expect(elapsed).toBeGreaterThan(stallTimeoutMs)
+  })
+
+  it('does not exceed stall threshold for recent activity', () => {
+    const stallTimeoutMs = 300_000
+    const startedAt = new Date(Date.now() - 10_000)
+    const elapsed = computeElapsedMs(null, startedAt, Date.now())
+    expect(elapsed).toBeLessThan(stallTimeoutMs)
+  })
+})
+
 describe('token aggregation (delta tracking)', () => {
   // Replicate the handleAgentMessage token delta logic for unit testing
 
