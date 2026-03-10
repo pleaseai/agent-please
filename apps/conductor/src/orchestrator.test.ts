@@ -1,8 +1,18 @@
-import type { Issue } from './types'
+import type { Issue, RunningEntry } from './types'
 import { describe, expect, it } from 'bun:test'
 import { normalizeState } from './config'
 
 // Test the sort/dispatch logic utilities in isolation
+
+function countRunningInState(running: Map<string, Pick<RunningEntry, 'issue'>>, state: string): number {
+  let count = 0
+  const normalized = normalizeState(state)
+  for (const entry of running.values()) {
+    if (normalizeState(entry.issue.state) === normalized)
+      count++
+  }
+  return count
+}
 
 function sortForDispatch(issues: Issue[]): Issue[] {
   return issues.toSorted((a, b) => {
@@ -236,5 +246,44 @@ describe('blocker rules', () => {
       blocked_by: [{ id: 'x', identifier: 'MT-0', state: 'DONE' }],
     })
     expect(hasNonTerminalBlockers(issue, ['Done', 'Cancelled'])).toBe(false)
+  })
+})
+
+describe('per-state concurrency counting', () => {
+  function makeRunningEntry(state: string): Pick<RunningEntry, 'issue'> {
+    return { issue: makeIssue({ state }) }
+  }
+
+  it('counts zero for empty running map', () => {
+    const running = new Map<string, Pick<RunningEntry, 'issue'>>()
+    expect(countRunningInState(running, 'In Progress')).toBe(0)
+  })
+
+  it('counts only entries matching the queried state', () => {
+    const running = new Map([
+      ['id1', makeRunningEntry('In Progress')],
+      ['id2', makeRunningEntry('In Progress')],
+      ['id3', makeRunningEntry('Todo')],
+    ])
+    expect(countRunningInState(running, 'In Progress')).toBe(2)
+    expect(countRunningInState(running, 'Todo')).toBe(1)
+  })
+
+  it('state comparison is case-insensitive', () => {
+    const running = new Map([
+      ['id1', makeRunningEntry('in progress')],
+      ['id2', makeRunningEntry('IN PROGRESS')],
+    ])
+    expect(countRunningInState(running, 'In Progress')).toBe(2)
+  })
+
+  it('slot exhaustion: all slots in state are filled', () => {
+    const running = new Map([
+      ['id1', makeRunningEntry('In Progress')],
+      ['id2', makeRunningEntry('In Progress')],
+    ])
+    const stateLimit = 2
+    const count = countRunningInState(running, 'In Progress')
+    expect(count >= stateLimit).toBe(true)
   })
 })

@@ -225,6 +225,57 @@ describe('github_projects fetchIssueStatesByIds', () => {
   })
 })
 
+describe('asana blockers normalization', () => {
+  test('normalizes dependencies as blocked_by entries', async () => {
+    const config = makeAsanaConfig()
+    const adapter = createAsanaAdapter(config)
+
+    const mockSectionsResponse = {
+      ok: true,
+      json: async () => ({ data: [{ gid: 'sec1', name: 'Todo' }] }),
+    }
+    const mockTasksResponse = {
+      ok: true,
+      json: async () => ({
+        data: [
+          {
+            gid: 'task1',
+            name: 'Blocked Task',
+            notes: null,
+            tags: [],
+            dependencies: [{ gid: 'dep1' }, { gid: 'dep2' }],
+            created_at: null,
+            modified_at: null,
+          },
+        ],
+        next_page: null,
+      }),
+    }
+
+    const origFetch = globalThis.fetch
+    globalThis.fetch = mock(async (url: string | URL | Request) => {
+      const urlStr = String(url)
+      if (urlStr.includes('/projects/'))
+        return mockSectionsResponse as unknown as Response
+      return mockTasksResponse as unknown as Response
+    }) as unknown as typeof fetch
+
+    try {
+      const result = await adapter.fetchIssuesByStates(['Todo'])
+      expect(Array.isArray(result)).toBe(true)
+      if (!Array.isArray(result))
+        return
+      expect(result).toHaveLength(1)
+      expect(result[0].blocked_by).toHaveLength(2)
+      expect(result[0].blocked_by[0].id).toBe('dep1')
+      expect(result[0].blocked_by[1].id).toBe('dep2')
+    }
+    finally {
+      globalThis.fetch = origFetch
+    }
+  })
+})
+
 describe('asana label normalization', () => {
   test('normalizes tags to lowercase', async () => {
     const config = makeAsanaConfig()
