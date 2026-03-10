@@ -102,6 +102,71 @@ describe('retry backoff', () => {
   })
 })
 
+describe('token aggregation (delta tracking)', () => {
+  // Replicate the handleAgentMessage token delta logic for unit testing
+
+  interface TokenState {
+    agent_input_tokens: number
+    agent_output_tokens: number
+    agent_total_tokens: number
+    last_reported_input_tokens: number
+    last_reported_output_tokens: number
+    last_reported_total_tokens: number
+  }
+
+  function applyTokenUpdate(state: TokenState, usage: {
+    input_tokens?: number
+    output_tokens?: number
+    total_tokens?: number
+  }): void {
+    const { input_tokens = 0, output_tokens = 0, total_tokens = 0 } = usage
+    if (total_tokens > state.last_reported_total_tokens) {
+      const inputDelta = input_tokens - state.last_reported_input_tokens
+      const outputDelta = output_tokens - state.last_reported_output_tokens
+      const totalDelta = total_tokens - state.last_reported_total_tokens
+      state.agent_input_tokens += inputDelta
+      state.agent_output_tokens += outputDelta
+      state.agent_total_tokens += totalDelta
+      state.last_reported_input_tokens = input_tokens
+      state.last_reported_output_tokens = output_tokens
+      state.last_reported_total_tokens = total_tokens
+    }
+  }
+
+  function makeTokenState(): TokenState {
+    return {
+      agent_input_tokens: 0,
+      agent_output_tokens: 0,
+      agent_total_tokens: 0,
+      last_reported_input_tokens: 0,
+      last_reported_output_tokens: 0,
+      last_reported_total_tokens: 0,
+    }
+  }
+
+  it('accumulates tokens correctly across multiple updates', () => {
+    const state = makeTokenState()
+    applyTokenUpdate(state, { input_tokens: 100, output_tokens: 50, total_tokens: 150 })
+    applyTokenUpdate(state, { input_tokens: 200, output_tokens: 80, total_tokens: 280 })
+    expect(state.agent_input_tokens).toBe(200)
+    expect(state.agent_output_tokens).toBe(80)
+    expect(state.agent_total_tokens).toBe(280)
+  })
+
+  it('ignores update when total_tokens does not increase', () => {
+    const state = makeTokenState()
+    applyTokenUpdate(state, { input_tokens: 100, output_tokens: 50, total_tokens: 150 })
+    applyTokenUpdate(state, { input_tokens: 100, output_tokens: 50, total_tokens: 150 })
+    expect(state.agent_total_tokens).toBe(150)
+  })
+
+  it('ignores update when total_tokens is zero', () => {
+    const state = makeTokenState()
+    applyTokenUpdate(state, { input_tokens: 0, output_tokens: 0, total_tokens: 0 })
+    expect(state.agent_total_tokens).toBe(0)
+  })
+})
+
 describe('blocker rules', () => {
   it('does not block when blockers are terminal', () => {
     const issue = makeIssue({
