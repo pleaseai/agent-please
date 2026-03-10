@@ -121,4 +121,55 @@ describe('executeTool - github_graphql validation', () => {
     expect(result.success).toBe(false)
     expect(result.contentItems[0].text).toContain('exactly one')
   })
+
+  test('marks GraphQL error response as failure while preserving body in contentItems', async () => {
+    const origFetch = globalThis.fetch
+    globalThis.fetch = (async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        data: null,
+        errors: [{ message: 'Field does not exist on type Query' }],
+      }),
+    })) as unknown as typeof fetch
+
+    try {
+      const result = await executeTool(
+        makeConfig('github_projects'),
+        'github_graphql',
+        { query: 'query { nonexistentField }' },
+      )
+      expect(result.success).toBe(false)
+      // Body is preserved in contentItems so agent can read the error message
+      expect(result.contentItems[0].text).toContain('errors')
+      expect(result.contentItems[0].text).toContain('Field does not exist')
+    }
+    finally {
+      globalThis.fetch = origFetch
+    }
+  })
+
+  test('returns success=true with body for successful GitHub GraphQL response', async () => {
+    const origFetch = globalThis.fetch
+    globalThis.fetch = (async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        data: { viewer: { login: 'testuser' } },
+      }),
+    })) as unknown as typeof fetch
+
+    try {
+      const result = await executeTool(
+        makeConfig('github_projects'),
+        'github_graphql',
+        { query: 'query { viewer { login } }' },
+      )
+      expect(result.success).toBe(true)
+      expect(result.contentItems[0].text).toContain('testuser')
+    }
+    finally {
+      globalThis.fetch = origFetch
+    }
+  })
 })
