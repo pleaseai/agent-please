@@ -279,4 +279,67 @@ describe('AppServerClient - startup_failed event (Section 10.4)', () => {
     const turnCompleted = messages.find(m => m.event === 'turn_completed')
     expect(turnCompleted).toBeDefined()
   })
+
+  it('emits turn_input_required and returns Error when agent requests user input (Section 17.5)', async () => {
+    const scriptPath = join(tmpRoot, 'fake-agent-input.sh')
+    writeFileSync(scriptPath, [
+      '#!/usr/bin/env bash',
+      'while IFS= read -r line; do',
+      '  id=$(printf \'%s\' "$line" | grep -o \'"id":[0-9]*\' | grep -o \'[0-9]*\' | head -1)',
+      '  case "$id" in',
+      '    1) printf \'%s\\n\' \'{"id":1,"result":{"capabilities":{}}}\';;',
+      '    2) printf \'%s\\n\' \'{"id":2,"result":{"thread":{"id":"t-1"}}}\';;',
+      '    3) printf \'%s\\n\' \'{"id":3,"result":{"turn":{"id":"turn-3"}}}\'',
+      '       printf \'%s\\n\' \'{"id":"req-1","method":"item/tool/requestUserInput","params":{}}\';;',
+      '  esac',
+      'done',
+    ].join('\n'), { mode: 0o755 })
+
+    const wsPath = join(tmpRoot, 'ws-input')
+    mkdirSync(wsPath)
+
+    const config = buildConfig({
+      config: {
+        tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
+        workspace: { root: tmpRoot },
+        claude: { command: scriptPath, read_timeout_ms: 2000, turn_timeout_ms: 5000 },
+      },
+      prompt_template: '',
+    })
+
+    const client = new AppServerClient(config, wsPath)
+    const session = await client.startSession()
+    expect(session instanceof Error).toBe(false)
+    if (session instanceof Error)
+      return
+
+    const messages: AgentMessage[] = []
+    const result = await client.runTurn(
+      session,
+      'hello',
+      {
+        id: 'i3',
+        identifier: 'MT-3',
+        title: 'Input Test',
+        description: null,
+        priority: null,
+        state: 'In Progress',
+        branch_name: null,
+        url: null,
+        labels: [],
+        blocked_by: [],
+        created_at: null,
+        updated_at: null,
+      },
+      msg => messages.push(msg),
+    )
+    client.stopSession()
+
+    expect(result instanceof Error).toBe(true)
+    if (!(result instanceof Error))
+      return
+    expect(result.message).toContain('turn_input_required')
+    const inputRequired = messages.find(m => m.event === 'turn_input_required')
+    expect(inputRequired).toBeDefined()
+  })
 })
