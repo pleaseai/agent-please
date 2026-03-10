@@ -475,7 +475,7 @@ export class AppServerClient {
   }
 }
 
-function extractRateLimits(payload: JsonRpcMessage): { rate_limits?: unknown } {
+export function extractRateLimits(payload: JsonRpcMessage): { rate_limits?: unknown } {
   const params = payload.params as Record<string, unknown> | undefined
   const candidates = [
     params?.rate_limits,
@@ -489,7 +489,7 @@ function extractRateLimits(payload: JsonRpcMessage): { rate_limits?: unknown } {
   return {}
 }
 
-function extractUsage(payload: JsonRpcMessage): { usage?: AgentMessage['usage'] } {
+export function extractUsage(payload: JsonRpcMessage): { usage?: AgentMessage['usage'] } {
   const params = payload.params as Record<string, unknown> | undefined
   const usageRaw = (params?.usage ?? params?.total_token_usage) as Record<string, unknown> | undefined
   if (!usageRaw)
