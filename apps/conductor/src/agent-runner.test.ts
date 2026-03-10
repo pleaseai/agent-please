@@ -249,8 +249,10 @@ describe('AppServerClient - startup_failed event (Section 10.4)', () => {
     expect(turnCompleted).toBeDefined()
     if (result instanceof Error)
       return
-    expect(result.session_id).toBeDefined()
-    expect(result.turn_id).toBeDefined()
+    // session_id format is "{threadId}-{turnId}" (Section 17.5)
+    expect(result.session_id).toBe('t-1-turn-1')
+    expect(result.thread_id).toBe('t-1')
+    expect(result.turn_id).toBe('turn-1')
   })
 
   it('non-JSON stderr lines do not crash session (Section 17.5)', async () => {
