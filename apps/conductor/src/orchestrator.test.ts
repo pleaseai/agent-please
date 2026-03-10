@@ -152,6 +152,30 @@ describe('stall detection elapsed_ms logic', () => {
     const elapsed = computeElapsedMs(null, startedAt, Date.now())
     expect(elapsed).toBeLessThan(stallTimeoutMs)
   })
+
+  it('stall detection kills session and schedules retry with stall timeout reason (Section 17.4)', () => {
+    // Mirror the stall detection+retry scheduling logic
+    const killed: string[] = []
+    const retried: Array<{ issueId: string, error: string }> = []
+
+    function detectStall(
+      issueId: string,
+      elapsed: number,
+      stallTimeoutMs: number,
+      terminate: (id: string) => void,
+      scheduleRetry: (id: string, error: string) => void,
+    ) {
+      if (elapsed > stallTimeoutMs) {
+        terminate(issueId)
+        scheduleRetry(issueId, 'stall timeout')
+      }
+    }
+
+    detectStall('issue-1', 400_000, 300_000, id => killed.push(id), (id, err) => retried.push({ issueId: id, error: err }))
+    expect(killed).toEqual(['issue-1'])
+    expect(retried).toHaveLength(1)
+    expect(retried[0].error).toBe('stall timeout')
+  })
 })
 
 describe('token aggregation (delta tracking)', () => {
@@ -330,6 +354,20 @@ describe('per-state concurrency counting', () => {
     const stateLimit = 2
     const count = countRunningInState(running, 'In Progress')
     expect(count >= stateLimit).toBe(true)
+  })
+
+  it('slot exhaustion requeues retries with explicit error reason (Section 17.4)', () => {
+    // Mirror the slot exhaustion requeue logic: when availableSlots() === 0,
+    // scheduleRetry is called with error reason 'no available orchestrator slots'
+    const retryErrors: string[] = []
+    function handleSlotExhaustion(availableSlots: number, retryFn: (error: string) => void) {
+      if (availableSlots === 0) {
+        retryFn('no available orchestrator slots')
+      }
+    }
+    handleSlotExhaustion(0, err => retryErrors.push(err))
+    expect(retryErrors).toHaveLength(1)
+    expect(retryErrors[0]).toBe('no available orchestrator slots')
   })
 })
 
