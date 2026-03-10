@@ -129,8 +129,15 @@ async function executeAsanaApi(config: ServiceConfig, rawArgs: unknown): Promise
     body = await response.text().catch(() => null)
   }
 
+  if (!response.ok) {
+    return {
+      success: false,
+      contentItems: [{ type: 'inputText', text: JSON.stringify({ http_status: response.status, body }, null, 2) }],
+    }
+  }
+
   return {
-    success: response.ok,
+    success: true,
     contentItems: [{ type: 'inputText', text: JSON.stringify(body, null, 2) }],
   }
 }

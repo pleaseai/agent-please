@@ -1,10 +1,10 @@
 import type { ServiceConfig } from './types'
-import { describe, expect, test } from 'bun:test'
+import { describe, expect, mock, test } from 'bun:test'
 import { executeTool, getToolSpecs } from './tools'
 
 function makeConfig(trackerKind: 'asana' | 'github_projects', apiKey: string | null = 'test-key'): ServiceConfig {
   const base: ServiceConfig = {
-    tracker: { kind: trackerKind, endpoint: '', api_key: apiKey },
+    tracker: { kind: trackerKind, endpoint: 'https://app.asana.com/api/1.0', api_key: apiKey },
     polling: { interval_ms: 30000 },
     workspace: { root: '/tmp' },
     hooks: { after_create: null, before_run: null, after_run: null, before_remove: null, timeout_ms: 60000 },
@@ -78,6 +78,42 @@ describe('executeTool - asana_api validation', () => {
     const result = await executeTool(makeConfig('asana'), 'asana_api', { method: 'GET', path: 'tasks' })
     expect(result.success).toBe(false)
     expect(result.contentItems[0].text).toContain('path')
+  })
+
+  test('returns successful response body as tool content', async () => {
+    const origFetch = globalThis.fetch
+    globalThis.fetch = mock(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ data: { gid: 'task1', name: 'My Task' } }),
+    })) as unknown as typeof fetch
+
+    try {
+      const result = await executeTool(makeConfig('asana'), 'asana_api', { method: 'GET', path: '/tasks/task1' })
+      expect(result.success).toBe(true)
+      expect(result.contentItems[0].text).toContain('My Task')
+    }
+    finally {
+      globalThis.fetch = origFetch
+    }
+  })
+
+  test('marks non-200 HTTP response as failure while preserving body', async () => {
+    const origFetch = globalThis.fetch
+    globalThis.fetch = mock(async () => ({
+      ok: false,
+      status: 403,
+      json: async () => ({ errors: [{ message: 'Forbidden' }] }),
+    })) as unknown as typeof fetch
+
+    try {
+      const result = await executeTool(makeConfig('asana'), 'asana_api', { method: 'GET', path: '/tasks/task1' })
+      expect(result.success).toBe(false)
+      expect(result.contentItems[0].text).toContain('403')
+    }
+    finally {
+      globalThis.fetch = origFetch
+    }
   })
 })
 
