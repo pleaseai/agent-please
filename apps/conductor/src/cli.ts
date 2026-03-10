@@ -56,7 +56,7 @@ export async function runCli(argv: string[]): Promise<void> {
   }
 }
 
-function parseArgs(args: string[]): { workflowPath: string, portOverride: number | null } {
+export function parseArgs(args: string[]): { workflowPath: string, portOverride: number | null } {
   let portOverride: number | null = null
   const positional: string[] = []
 
