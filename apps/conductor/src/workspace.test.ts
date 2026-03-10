@@ -163,6 +163,18 @@ describe('createWorkspace', () => {
     expect(existsSync(flagFile)).toBe(true)
   })
 
+  it('supports multiline hook scripts (Section 17.2)', async () => {
+    const file1 = join(tmpRoot, 'multiline-step1')
+    const file2 = join(tmpRoot, 'multiline-step2')
+    const config = makeConfig(tmpRoot, {
+      hooks: { after_create: `touch ${file1}\ntouch ${file2}` },
+    })
+
+    await createWorkspace(config, 'MULTI-1')
+    expect(existsSync(file1)).toBe(true)
+    expect(existsSync(file2)).toBe(true)
+  })
+
   it('does not run after_create hook on workspace reuse', async () => {
     const flagFile = join(tmpRoot, 'hook-ran')
     mkdirSync(join(tmpRoot, 'EXISTING-1'))
