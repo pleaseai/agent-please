@@ -2,6 +2,7 @@ import type { AgentMessage, Issue, ServiceConfig } from './types'
 import { spawn } from 'node:child_process'
 import { resolve, sep } from 'node:path'
 import { createInterface } from 'node:readline'
+import { executeTool, getToolSpecs } from './tools'
 
 const STDERR_ERROR_RE = /error|warn|fail|fatal/i
 
@@ -256,14 +257,7 @@ export class AppServerClient {
 
     // Dynamic tool calls
     if (method === 'item/tool/call') {
-      const id = payload.id as string | number
-      this.sendMessage({ id, result: { success: false, error: 'unsupported_tool_call' } })
-      this.messageHandler?.({
-        event: 'unsupported_tool_call',
-        timestamp: new Date(),
-        agent_app_server_pid: this.getProcessPid(),
-        payload,
-      })
+      this.handleToolCall(payload)
       return
     }
 
@@ -336,6 +330,51 @@ export class AppServerClient {
     this.turnCompletionResolve?.(err)
   }
 
+  private handleToolCall(payload: JsonRpcMessage): void {
+    const id = payload.id as string | number
+    const params = payload.params as Record<string, unknown> | undefined
+    const toolName = typeof params?.name === 'string' ? params.name : null
+    const rawArgs = params?.arguments ?? params?.input ?? {}
+
+    if (!toolName) {
+      this.sendMessage({ id, result: { success: false, error: 'unsupported_tool_call' } })
+      this.messageHandler?.({
+        event: 'unsupported_tool_call',
+        timestamp: new Date(),
+        agent_app_server_pid: this.getProcessPid(),
+        payload,
+      })
+      return
+    }
+
+    const toolSpecs = getToolSpecs(this.config)
+    const isSupported = toolSpecs.some(s => s.name === toolName)
+
+    if (!isSupported) {
+      this.sendMessage({ id, result: { success: false, error: 'unsupported_tool_call' } })
+      this.messageHandler?.({
+        event: 'unsupported_tool_call',
+        timestamp: new Date(),
+        agent_app_server_pid: this.getProcessPid(),
+        payload,
+      })
+      return
+    }
+
+    // Execute supported tool asynchronously; send result when done
+    executeTool(this.config, toolName, rawArgs).then((result) => {
+      this.sendMessage({ id, result })
+      this.messageHandler?.({
+        event: 'notification',
+        timestamp: new Date(),
+        agent_app_server_pid: this.getProcessPid(),
+        payload: { tool: toolName, success: result.success },
+      })
+    }).catch((err) => {
+      this.sendMessage({ id, result: { success: false, error: String(err) } })
+    })
+  }
+
   private async sendInitialize(): Promise<null | Error> {
     const result = await this.sendRequest(1, 'initialize', {
       capabilities: { experimentalApi: true },
@@ -350,11 +389,16 @@ export class AppServerClient {
 
   private async startThread(): Promise<string | Error> {
     const { permission_mode } = this.config.claude
-    const result = await this.sendRequest(2, 'thread/start', {
+    const toolSpecs = getToolSpecs(this.config)
+    const params: Record<string, unknown> = {
       approvalPolicy: permission_mode === 'bypassPermissions' ? 'never' : 'always',
       sandbox: 'workspace-write',
       cwd: this.workspace,
-    })
+    }
+    if (toolSpecs.length > 0) {
+      params.dynamicTools = toolSpecs
+    }
+    const result = await this.sendRequest(2, 'thread/start', params)
 
     if (result instanceof Error)
       return result

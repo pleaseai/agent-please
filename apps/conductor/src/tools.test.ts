@@ -1,0 +1,124 @@
+import type { ServiceConfig } from './types'
+import { describe, expect, test } from 'bun:test'
+import { executeTool, getToolSpecs } from './tools'
+
+function makeConfig(trackerKind: 'asana' | 'github_projects', apiKey: string | null = 'test-key'): ServiceConfig {
+  const base: ServiceConfig = {
+    tracker: { kind: trackerKind, endpoint: '', api_key: apiKey },
+    polling: { interval_ms: 30000 },
+    workspace: { root: '/tmp' },
+    hooks: { after_create: null, before_run: null, after_run: null, before_remove: null, timeout_ms: 60000 },
+    agent: { max_concurrent_agents: 5, max_turns: 20, max_retry_backoff_ms: 300000, max_concurrent_agents_by_state: {} },
+    claude: { command: 'claude', permission_mode: 'bypassPermissions', allowed_tools: [], turn_timeout_ms: 3600000, read_timeout_ms: 5000, stall_timeout_ms: 300000 },
+    server: { port: null },
+  }
+  return base
+}
+
+describe('getToolSpecs', () => {
+  test('returns asana_api for asana tracker', () => {
+    const specs = getToolSpecs(makeConfig('asana'))
+    expect(specs).toHaveLength(1)
+    expect(specs[0].name).toBe('asana_api')
+  })
+
+  test('returns github_graphql for github_projects tracker', () => {
+    const specs = getToolSpecs(makeConfig('github_projects'))
+    expect(specs).toHaveLength(1)
+    expect(specs[0].name).toBe('github_graphql')
+  })
+
+  test('tool specs have inputSchema', () => {
+    const asanaSpecs = getToolSpecs(makeConfig('asana'))
+    expect(asanaSpecs[0].inputSchema).toBeDefined()
+
+    const githubSpecs = getToolSpecs(makeConfig('github_projects'))
+    expect(githubSpecs[0].inputSchema).toBeDefined()
+  })
+})
+
+describe('executeTool - unsupported', () => {
+  test('returns failure for unknown tool name', async () => {
+    const result = await executeTool(makeConfig('asana'), 'unknown_tool', {})
+    expect(result.success).toBe(false)
+    const text = result.contentItems[0].text
+    expect(text).toContain('Unsupported tool')
+  })
+
+  test('returns failure for github_graphql when tracker is asana', async () => {
+    const result = await executeTool(makeConfig('asana'), 'github_graphql', { query: 'query {}' })
+    expect(result.success).toBe(false)
+  })
+
+  test('returns failure for asana_api when tracker is github_projects', async () => {
+    const result = await executeTool(makeConfig('github_projects'), 'asana_api', { method: 'GET', path: '/tasks' })
+    expect(result.success).toBe(false)
+  })
+})
+
+describe('executeTool - asana_api validation', () => {
+  test('fails when api_key is null', async () => {
+    const result = await executeTool(makeConfig('asana', null), 'asana_api', { method: 'GET', path: '/tasks' })
+    expect(result.success).toBe(false)
+    expect(result.contentItems[0].text).toContain('auth not configured')
+  })
+
+  test('fails on invalid args (not an object)', async () => {
+    const result = await executeTool(makeConfig('asana'), 'asana_api', 'not an object')
+    expect(result.success).toBe(false)
+  })
+
+  test('fails when method is missing', async () => {
+    const result = await executeTool(makeConfig('asana'), 'asana_api', { path: '/tasks' })
+    expect(result.success).toBe(false)
+    expect(result.contentItems[0].text).toContain('method')
+  })
+
+  test('fails when path does not start with /', async () => {
+    const result = await executeTool(makeConfig('asana'), 'asana_api', { method: 'GET', path: 'tasks' })
+    expect(result.success).toBe(false)
+    expect(result.contentItems[0].text).toContain('path')
+  })
+})
+
+describe('executeTool - github_graphql validation', () => {
+  test('fails when api_key is null', async () => {
+    const result = await executeTool(makeConfig('github_projects', null), 'github_graphql', { query: 'query { viewer { login } }' })
+    expect(result.success).toBe(false)
+    expect(result.contentItems[0].text).toContain('auth not configured')
+  })
+
+  test('fails on invalid args (not an object or string)', async () => {
+    const result = await executeTool(makeConfig('github_projects'), 'github_graphql', 42)
+    expect(result.success).toBe(false)
+  })
+
+  test('fails when query is missing', async () => {
+    const result = await executeTool(makeConfig('github_projects'), 'github_graphql', {})
+    expect(result.success).toBe(false)
+    expect(result.contentItems[0].text).toContain('query')
+  })
+
+  test('fails when query is empty string', async () => {
+    const result = await executeTool(makeConfig('github_projects'), 'github_graphql', { query: '   ' })
+    expect(result.success).toBe(false)
+  })
+
+  test('accepts raw string query', async () => {
+    // Will fail at network level (no real GitHub), but arg parsing should succeed
+    // Just verify the args parse without error before the network call
+    // We test this by checking that the error is network-related, not arg-related
+    const result = await executeTool(makeConfig('github_projects'), 'github_graphql', 'query { viewer { login } }')
+    // Will fail since no real endpoint, but not from arg validation
+    const text = result.contentItems[0].text
+    expect(text).not.toContain('non-empty string')
+    expect(text).not.toContain('must be a non-empty')
+  })
+
+  test('fails when multiple operations in query', async () => {
+    const multiOp = 'query A { viewer { login } } query B { rateLimit { limit } }'
+    const result = await executeTool(makeConfig('github_projects'), 'github_graphql', { query: multiOp })
+    expect(result.success).toBe(false)
+    expect(result.contentItems[0].text).toContain('exactly one')
+  })
+})
