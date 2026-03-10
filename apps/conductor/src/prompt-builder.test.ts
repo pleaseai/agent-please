@@ -98,6 +98,27 @@ describe('buildPrompt', () => {
     expect(isPromptBuildError(result)).toBe(false)
     expect(result).toBe('Has desc')
   })
+
+  it('renders issue datetime fields as ISO strings without crashing (Section 17.1)', async () => {
+    const result = await buildPrompt(
+      makeWorkflow('created:{{ issue.created_at }} updated:{{ issue.updated_at }}'),
+      makeIssue({
+        created_at: new Date('2026-01-15T10:00:00.000Z'),
+        updated_at: new Date('2026-02-20T12:30:00.000Z'),
+      }),
+    )
+    expect(isPromptBuildError(result)).toBe(false)
+    expect(result).toContain('2026-01-15T10:00:00.000Z')
+    expect(result).toContain('2026-02-20T12:30:00.000Z')
+  })
+
+  it('renders null datetime fields gracefully (Section 17.1)', async () => {
+    const result = await buildPrompt(
+      makeWorkflow('created:{{ issue.created_at }}'),
+      makeIssue({ created_at: null }),
+    )
+    expect(isPromptBuildError(result)).toBe(false)
+  })
 })
 
 describe('buildContinuationPrompt', () => {
