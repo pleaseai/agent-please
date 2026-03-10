@@ -155,6 +155,7 @@ export type AgentEvent
     | 'turn_input_required'
     | 'approval_auto_approved'
     | 'unsupported_tool_call'
+    | 'tool_call_failed'
     | 'notification'
     | 'other_message'
     | 'malformed'

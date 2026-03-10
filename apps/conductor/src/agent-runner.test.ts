@@ -670,4 +670,159 @@ describe('AppServerClient - startup_failed event (Section 10.4)', () => {
     const inputRequired = messages.find(m => m.event === 'turn_input_required')
     expect(inputRequired).toBeDefined()
   })
+
+  it('executes supported dynamic tool calls and returns the result to the agent (Section 17.5)', async () => {
+    const scriptPath = join(tmpRoot, 'fake-agent-supported-tool.sh')
+    writeFileSync(scriptPath, [
+      '#!/usr/bin/env bash',
+      'while IFS= read -r line; do',
+      '  id=$(printf \'%s\' "$line" | grep -o \'"id":[0-9]*\' | grep -o \'[0-9]*\' | head -1)',
+      // After receiving tool call result (contentItems is in the response body), send turn/completed
+      '  if printf \'%s\' "$line" | grep -q \'contentItems\'; then',
+      '    printf \'%s\\n\' \'{"method":"turn/completed","params":{}}\'',
+      '    break',
+      '  fi',
+      '  case "$id" in',
+      '    1) printf \'%s\\n\' \'{"id":1,"result":{"capabilities":{}}}\';;',
+      '    2) printf \'%s\\n\' \'{"id":2,"result":{"thread":{"id":"t-1"}}}\';;',
+      '    3) printf \'%s\\n\' \'{"id":3,"result":{"turn":{"id":"turn-st"}}}\'',
+      '       printf \'%s\\n\' \'{"id":"tc-1","method":"item/tool/call","params":{"name":"asana_api","arguments":{"method":"GET","path":"/tasks/t1"}}}\';;',
+      '  esac',
+      'done',
+    ].join('\n'), { mode: 0o755 })
+
+    const wsPath = join(tmpRoot, 'ws-supported-tool')
+    mkdirSync(wsPath)
+
+    const origFetch = globalThis.fetch
+    globalThis.fetch = (async () => ({
+      ok: true,
+      json: async () => ({ data: { gid: 't1', name: 'Task One' } }),
+    })) as unknown as typeof fetch
+
+    const config = buildConfig({
+      config: {
+        tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
+        workspace: { root: tmpRoot },
+        claude: { command: scriptPath, read_timeout_ms: 2000, turn_timeout_ms: 8000 },
+      },
+      prompt_template: '',
+    })
+
+    const client = new AppServerClient(config, wsPath)
+    const session = await client.startSession()
+    try {
+      expect(session instanceof Error).toBe(false)
+      if (session instanceof Error)
+        return
+
+      const messages: AgentMessage[] = []
+      const result = await client.runTurn(
+        session,
+        'hello',
+        {
+          id: 'i9',
+          identifier: 'MT-9',
+          title: 'Supported Tool',
+          description: null,
+          priority: null,
+          state: 'In Progress',
+          branch_name: null,
+          url: null,
+          labels: [],
+          blocked_by: [],
+          created_at: null,
+          updated_at: null,
+        },
+        msg => messages.push(msg),
+      )
+      client.stopSession()
+
+      expect(result instanceof Error).toBe(false)
+      const turnCompleted = messages.find(m => m.event === 'turn_completed')
+      expect(turnCompleted).toBeDefined()
+      // Tool call notification event (success=true)
+      const toolNotification = messages.find(m => m.event === 'notification')
+      expect(toolNotification).toBeDefined()
+    }
+    finally {
+      globalThis.fetch = origFetch
+      client.stopSession()
+    }
+  })
+
+  it('emits tool_call_failed event when supported tool returns success=false (Section 17.5)', async () => {
+    const scriptPath = join(tmpRoot, 'fake-agent-tool-fail.sh')
+    writeFileSync(scriptPath, [
+      '#!/usr/bin/env bash',
+      'while IFS= read -r line; do',
+      '  id=$(printf \'%s\' "$line" | grep -o \'"id":[0-9]*\' | grep -o \'[0-9]*\' | head -1)',
+      // After receiving tool call result (contentItems in response), send turn/completed
+      '  if printf \'%s\' "$line" | grep -q \'contentItems\'; then',
+      '    printf \'%s\\n\' \'{"method":"turn/completed","params":{}}\'',
+      '    break',
+      '  fi',
+      '  case "$id" in',
+      '    1) printf \'%s\\n\' \'{"id":1,"result":{"capabilities":{}}}\';;',
+      '    2) printf \'%s\\n\' \'{"id":2,"result":{"thread":{"id":"t-1"}}}\';;',
+      // Send tool call with empty args (missing method/path = validation failure = success:false)
+      '    3) printf \'%s\\n\' \'{"id":3,"result":{"turn":{"id":"turn-tf"}}}\'',
+      '       printf \'%s\\n\' \'{"id":"tc-2","method":"item/tool/call","params":{"name":"asana_api","arguments":{}}}\';;',
+      '  esac',
+      'done',
+    ].join('\n'), { mode: 0o755 })
+
+    const wsPath = join(tmpRoot, 'ws-tool-fail')
+    mkdirSync(wsPath)
+
+    const config = buildConfig({
+      config: {
+        tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
+        workspace: { root: tmpRoot },
+        claude: { command: scriptPath, read_timeout_ms: 2000, turn_timeout_ms: 8000 },
+      },
+      prompt_template: '',
+    })
+
+    const client = new AppServerClient(config, wsPath)
+    const session = await client.startSession()
+    try {
+      expect(session instanceof Error).toBe(false)
+      if (session instanceof Error)
+        return
+
+      const messages: AgentMessage[] = []
+      const result = await client.runTurn(
+        session,
+        'hello',
+        {
+          id: 'i10',
+          identifier: 'MT-10',
+          title: 'Tool Fail',
+          description: null,
+          priority: null,
+          state: 'In Progress',
+          branch_name: null,
+          url: null,
+          labels: [],
+          blocked_by: [],
+          created_at: null,
+          updated_at: null,
+        },
+        msg => messages.push(msg),
+      )
+      client.stopSession()
+
+      expect(result instanceof Error).toBe(false)
+      // Tool failure emits tool_call_failed, not a generic notification
+      const toolCallFailed = messages.find(m => m.event === 'tool_call_failed')
+      expect(toolCallFailed).toBeDefined()
+      // Turn still completes after tool failure
+      const turnCompleted = messages.find(m => m.event === 'turn_completed')
+      expect(turnCompleted).toBeDefined()
+    }
+    finally {
+      client.stopSession()
+    }
+  })
 })

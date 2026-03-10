@@ -404,10 +404,10 @@ export class AppServerClient {
     executeTool(this.config, toolName, rawArgs).then((result) => {
       this.sendMessage({ id, result })
       this.messageHandler?.({
-        event: 'notification',
+        event: result.success ? 'notification' : 'tool_call_failed',
         timestamp: new Date(),
         agent_app_server_pid: this.getProcessPid(),
-        payload: { tool: toolName, success: result.success },
+        payload,
       })
     }).catch((err) => {
       this.sendMessage({ id, result: { success: false, error: String(err) } })
