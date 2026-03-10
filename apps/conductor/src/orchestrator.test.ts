@@ -1,6 +1,10 @@
 import type { Issue, RunningEntry } from './types'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { describe, expect, it } from 'bun:test'
 import { normalizeState } from './config'
+import { Orchestrator } from './orchestrator'
 
 // Test the sort/dispatch logic utilities in isolation
 
@@ -373,5 +377,87 @@ describe('worker exit retry scheduling (Section 17.4)', () => {
     expect(nextAttemptFrom(null)).toBe(1)
     expect(nextAttemptFrom(1)).toBe(2)
     expect(nextAttemptFrom(3)).toBe(4)
+  })
+})
+
+describe('workflow hot reload (Section 17.1)', () => {
+  function makeWorkflowContent(pollMs: number): string {
+    return `---
+tracker:
+  kind: asana
+  api_key: test-key
+  project_gid: gid-1
+polling:
+  interval_ms: ${pollMs}
+---
+Prompt text.`
+  }
+
+  it('detects workflow file change and updates config without restart', async () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), 'conductor-test-'))
+    const wsRoot = join(tmpDir, 'workspaces')
+    mkdirSync(wsRoot)
+    const wfPath = join(tmpDir, 'WORKFLOW.md')
+
+    writeFileSync(wfPath, makeWorkflowContent(30_000))
+
+    // Construct orchestrator (does not start yet; no network calls)
+    const orch = new Orchestrator(wfPath)
+    expect(orch.getConfig().polling.interval_ms).toBe(30_000)
+
+    // Mock fetch to swallow the startup cleanup + first tick poll
+    const origFetch = globalThis.fetch
+    globalThis.fetch = (async () => ({
+      ok: true,
+      json: async () => ({ data: [] }),
+    })) as unknown as typeof fetch
+
+    try {
+      await orch.start()
+      // Update the workflow file — file watcher should pick it up
+      writeFileSync(wfPath, makeWorkflowContent(60_000))
+
+      // Poll until config updates or timeout (max 2s)
+      const deadline = Date.now() + 2_000
+      while (orch.getConfig().polling.interval_ms !== 60_000 && Date.now() < deadline) {
+        await new Promise(r => setTimeout(r, 20))
+      }
+
+      expect(orch.getConfig().polling.interval_ms).toBe(60_000)
+    }
+    finally {
+      orch.stop()
+      globalThis.fetch = origFetch
+      rmSync(tmpDir, { recursive: true, force: true })
+    }
+  })
+
+  it('keeps last known good config when reloaded file has invalid YAML', async () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), 'conductor-test-'))
+    const wfPath = join(tmpDir, 'WORKFLOW.md')
+
+    writeFileSync(wfPath, makeWorkflowContent(30_000))
+    const orch = new Orchestrator(wfPath)
+
+    const origFetch = globalThis.fetch
+    globalThis.fetch = (async () => ({
+      ok: true,
+      json: async () => ({ data: [] }),
+    })) as unknown as typeof fetch
+
+    try {
+      await orch.start()
+      // Write invalid YAML — should not update config
+      writeFileSync(wfPath, '---\ntracker: [unclosed\n---\nPrompt')
+
+      await new Promise(r => setTimeout(r, 300))
+      // Config should remain at the last good value
+      expect(orch.getConfig().polling.interval_ms).toBe(30_000)
+    }
+    finally {
+      orch.stop()
+      globalThis.fetch = origFetch
+      rmSync(tmpDir, { recursive: true, force: true })
+    }
   })
 })

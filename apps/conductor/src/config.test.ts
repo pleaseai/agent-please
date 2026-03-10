@@ -120,6 +120,22 @@ describe('buildConfig', () => {
     }))
     expect(config.hooks.before_run).toBeNull()
   })
+
+  it('preserves claude.command as shell command string including spaces (Section 17.1)', () => {
+    const config = buildConfig(makeWorkflow({
+      claude: { command: 'claude --permission-mode full --no-ansi' },
+    }))
+    expect(config.claude.command).toBe('claude --permission-mode full --no-ansi')
+  })
+
+  it('resolves $VAR for workspace root path (Section 17.1)', () => {
+    process.env.TEST_WORKSPACE_ROOT = '/tmp/test-workspaces'
+    const config = buildConfig(makeWorkflow({
+      workspace: { root: '$TEST_WORKSPACE_ROOT' },
+    }))
+    expect(config.workspace.root).toBe('/tmp/test-workspaces')
+    delete process.env.TEST_WORKSPACE_ROOT
+  })
 })
 
 describe('validateConfig', () => {
@@ -159,6 +175,20 @@ describe('validateConfig', () => {
     const config = buildConfig(makeWorkflow({ tracker: { kind: 'asana', api_key: 'tok' } }))
     const err = validateConfig(config)
     expect(err?.code).toBe('missing_tracker_project_config')
+  })
+
+  it('returns missing_claude_command when claude.command is blank (Section 17.1)', () => {
+    // buildConfig always applies default when command is empty, so we test validateConfig
+    // directly with a ServiceConfig that has a blank command
+    const baseConfig = buildConfig(makeWorkflow({
+      tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
+    }))
+    const configWithBlankCommand = {
+      ...baseConfig,
+      claude: { ...baseConfig.claude, command: '   ' },
+    }
+    const err = validateConfig(configWithBlankCommand)
+    expect(err?.code).toBe('missing_claude_command')
   })
 })
 
