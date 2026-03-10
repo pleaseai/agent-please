@@ -38,6 +38,57 @@ describe('fetchIssuesByStates - empty states early return', () => {
   })
 })
 
+describe('asana pagination', () => {
+  test('fetchIssuesByStates collects tasks across multiple pages', async () => {
+    const config = makeAsanaConfig()
+    const adapter = createAsanaAdapter(config)
+
+    const mockSectionsResponse = {
+      ok: true,
+      json: async () => ({ data: [{ gid: 'sec1', name: 'Todo' }] }),
+    }
+
+    let callCount = 0
+    const origFetch = globalThis.fetch
+    globalThis.fetch = mock(async (url: string | URL | Request) => {
+      const urlStr = String(url)
+      if (urlStr.includes('/projects/'))
+        return mockSectionsResponse as unknown as Response
+
+      callCount++
+      if (callCount === 1) {
+        return {
+          ok: true,
+          json: async () => ({
+            data: [{ gid: 'task1', name: 'Task 1', notes: null, tags: [], dependencies: [], created_at: null, modified_at: null }],
+            next_page: { offset: 'page2token' },
+          }),
+        } as unknown as Response
+      }
+      return {
+        ok: true,
+        json: async () => ({
+          data: [{ gid: 'task2', name: 'Task 2', notes: null, tags: [], dependencies: [], created_at: null, modified_at: null }],
+          next_page: null,
+        }),
+      } as unknown as Response
+    }) as unknown as typeof fetch
+
+    try {
+      const result = await adapter.fetchIssuesByStates(['Todo'])
+      expect(Array.isArray(result)).toBe(true)
+      if (!Array.isArray(result))
+        return
+      expect(result).toHaveLength(2)
+      expect(result[0].identifier).toBe('task1')
+      expect(result[1].identifier).toBe('task2')
+    }
+    finally {
+      globalThis.fetch = origFetch
+    }
+  })
+})
+
 describe('asana label normalization', () => {
   test('normalizes tags to lowercase', async () => {
     const config = makeAsanaConfig()
