@@ -294,6 +294,31 @@ describe('asana fetchIssueStatesByIds', () => {
 })
 
 describe('github_projects fetchIssueStatesByIds', () => {
+  test('uses GraphQL [ID!]! typing in state refresh query (Section 17.3)', async () => {
+    const config = makeGitHubConfig()
+    const adapter = createGitHubAdapter(config)
+
+    let capturedBody: string | null = null
+    const origFetch = globalThis.fetch
+    globalThis.fetch = mock(async (_url: string, init?: RequestInit) => {
+      capturedBody = typeof init?.body === 'string' ? init.body : null
+      return {
+        ok: true,
+        json: async () => ({ data: { nodes: [] } }),
+      }
+    }) as unknown as typeof fetch
+
+    try {
+      await adapter.fetchIssueStatesByIds(['PVTI_test'])
+      expect(capturedBody).not.toBeNull()
+      const body = JSON.parse(capturedBody!)
+      expect(body.query).toContain('[ID!]')
+    }
+    finally {
+      globalThis.fetch = origFetch
+    }
+  })
+
   test('returns normalized minimal issue with state from GraphQL nodes response', async () => {
     const config = makeGitHubConfig()
     const adapter = createGitHubAdapter(config)
