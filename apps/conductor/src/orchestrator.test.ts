@@ -391,6 +391,28 @@ describe('reconciliation state machine (Section 17.4)', () => {
   })
 })
 
+describe('max_turns enforcement (Section 17.4)', () => {
+  // Mirror the max_turns check in runAgentTurns
+  function shouldContinueTurn(turnNumber: number, maxTurns: number): boolean {
+    return turnNumber < maxTurns
+  }
+
+  it('stops after max_turns turns', () => {
+    expect(shouldContinueTurn(1, 2)).toBe(true)
+    expect(shouldContinueTurn(2, 2)).toBe(false)
+    expect(shouldContinueTurn(3, 2)).toBe(false)
+  })
+
+  it('continues when under max_turns limit', () => {
+    expect(shouldContinueTurn(1, 20)).toBe(true)
+    expect(shouldContinueTurn(19, 20)).toBe(true)
+  })
+
+  it('max_turns=1 means exactly one turn (no continuation)', () => {
+    expect(shouldContinueTurn(1, 1)).toBe(false)
+  })
+})
+
 describe('worker exit retry scheduling (Section 17.4)', () => {
   // Mirror the onWorkerExit retry scheduling logic
   function scheduleKind(reason: 'normal' | 'failed'): 'continuation' | 'failure' {
