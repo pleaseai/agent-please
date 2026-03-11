@@ -54,8 +54,8 @@ bun run check                  # all workspaces
 bun run check:app              # work-please only
 
 # Lint
-bun run lint                   # all workspaces
-bun run lint:app               # work-please only
+bun run lint                   # all workspaces, check only
+bun run lint:app               # work-please only, check only
 bun run lint:fix               # all workspaces, auto-fix
 bun run lint:app:fix           # work-please only, auto-fix
 ```
