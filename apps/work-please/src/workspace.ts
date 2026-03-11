@@ -1,5 +1,4 @@
 import type { Issue, ServiceConfig, Workspace } from './types'
-import { spawnSync } from 'node:child_process'
 import { existsSync, lstatSync, mkdirSync, rmSync, statSync } from 'node:fs'
 import { join, resolve, sep } from 'node:path'
 import process from 'node:process'
@@ -175,34 +174,22 @@ export async function runAfterRunHook(config: ServiceConfig, wsPath: string, iss
 }
 
 export async function runHook(script: string, cwd: string, timeoutMs: number, env: Record<string, string> = {}): Promise<Error | null> {
-  return new Promise((resolve) => {
-    const result = spawnSync('sh', ['-lc', script], {
-      cwd,
-      timeout: timeoutMs,
-      encoding: 'utf-8',
-      shell: false,
-      env: { ...process.env, ...env },
-    })
-
-    if (result.error) {
-      const isTimeout = result.error.message.includes('ETIMEDOUT') || result.status === null
-      if (isTimeout) {
-        resolve(new Error(`hook timeout after ${timeoutMs}ms`))
-      }
-      else {
-        resolve(result.error)
-      }
-      return
-    }
-
-    if (result.status !== 0) {
-      const output = (result.stdout + result.stderr).slice(0, 2048)
-      resolve(new Error(`hook exited with status ${result.status}: ${output}`))
-      return
-    }
-
-    resolve(null)
+  const result = Bun.spawnSync(['sh', '-lc', script], {
+    cwd,
+    timeout: timeoutMs,
+    env: { ...process.env, ...env },
   })
+
+  if (result.exitCode === null) {
+    return new Error(`hook timeout after ${timeoutMs}ms`)
+  }
+
+  if (!result.success) {
+    const output = (result.stdout.toString() + result.stderr.toString()).slice(0, 2048)
+    return new Error(`hook exited with status ${result.exitCode}: ${output}`)
+  }
+
+  return null
 }
 
 function cleanArtifacts(wsPath: string): void {
