@@ -4,4 +4,4 @@ dist/
 bun.lock
 *.tsbuildinfo
 .claude/settings.local.json
-/.claude/worktrees/
+.claude/worktrees/
