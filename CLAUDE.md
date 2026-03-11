@@ -32,28 +32,32 @@ bunx <cmd>         # not: npx <cmd> / pnpm dlx <cmd>
 
 ## Commands
 
+> **Important:** Always run commands from the project root. Do not `cd` into workspace directories — use `:app` suffix scripts or `turbo run <task> --filter=<package>` instead.
+
 ```bash
 # Install dependencies
 bun install
 
 # Development (watch mode)
-bun run dev                    # from apps/work-please, or:
-turbo run dev                  # from root
+bun run dev                    # all workspaces via turbo
 
 # Build
 bun run build                  # root: builds all packages via turbo
 # apps/work-please builds with: bun build ./src/index.ts --outdir ./dist --target bun
 
-# Lint
-bun run lint                   # check
-bun run lint:fix               # auto-fix
+# Test
+bun run test                   # all workspaces via turbo
+bun run test:app               # work-please only
 
 # Type check
-bun run check                  # tsc --noEmit (runs after build due to turbo deps)
+bun run check                  # all workspaces
+bun run check:app              # work-please only
 
-# Test
-bun test                       # from apps/work-please (single package)
-bun run test                   # from root (all packages via turbo)
+# Lint
+bun run lint                   # all workspaces, check only
+bun run lint:app               # work-please only, check only
+bun run lint:fix               # all workspaces, auto-fix
+bun run lint:app:fix           # work-please only, auto-fix
 ```
 
 ## Architecture
