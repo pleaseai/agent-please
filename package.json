@@ -7,8 +7,12 @@
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "lint:fix": "turbo run lint:fix",
+    "lint:app": "turbo run lint --filter=@pleaseai/work",
+    "lint:app:fix": "turbo run lint:fix --filter=@pleaseai/work",
     "check": "turbo run check",
-    "test": "turbo run test"
+    "check:app": "turbo run check --filter=@pleaseai/work",
+    "test": "turbo run test",
+    "test:app": "turbo run test --filter=@pleaseai/work"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^7.7.0",
