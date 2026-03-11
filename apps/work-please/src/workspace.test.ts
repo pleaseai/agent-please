@@ -355,6 +355,14 @@ describe('extractRepoUrl', () => {
   it('returns null for bare repo URL', () => {
     expect(extractRepoUrl('https://github.com/org/repo')).toBeNull()
   })
+
+  it('strips query string after issue number', () => {
+    expect(extractRepoUrl('https://github.com/org/repo/issues/42?tab=timeline')).toBe('https://github.com/org/repo')
+  })
+
+  it('strips fragment after issue number', () => {
+    expect(extractRepoUrl('https://github.com/org/repo/issues/42#issuecomment-123')).toBe('https://github.com/org/repo')
+  })
 })
 
 describe('buildHookEnv', () => {

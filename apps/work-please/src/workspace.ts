@@ -174,14 +174,14 @@ export async function runAfterRunHook(config: ServiceConfig, wsPath: string, iss
   }
 }
 
-export async function runHook(script: string, cwd: string, timeoutMs: number, env?: Record<string, string>): Promise<Error | null> {
+export async function runHook(script: string, cwd: string, timeoutMs: number, env: Record<string, string> = {}): Promise<Error | null> {
   return new Promise((resolve) => {
     const result = spawnSync('sh', ['-lc', script], {
       cwd,
       timeout: timeoutMs,
       encoding: 'utf-8',
       shell: false,
-      env: env && Object.keys(env).length > 0 ? { ...process.env, ...env } : undefined,
+      env: { ...process.env, ...env },
     })
 
     if (result.error) {
