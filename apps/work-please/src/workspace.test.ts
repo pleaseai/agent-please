@@ -1,14 +1,17 @@
 import type { Issue, ServiceConfig } from './types'
+import { Buffer } from 'node:buffer'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test'
 import { buildConfig } from './config'
 import {
+  _git,
   buildHookEnv,
   createWorkspace,
   extractRepoUrl,
   removeWorkspace,
+  resolveRepositoryDir,
   runAfterRunHook,
   runBeforeRunHook,
   sanitizeIdentifier,
@@ -484,5 +487,276 @@ describe('hook env var injection', () => {
 
     await createWorkspace(config, 'ENV-3')
     expect(existsSync(envFile)).toBe(true)
+  })
+})
+
+describe('resolveRepositoryDir', () => {
+  it('extracts owner/repo from HTTPS URL', () => {
+    expect(resolveRepositoryDir('/repos', 'https://github.com/owner/repo')).toBe('/repos/owner/repo')
+  })
+
+  it('strips .git suffix', () => {
+    expect(resolveRepositoryDir('/repos', 'https://github.com/owner/repo.git')).toBe('/repos/owner/repo')
+  })
+
+  it('handles nested path by taking only first two parts', () => {
+    expect(resolveRepositoryDir('/repos', 'https://github.com/myorg/myrepo/extra')).toBe('/repos/myorg/myrepo')
+  })
+
+  it('uses repositoryRoot as base', () => {
+    expect(resolveRepositoryDir('/home/user/.please/repositories', 'https://github.com/org/project'))
+      .toBe('/home/user/.please/repositories/org/project')
+  })
+})
+
+describe('createWorkspace with repository_root', () => {
+  let tmpRoot: string
+  let repoRoot: string
+
+  beforeEach(() => {
+    tmpRoot = mkdtempSync(join(tmpdir(), 'work-please-wt-test-'))
+    repoRoot = mkdtempSync(join(tmpdir(), 'work-please-repos-'))
+  })
+
+  afterEach(() => {
+    rmSync(tmpRoot, { recursive: true, force: true })
+    rmSync(repoRoot, { recursive: true, force: true })
+  })
+
+  it('calls git clone and worktree add when repository_root is set', async () => {
+    const spy = spyOn(_git, 'spawnSync').mockReturnValue({
+      exitCode: 0,
+      success: true,
+      stdout: Buffer.from(''),
+      stderr: Buffer.from(''),
+      signalCode: null,
+    } as unknown as ReturnType<typeof Bun.spawnSync>)
+
+    const issue = makeIssue({ identifier: 'MT-42', url: 'https://github.com/org/repo/issues/42' })
+    const config = makeConfig(tmpRoot, {
+      workspace: { root: tmpRoot, repository_root: repoRoot },
+    })
+
+    const result = await createWorkspace(config, 'MT-42', issue)
+
+    const calls = spy.mock.calls.map(args => args[0] as string[])
+    spy.mockRestore()
+
+    expect(result instanceof Error).toBe(false)
+
+    const cloneCall = calls.find(args => args[0] === 'git' && args[1] === 'clone')
+    const worktreeCall = calls.find(args => args[0] === 'git' && args.includes('worktree'))
+
+    expect(cloneCall).toBeDefined()
+    expect(cloneCall?.[2]).toBe('https://github.com/org/repo')
+    expect(cloneCall?.[3]).toBe(join(repoRoot, 'org', 'repo'))
+
+    expect(worktreeCall).toBeDefined()
+    expect(worktreeCall?.includes('add')).toBe(true)
+    expect(worktreeCall?.includes('MT-42')).toBe(true)
+  })
+
+  it('skips fetch when repo dir does not exist (clone path)', async () => {
+    const spy = spyOn(_git, 'spawnSync').mockReturnValue({
+      exitCode: 0,
+      success: true,
+      stdout: Buffer.from(''),
+      stderr: Buffer.from(''),
+      signalCode: null,
+    } as unknown as ReturnType<typeof Bun.spawnSync>)
+
+    const issue = makeIssue({ identifier: 'MT-10', url: 'https://github.com/org/repo/issues/10' })
+    const config = makeConfig(tmpRoot, {
+      workspace: { root: tmpRoot, repository_root: repoRoot },
+    })
+
+    await createWorkspace(config, 'MT-10', issue)
+
+    const fetchCall = spy.mock.calls.find(args => (args[0] as string[]).includes('fetch'))
+    spy.mockRestore()
+
+    expect(fetchCall).toBeUndefined()
+  })
+
+  it('runs fetch when repo dir already exists', async () => {
+    const repoDir = join(repoRoot, 'org', 'repo')
+    mkdirSync(repoDir, { recursive: true })
+
+    const spy = spyOn(_git, 'spawnSync').mockReturnValue({
+      exitCode: 0,
+      success: true,
+      stdout: Buffer.from(''),
+      stderr: Buffer.from(''),
+      signalCode: null,
+    } as unknown as ReturnType<typeof Bun.spawnSync>)
+
+    const issue = makeIssue({ identifier: 'MT-11', url: 'https://github.com/org/repo/issues/11' })
+    const config = makeConfig(tmpRoot, {
+      workspace: { root: tmpRoot, repository_root: repoRoot },
+    })
+
+    await createWorkspace(config, 'MT-11', issue)
+
+    const fetchCall = spy.mock.calls.find(
+      args => (args[0] as string[]).includes('fetch') && (args[0] as string[]).includes('origin'),
+    )
+    spy.mockRestore()
+
+    expect(fetchCall).toBeDefined()
+  })
+
+  it('returns error when git clone fails', async () => {
+    const spy = spyOn(_git, 'spawnSync').mockReturnValue({
+      exitCode: 1,
+      success: false,
+      stdout: Buffer.from(''),
+      stderr: Buffer.from('repository not found'),
+      signalCode: null,
+    } as unknown as ReturnType<typeof Bun.spawnSync>)
+
+    const issue = makeIssue({ identifier: 'MT-99', url: 'https://github.com/org/repo/issues/99' })
+    const config = makeConfig(tmpRoot, {
+      workspace: { root: tmpRoot, repository_root: repoRoot },
+    })
+
+    const result = await createWorkspace(config, 'MT-99', issue)
+    spy.mockRestore() // result captured before restore
+
+    expect(result instanceof Error).toBe(true)
+    if (result instanceof Error) {
+      expect(result.message).toContain('git clone failed')
+    }
+  })
+
+  it('existing behavior unchanged when repository_root is not set', async () => {
+    const config = makeConfig(tmpRoot)
+    const issue = makeIssue()
+
+    const result = await createWorkspace(config, 'MT-NO-WT', issue)
+    expect(result instanceof Error).toBe(false)
+    if (result instanceof Error)
+      return
+
+    expect(existsSync(result.path)).toBe(true)
+    expect(result.created_now).toBe(true)
+  })
+
+  it('sets up worktree on existing non-git workspace when repository_root is set', async () => {
+    // Simulate a workspace that exists (from a prior run) but is NOT a git worktree
+    const wsPath = join(tmpRoot, 'MT-EXISTING')
+    mkdirSync(wsPath)
+    writeFileSync(join(wsPath, 'leftover.txt'), 'old content')
+
+    const spy = spyOn(_git, 'spawnSync').mockReturnValue({
+      exitCode: 0,
+      success: true,
+      stdout: Buffer.from(''),
+      stderr: Buffer.from(''),
+      signalCode: null,
+    } as unknown as ReturnType<typeof Bun.spawnSync>)
+
+    const issue = makeIssue({ identifier: 'MT-EXISTING', url: 'https://github.com/org/repo/issues/7' })
+    const config = makeConfig(tmpRoot, {
+      workspace: { root: tmpRoot, repository_root: repoRoot },
+    })
+
+    const result = await createWorkspace(config, 'MT-EXISTING', issue)
+
+    const calls = spy.mock.calls.map(args => args[0] as string[])
+    spy.mockRestore()
+
+    expect(result instanceof Error).toBe(false)
+
+    const cloneCall = calls.find(args => args[0] === 'git' && args[1] === 'clone')
+    expect(cloneCall).toBeDefined()
+
+    const worktreeCall = calls.find(args => args[0] === 'git' && args.includes('worktree'))
+    expect(worktreeCall).toBeDefined()
+  })
+
+  it('skips worktree setup when workspace is already a git worktree', async () => {
+    const wsPath = join(tmpRoot, 'MT-ALREADY-GIT')
+    mkdirSync(wsPath)
+    // Simulate an existing git worktree by creating a .git file
+    writeFileSync(join(wsPath, '.git'), 'gitdir: /some/repo/.git/worktrees/MT-ALREADY-GIT')
+
+    const spy = spyOn(_git, 'spawnSync')
+
+    const issue = makeIssue({ identifier: 'MT-ALREADY-GIT', url: 'https://github.com/org/repo/issues/8' })
+    const config = makeConfig(tmpRoot, {
+      workspace: { root: tmpRoot, repository_root: repoRoot },
+    })
+
+    await createWorkspace(config, 'MT-ALREADY-GIT', issue)
+
+    const calls = spy.mock.calls
+    spy.mockRestore()
+
+    // No git commands should have been called (worktree already set up)
+    expect(calls.length).toBe(0)
+  })
+})
+
+describe('removeWorkspace with repository_root', () => {
+  let tmpRoot: string
+  let repoRoot: string
+
+  beforeEach(() => {
+    tmpRoot = mkdtempSync(join(tmpdir(), 'work-please-rm-wt-test-'))
+    repoRoot = mkdtempSync(join(tmpdir(), 'work-please-rm-repos-'))
+  })
+
+  afterEach(() => {
+    rmSync(tmpRoot, { recursive: true, force: true })
+    rmSync(repoRoot, { recursive: true, force: true })
+  })
+
+  it('calls git worktree remove before deleting workspace dir', async () => {
+    const wsPath = join(tmpRoot, 'MT-REM')
+    mkdirSync(wsPath)
+
+    const spy = spyOn(_git, 'spawnSync').mockReturnValue({
+      exitCode: 0,
+      success: true,
+      stdout: Buffer.from(''),
+      stderr: Buffer.from(''),
+      signalCode: null,
+    } as unknown as ReturnType<typeof Bun.spawnSync>)
+
+    const issue = makeIssue({ identifier: 'MT-REM', url: 'https://github.com/org/repo/issues/5' })
+    const config = makeConfig(tmpRoot, {
+      workspace: { root: tmpRoot, repository_root: repoRoot },
+    })
+
+    await removeWorkspace(config, 'MT-REM', issue)
+
+    const wtRemoveCall = spy.mock.calls.find(
+      args => (args[0] as string[]).includes('worktree') && (args[0] as string[]).includes('remove'),
+    )
+    spy.mockRestore()
+
+    expect(wtRemoveCall).toBeDefined()
+    expect((wtRemoveCall![0] as string[]).includes(wsPath)).toBe(true)
+    expect((wtRemoveCall![0] as string[]).includes('--force')).toBe(true)
+    expect(existsSync(wsPath)).toBe(false)
+  })
+
+  it('skips git worktree remove when repository_root is not set', async () => {
+    const wsPath = join(tmpRoot, 'MT-NORM')
+    mkdirSync(wsPath)
+
+    const spy = spyOn(_git, 'spawnSync')
+    const issue = makeIssue({ identifier: 'MT-NORM', url: 'https://github.com/org/repo/issues/6' })
+    const config = makeConfig(tmpRoot)
+
+    await removeWorkspace(config, 'MT-NORM', issue)
+
+    const wtCall = spy.mock.calls.find(
+      args => (args[0] as string[]).includes('worktree'),
+    )
+    spy.mockRestore()
+
+    expect(wtCall).toBeUndefined()
+    expect(existsSync(wsPath)).toBe(false)
   })
 })

@@ -3,15 +3,56 @@ import { existsSync, lstatSync, mkdirSync, rmSync, statSync } from 'node:fs'
 import { join, resolve, sep } from 'node:path'
 import process from 'node:process'
 
+// Thin wrapper around Bun.spawnSync — replaced by spyOn(_git, 'spawnSync') in unit tests
+export const _git = {
+  spawnSync: (args: string[]): ReturnType<typeof Bun.spawnSync> => Bun.spawnSync(args),
+}
+
 const EXCLUDED_ARTIFACTS = ['.elixir_ls', 'tmp']
 const IDENTIFIER_UNSAFE_RE = /[^\w.-]/g
 const LEADING_PATH_SEP_RE = /^[/\\]/
 const RELATIVE_PARTS_RE = /[/\\]/
 const REPO_URL_STRIP_RE = /\/(?:issues|pull)\/\d+/
+const REPO_GIT_SUFFIX_RE = /\.git$/
 
 export function extractRepoUrl(url: string): string | null {
   const match = REPO_URL_STRIP_RE.exec(url)
   return match ? url.slice(0, match.index) : null
+}
+
+export function resolveRepositoryDir(repositoryRoot: string, repoUrl: string): string {
+  const url = new URL(repoUrl)
+  const parts = url.pathname.replace(REPO_GIT_SUFFIX_RE, '').split('/').filter(Boolean)
+  return join(repositoryRoot, ...parts.slice(0, 2))
+}
+
+export function ensureSharedClone(repoDir: string, repoUrl: string): Error | null {
+  if (!existsSync(repoDir)) {
+    const result = _git.spawnSync(['git', 'clone', repoUrl, repoDir])
+    if (!result.success) {
+      const output = ((result.stdout?.toString() ?? '') + (result.stderr?.toString() ?? '')).trim().slice(0, 2048)
+      return new Error(`git clone failed: ${output}`)
+    }
+  }
+  else {
+    _git.spawnSync(['git', '-C', repoDir, 'fetch', 'origin'])
+  }
+  return null
+}
+
+export function createWorktree(repoDir: string, wsPath: string, branchName: string): Error | null {
+  try {
+    rmSync(wsPath, { recursive: true, force: true })
+  }
+  catch (err) {
+    return err instanceof Error ? err : new Error(String(err))
+  }
+  const result = _git.spawnSync(['git', '-C', repoDir, 'worktree', 'add', wsPath, '-b', branchName, 'origin/main'])
+  if (!result.success) {
+    const output = ((result.stdout?.toString() ?? '') + (result.stderr?.toString() ?? '')).trim().slice(0, 2048)
+    return new Error(`git worktree add failed: ${output}`)
+  }
+  return null
 }
 
 export function buildHookEnv(issue?: Issue): Record<string, string> {
@@ -121,7 +162,23 @@ export async function createWorkspace(
 
   const workspace: Workspace = { path: wsPath, workspace_key: key, created_now: createdNow }
 
-  if (createdNow && config.hooks.after_create) {
+  let worktreeSetUp = false
+  if (config.workspace.repository_root && issue?.url && !existsSync(join(wsPath, '.git'))) {
+    const repoUrl = extractRepoUrl(issue.url)
+    if (repoUrl) {
+      const repoDir = resolveRepositoryDir(config.workspace.repository_root, repoUrl)
+      const cloneErr = ensureSharedClone(repoDir, repoUrl)
+      if (cloneErr)
+        return cloneErr
+      const branchName = sanitizeIdentifier(issue.identifier)
+      const wtErr = createWorktree(repoDir, wsPath, branchName)
+      if (wtErr)
+        return wtErr
+      worktreeSetUp = true
+    }
+  }
+
+  if ((createdNow || worktreeSetUp) && config.hooks.after_create) {
     const hookErr = runHook(config.hooks.after_create, wsPath, config.hooks.timeout_ms, buildHookEnv(issue))
     if (hookErr)
       return hookErr
@@ -147,6 +204,14 @@ export async function removeWorkspace(config: ServiceConfig, identifier: string,
     const hookErr = runHook(config.hooks.before_remove, wsPath, config.hooks.timeout_ms, buildHookEnv(issue))
     if (hookErr) {
       console.error(`before_remove hook failed (ignored): ${hookErr.message}`)
+    }
+  }
+
+  if (config.workspace.repository_root && issue?.url) {
+    const repoUrl = extractRepoUrl(issue.url)
+    if (repoUrl) {
+      const repoDir = resolveRepositoryDir(config.workspace.repository_root, repoUrl)
+      _git.spawnSync(['git', '-C', repoDir, 'worktree', 'remove', wsPath, '--force'])
     }
   }
 

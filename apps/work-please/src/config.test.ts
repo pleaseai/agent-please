@@ -338,6 +338,33 @@ describe('normalizeState', () => {
   })
 })
 
+describe('workspace.repository_root', () => {
+  it('is null by default', () => {
+    const config = buildConfig(makeWorkflow({}))
+    expect(config.workspace.repository_root).toBeNull()
+  })
+
+  it('parses absolute path', () => {
+    const config = buildConfig(makeWorkflow({
+      workspace: { root: '/tmp/ws', repository_root: '/tmp/repos' },
+    }))
+    expect(config.workspace.repository_root).toBe('/tmp/repos')
+  })
+
+  it('expands ~ in repository_root', () => {
+    const home = process.env.HOME ?? '/home/user'
+    const config = buildConfig(makeWorkflow({
+      workspace: { root: '/tmp/ws', repository_root: '~/.please/repositories' },
+    }))
+    expect(config.workspace.repository_root).toBe(`${home}/.please/repositories`)
+  })
+
+  it('returns null for absent value', () => {
+    const config = buildConfig(makeWorkflow({ workspace: { root: '/tmp/ws' } }))
+    expect(config.workspace.repository_root).toBeNull()
+  })
+})
+
 describe('path expansion', () => {
   it('expands ~ to HOME directory', () => {
     const home = process.env.HOME ?? '/home/user'
