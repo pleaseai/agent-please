@@ -82,6 +82,11 @@ describe('matchesFilter', () => {
     expect(matchesFilter(issue, { assignee: [], label: ['Bug'] })).toBe(true)
   })
 
+  it('label filter: case-insensitive (issue label uppercase, filter lowercase)', () => {
+    const issue = makeIssue({ labels: ['Bug'] })
+    expect(matchesFilter(issue, { assignee: [], label: ['bug'] })).toBe(true)
+  })
+
   it('combined assignee + label: both must match (AND)', () => {
     const issue = makeIssue({ assignee: 'user1', labels: ['bug'] })
     expect(matchesFilter(issue, { assignee: ['user1'], label: ['bug'] })).toBe(true)

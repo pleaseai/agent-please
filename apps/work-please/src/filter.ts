@@ -10,7 +10,7 @@ export function matchesFilter(issue: Issue, filter: FilterConfig): boolean {
     }
   }
   if (filter.label.length > 0) {
-    if (!issue.labels.some(l => filter.label.some(f => f.toLowerCase() === l))) {
+    if (!issue.labels.some(l => filter.label.some(f => f.toLowerCase() === l.toLowerCase()))) {
       return false
     }
   }

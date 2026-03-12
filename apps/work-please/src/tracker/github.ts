@@ -4,6 +4,7 @@ import { GraphqlResponseError } from '@octokit/graphql'
 import { normalizeState } from '../config'
 import { createAuthenticatedGraphql } from './github-auth'
 import { matchesFilter } from '../filter'
+import { isTrackerError } from './types'
 
 const PAGE_SIZE = 50
 
@@ -195,10 +196,10 @@ export function createGitHubAdapter(config: ServiceConfig): TrackerAdapter {
         if (!status)
           continue
 
-        const matchesFilter = statusFilter.length === 0
+        const statusMatches = statusFilter.length === 0
           || statusFilter.some(s => normalizeState(s) === normalizeState(status))
 
-        if (matchesFilter) {
+        if (statusMatches) {
           issues.push(normalizeProjectItem(node, status))
         }
       }
@@ -221,7 +222,7 @@ export function createGitHubAdapter(config: ServiceConfig): TrackerAdapter {
   return {
     async fetchCandidateIssues() {
       const issues = await fetchAllItems(activeStatuses)
-      if ('code' in issues)
+      if (isTrackerError(issues))
         return issues
       return issues.filter(issue => matchesFilter(issue, filter))
     },
@@ -229,6 +230,8 @@ export function createGitHubAdapter(config: ServiceConfig): TrackerAdapter {
     async fetchIssuesByStates(states: string[]) {
       if (states.length === 0)
         return []
+      // Filter is intentionally not applied here: this method is used for blocker
+      // revalidation and reconciliation, which must see all issues regardless of filter.
       return fetchAllItems(states)
     },
 

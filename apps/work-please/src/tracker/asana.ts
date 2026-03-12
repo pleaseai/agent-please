@@ -2,6 +2,7 @@ import type { Issue, ServiceConfig } from '../types'
 import type { TrackerAdapter, TrackerError } from './types'
 import { normalizeState } from '../config'
 import { matchesFilter } from '../filter'
+import { isTrackerError } from './types'
 
 const PAGE_SIZE = 50
 const NETWORK_TIMEOUT_MS = 30_000
@@ -104,7 +105,7 @@ export function createAsanaAdapter(config: ServiceConfig): TrackerAdapter {
   return {
     async fetchCandidateIssues() {
       const issues = await fetchTasks(activeSections)
-      if ('code' in issues)
+      if (isTrackerError(issues))
         return issues
       return issues.filter(issue => matchesFilter(issue, filter))
     },
@@ -112,6 +113,8 @@ export function createAsanaAdapter(config: ServiceConfig): TrackerAdapter {
     async fetchIssuesByStates(states: string[]) {
       if (states.length === 0)
         return []
+      // Filter is intentionally not applied here: this method is used for blocker
+      // revalidation and reconciliation, which must see all issues regardless of filter.
       return fetchTasks(states)
     },
 
