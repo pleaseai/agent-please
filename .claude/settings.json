@@ -8,6 +8,7 @@
   "enabledPlugins": {
     "claude-code-setup@passionfactory": true,
     "standards@passionfactory": true,
+    "gardening@passionfactory": true,
     "please@passionfactory": true,
     "github@passionfactory": true,
     "bun@passionfactory": true,
