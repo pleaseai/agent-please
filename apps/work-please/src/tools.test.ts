@@ -4,7 +4,7 @@ import { createToolsMcpServer, executeTool, getToolSpecs } from './tools'
 
 function makeConfig(trackerKind: 'asana' | 'github_projects', apiKey: string | null = 'test-key'): ServiceConfig {
   const base: ServiceConfig = {
-    tracker: { kind: trackerKind, endpoint: 'https://app.asana.com/api/1.0', api_key: apiKey },
+    tracker: { kind: trackerKind, endpoint: 'https://app.asana.com/api/1.0', api_key: apiKey, label_prefix: null },
     polling: { interval_ms: 30000 },
     workspace: { root: '/tmp' },
     hooks: { after_create: null, before_run: null, after_run: null, before_remove: null, timeout_ms: 60000 },

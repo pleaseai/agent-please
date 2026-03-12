@@ -23,6 +23,7 @@ function makeConfig(tracker: Partial<ServiceConfig['tracker']>): ServiceConfig {
       kind: 'github_projects',
       endpoint: 'https://api.github.com',
       api_key: null,
+      label_prefix: null,
       ...tracker,
     },
     polling: { interval_ms: 30_000 },
