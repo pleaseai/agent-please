@@ -145,7 +145,7 @@ export function createAsanaAdapter(config: ServiceConfig): TrackerAdapter {
           state: state ?? '',
           branch_name: null,
           url: null,
-          assignee: null,
+          assignees: [],
           labels: [],
           blocked_by: [],
           created_at: null,
@@ -172,7 +172,7 @@ function normalizeAsanaTask(task: Record<string, unknown>, sectionName: string):
     : []
 
   const assigneeObj = task.assignee as { email?: string } | null | undefined
-  const assignee = assigneeObj?.email ?? null
+  const assignees = assigneeObj?.email ? [assigneeObj.email] : []
 
   return {
     id: gid,
@@ -183,7 +183,7 @@ function normalizeAsanaTask(task: Record<string, unknown>, sectionName: string):
     state: sectionName,
     branch_name: null,
     url: null,
-    assignee,
+    assignees,
     labels,
     blocked_by: blockedBy,
     created_at: task.created_at ? new Date(String(task.created_at)) : null,

@@ -12,7 +12,7 @@ function makeIssue(overrides: Partial<Issue> = {}): Issue {
     state: 'In Progress',
     branch_name: null,
     url: null,
-    assignee: null,
+    assignees: [],
     labels: ['bug'],
     blocked_by: [],
     created_at: null,

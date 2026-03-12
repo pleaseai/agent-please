@@ -29,7 +29,7 @@ function makeIssue(overrides: Partial<Issue> = {}): Issue {
     state: 'Todo',
     branch_name: null,
     url: 'https://github.com/org/repo/issues/42',
-    assignee: null,
+    assignees: [],
     labels: [],
     blocked_by: [],
     created_at: null,

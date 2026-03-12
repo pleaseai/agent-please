@@ -2,13 +2,14 @@ import type { Issue, IssueFilter } from './types'
 
 export function matchesFilter(issue: Issue, filter: IssueFilter): boolean {
   if (filter.assignee.length > 0) {
-    if (!issue.assignee
-      || !filter.assignee.some(a => a.toLowerCase() === issue.assignee!.toLowerCase())) {
+    const filterAssignees = new Set(filter.assignee.map(a => a.toLowerCase()))
+    if (!issue.assignees.some(a => filterAssignees.has(a.toLowerCase()))) {
       return false
     }
   }
   if (filter.label.length > 0) {
-    if (!issue.labels.some(l => filter.label.some(f => f.toLowerCase() === l.toLowerCase()))) {
+    const filterLabels = new Set(filter.label.map(l => l.toLowerCase()))
+    if (!issue.labels.some(l => filterLabels.has(l.toLowerCase()))) {
       return false
     }
   }

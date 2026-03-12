@@ -13,7 +13,7 @@ export interface Issue {
   state: string
   branch_name: string | null
   url: string | null
-  assignee: string | null
+  assignees: string[]
   labels: string[]
   blocked_by: BlockerRef[]
   created_at: Date | null

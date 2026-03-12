@@ -12,7 +12,7 @@ function makeIssue(overrides: Partial<Issue> = {}): Issue {
     state: 'In Progress',
     branch_name: null,
     url: null,
-    assignee: null,
+    assignees: [],
     labels: [],
     blocked_by: [],
     created_at: null,
@@ -28,33 +28,38 @@ describe('matchesFilter', () => {
   })
 
   it('assignee filter: matches when issue assignee is in list (OR)', () => {
-    const issue = makeIssue({ assignee: 'user1' })
+    const issue = makeIssue({ assignees: ['user1'] })
     expect(matchesFilter(issue, { assignee: ['user1', 'user2'], label: [] })).toBe(true)
   })
 
   it('assignee filter: matches second item in list (OR)', () => {
-    const issue = makeIssue({ assignee: 'user2' })
+    const issue = makeIssue({ assignees: ['user2'] })
     expect(matchesFilter(issue, { assignee: ['user1', 'user2'], label: [] })).toBe(true)
   })
 
   it('assignee filter: no match when assignee not in list', () => {
-    const issue = makeIssue({ assignee: 'other' })
+    const issue = makeIssue({ assignees: ['other'] })
     expect(matchesFilter(issue, { assignee: ['user1', 'user2'], label: [] })).toBe(false)
   })
 
   it('assignee filter: no match when issue has no assignee', () => {
-    const issue = makeIssue({ assignee: null })
+    const issue = makeIssue({ assignees: [] })
     expect(matchesFilter(issue, { assignee: ['user1'], label: [] })).toBe(false)
   })
 
   it('assignee filter: case-insensitive matching', () => {
-    const issue = makeIssue({ assignee: 'User1' })
+    const issue = makeIssue({ assignees: ['User1'] })
     expect(matchesFilter(issue, { assignee: ['user1'], label: [] })).toBe(true)
   })
 
   it('assignee filter: case-insensitive (filter uppercase, assignee lowercase)', () => {
-    const issue = makeIssue({ assignee: 'alice' })
+    const issue = makeIssue({ assignees: ['alice'] })
     expect(matchesFilter(issue, { assignee: ['Alice'], label: [] })).toBe(true)
+  })
+
+  it('assignee filter: matches when any of multiple issue assignees is in filter list', () => {
+    const issue = makeIssue({ assignees: ['alice', 'bob'] })
+    expect(matchesFilter(issue, { assignee: ['bob'], label: [] })).toBe(true)
   })
 
   it('label filter: matches when issue has at least one matching label (OR)', () => {
@@ -88,17 +93,17 @@ describe('matchesFilter', () => {
   })
 
   it('combined assignee + label: both must match (AND)', () => {
-    const issue = makeIssue({ assignee: 'user1', labels: ['bug'] })
+    const issue = makeIssue({ assignees: ['user1'], labels: ['bug'] })
     expect(matchesFilter(issue, { assignee: ['user1'], label: ['bug'] })).toBe(true)
   })
 
   it('combined: fails when assignee matches but label does not', () => {
-    const issue = makeIssue({ assignee: 'user1', labels: ['docs'] })
+    const issue = makeIssue({ assignees: ['user1'], labels: ['docs'] })
     expect(matchesFilter(issue, { assignee: ['user1'], label: ['bug'] })).toBe(false)
   })
 
   it('combined: fails when label matches but assignee does not', () => {
-    const issue = makeIssue({ assignee: 'other', labels: ['bug'] })
+    const issue = makeIssue({ assignees: ['other'], labels: ['bug'] })
     expect(matchesFilter(issue, { assignee: ['user1'], label: ['bug'] })).toBe(false)
   })
 })

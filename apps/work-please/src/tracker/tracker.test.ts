@@ -756,7 +756,7 @@ describe('asana assignee extraction', () => {
       if (!Array.isArray(result))
         return
       expect(result).toHaveLength(1)
-      expect(result[0].assignee).toBe('alice@example.com')
+      expect(result[0].assignees).toEqual(['alice@example.com'])
     }
     finally {
       globalThis.fetch = origFetch
@@ -789,7 +789,7 @@ describe('asana assignee extraction', () => {
       expect(Array.isArray(result)).toBe(true)
       if (!Array.isArray(result))
         return
-      expect(result[0].assignee).toBeNull()
+      expect(result[0].assignees).toEqual([])
     }
     finally {
       globalThis.fetch = origFetch
@@ -835,7 +835,7 @@ describe('github_projects assignee extraction', () => {
       if (!Array.isArray(result))
         return
       expect(result).toHaveLength(1)
-      expect(result[0].assignee).toBe('bob')
+      expect(result[0].assignees).toEqual(['bob'])
     }
     finally {
       globalThis.fetch = origFetch
@@ -878,7 +878,7 @@ describe('github_projects assignee extraction', () => {
       expect(Array.isArray(result)).toBe(true)
       if (!Array.isArray(result))
         return
-      expect(result[0].assignee).toBeNull()
+      expect(result[0].assignees).toEqual([])
     }
     finally {
       globalThis.fetch = origFetch
@@ -922,42 +922,70 @@ describe('fetchCandidateIssues filter application', () => {
     }
   })
 
-  test('github_projects: filters candidates by label when filter configured', async () => {
+  test('github_projects: passes label filter as server-side query string', async () => {
     const config = makeGitHubConfig({ filter: { label: 'bug' } })
     const adapter = createGitHubAdapter(config)
 
+    let capturedVariables: Record<string, unknown> = {}
     const origFetch = globalThis.fetch
-    globalThis.fetch = mock(async () => new Response(JSON.stringify({
-      data: {
-        repositoryOwner: {
-          projectV2: {
-            items: {
-              nodes: [
-                {
-                  id: 'PVTI_1',
-                  fieldValues: { nodes: [{ name: 'Todo', field: { name: 'Status' } }] },
-                  content: { number: 1, title: 'Bug Issue', body: null, url: null, labels: { nodes: [{ name: 'bug' }] }, assignees: { nodes: [] } },
-                },
-                {
-                  id: 'PVTI_2',
-                  fieldValues: { nodes: [{ name: 'Todo', field: { name: 'Status' } }] },
-                  content: { number: 2, title: 'Docs Issue', body: null, url: null, labels: { nodes: [{ name: 'docs' }] }, assignees: { nodes: [] } },
-                },
-              ],
-              pageInfo: { hasNextPage: false, endCursor: null },
+    globalThis.fetch = mock(async (_url: string | URL | Request, options?: RequestInit) => {
+      capturedVariables = (JSON.parse(String(options?.body ?? '{}')).variables ?? {}) as Record<string, unknown>
+      return new Response(JSON.stringify({
+        data: {
+          repositoryOwner: {
+            projectV2: {
+              items: {
+                nodes: [
+                  {
+                    id: 'PVTI_1',
+                    fieldValues: { nodes: [{ name: 'Todo', field: { name: 'Status' } }] },
+                    content: { number: 1, title: 'Bug Issue', body: null, url: null, labels: { nodes: [{ name: 'bug' }] }, assignees: { nodes: [] } },
+                  },
+                ],
+                pageInfo: { hasNextPage: false, endCursor: null },
+              },
             },
           },
         },
-      },
-    }), { status: 200, headers: { 'content-type': 'application/json' } })) as unknown as typeof fetch
+      }), { status: 200, headers: { 'content-type': 'application/json' } })
+    }) as unknown as typeof fetch
 
     try {
       const result = await adapter.fetchCandidateIssues()
+      expect(capturedVariables.search).toBe('label:bug')
       expect(Array.isArray(result)).toBe(true)
       if (!Array.isArray(result))
         return
       expect(result).toHaveLength(1)
       expect(result[0].identifier).toBe('#1')
+    }
+    finally {
+      globalThis.fetch = origFetch
+    }
+  })
+
+  test('github_projects: passes multi-assignee filter as OR query string', async () => {
+    const config = makeGitHubConfig({ filter: { assignee: 'alice,bob' } })
+    const adapter = createGitHubAdapter(config)
+
+    let capturedVariables: Record<string, unknown> = {}
+    const origFetch = globalThis.fetch
+    globalThis.fetch = mock(async (_url: string | URL | Request, options?: RequestInit) => {
+      capturedVariables = (JSON.parse(String(options?.body ?? '{}')).variables ?? {}) as Record<string, unknown>
+      return new Response(JSON.stringify({
+        data: {
+          repositoryOwner: {
+            projectV2: {
+              items: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } },
+            },
+          },
+        },
+      }), { status: 200, headers: { 'content-type': 'application/json' } })
+    }) as unknown as typeof fetch
+
+    try {
+      await adapter.fetchCandidateIssues()
+      expect(capturedVariables.search).toBe('assignee:alice,bob')
     }
     finally {
       globalThis.fetch = origFetch
