@@ -15,7 +15,6 @@ polling:
   interval_ms: 30000
 workspace:
   root: ~/workspaces
-  repository_root: ~/.please/repositories
 hooks:
   before_run: |
     set -e

@@ -10,11 +10,11 @@
 | `docs/specs/` | Feature specifications → [Specs Index](docs/specs/index.md) |
 | `docs/plans/` | Implementation plans → [Plans Index](docs/plans/index.md) |
 | `docs/decisions/` | Architecture Decision Records → [Decisions Index](docs/decisions/index.md) |
-| `docs/investigations/` | Bug investigation reports |
-| `docs/research/` | Research documents |
-| `docs/knowledge/` | Knowledge base articles |
-| `templates/` | Workflow templates (plugin-provided) |
-| `scripts/` | Utility scripts (plugin-provided) |
+| `docs/investigations/` | Bug investigation reports (empty) |
+| `docs/research/` | Research documents (empty) |
+| `docs/knowledge/` | Knowledge base articles (empty) |
+| `templates/` | Workflow templates (empty) |
+| `scripts/` | Utility scripts (empty) |
 | `references/` | Reference files → [References Index](references/INDEX.md) |
 
 ## Configuration

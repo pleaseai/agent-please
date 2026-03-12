@@ -158,5 +158,5 @@ Only commit when **all tests pass** and **all lint/type errors are resolved**.
   and PR links are performed by the Claude Code agent.
 - `WORKFLOW.md` supports `$ENV_VAR` references in the `api_key` field — the config layer must resolve these at startup.
 - Prompt templates use Liquid-compatible syntax (`{{ issue.title }}`, `{% if %}` blocks).
-- Agent runs use `claude --output-format stream-json` CLI output, not JSON-RPC.
+- Agent runs use `@anthropic-ai/claude-agent-sdk` (`query()`) to invoke Claude Code programmatically.
 - Workspace paths must be validated against `workspace.root` before launch (path traversal prevention).

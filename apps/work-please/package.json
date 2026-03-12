@@ -3,6 +3,9 @@
   "type": "module",
   "version": "0.0.0",
   "private": true,
+  "bin": {
+    "work-please": "./dist/index.js"
+  },
   "scripts": {
     "build": "bun build ./src/index.ts --outdir ./dist --target bun",
     "dev": "bun run --watch src/index.ts",
