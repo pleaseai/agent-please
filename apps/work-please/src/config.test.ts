@@ -138,6 +138,60 @@ describe('buildConfig', () => {
   })
 })
 
+describe('buildConfig - github app auth fields', () => {
+  it('parses app_id, private_key, and installation_id from YAML', () => {
+    const config = buildConfig(makeWorkflow({
+      tracker: {
+        kind: 'github_projects',
+        app_id: 'app-123',
+        private_key: '-----BEGIN RSA PRIVATE KEY-----\ntest',
+        installation_id: 456,
+        owner: 'myorg',
+        project_number: 1,
+      },
+    }))
+    expect(config.tracker.app_id).toBe('app-123')
+    expect(config.tracker.private_key).toBe('-----BEGIN RSA PRIVATE KEY-----\ntest')
+    expect(config.tracker.installation_id).toBe(456)
+  })
+
+  it('resolves app_id from $VAR env reference', () => {
+    process.env.TEST_GITHUB_APP_ID = 'env-app-id'
+    const config = buildConfig(makeWorkflow({
+      tracker: { kind: 'github_projects', app_id: '$TEST_GITHUB_APP_ID', owner: 'org', project_number: 1 },
+    }))
+    expect(config.tracker.app_id).toBe('env-app-id')
+    delete process.env.TEST_GITHUB_APP_ID
+  })
+
+  it('falls back to GITHUB_APP_ID env var when app_id is absent', () => {
+    process.env.GITHUB_APP_ID = 'fallback-app-id'
+    const config = buildConfig(makeWorkflow({
+      tracker: { kind: 'github_projects', owner: 'org', project_number: 1 },
+    }))
+    expect(config.tracker.app_id).toBe('fallback-app-id')
+    delete process.env.GITHUB_APP_ID
+  })
+
+  it('falls back to GITHUB_APP_INSTALLATION_ID env var when installation_id is absent', () => {
+    process.env.GITHUB_APP_INSTALLATION_ID = '9999'
+    const config = buildConfig(makeWorkflow({
+      tracker: { kind: 'github_projects', owner: 'org', project_number: 1 },
+    }))
+    expect(config.tracker.installation_id).toBe(9999)
+    delete process.env.GITHUB_APP_INSTALLATION_ID
+  })
+
+  it('resolves installation_id from $VAR env reference', () => {
+    process.env.TEST_INSTALLATION_ID = '12345'
+    const config = buildConfig(makeWorkflow({
+      tracker: { kind: 'github_projects', installation_id: '$TEST_INSTALLATION_ID', owner: 'org', project_number: 1 },
+    }))
+    expect(config.tracker.installation_id).toBe(12345)
+    delete process.env.TEST_INSTALLATION_ID
+  })
+})
+
 describe('validateConfig', () => {
   it('returns null for valid asana config', () => {
     const config = buildConfig(makeWorkflow({
@@ -163,6 +217,54 @@ describe('validateConfig', () => {
     const config = buildConfig(makeWorkflow({ tracker: { kind: 'linear' } }))
     const err = validateConfig(config)
     expect(err?.code).toBe('unsupported_tracker_kind')
+  })
+
+  it('returns null for valid github_projects config with app auth (no api_key)', () => {
+    const config = buildConfig(makeWorkflow({
+      tracker: {
+        kind: 'github_projects',
+        app_id: 'app-123',
+        private_key: '-----BEGIN RSA PRIVATE KEY-----\nkey',
+        installation_id: 456,
+        owner: 'myorg',
+        project_number: 1,
+      },
+    }))
+    expect(validateConfig(config)).toBeNull()
+  })
+
+  it('returns incomplete_github_app_config when only some app fields are present', () => {
+    const origToken = process.env.GITHUB_TOKEN
+    delete process.env.GITHUB_TOKEN
+    try {
+      const config = buildConfig(makeWorkflow({
+        tracker: { kind: 'github_projects', app_id: 'app-123', owner: 'myorg', project_number: 1 },
+      }))
+      const err = validateConfig(config)
+      expect(err?.code).toBe('incomplete_github_app_config')
+      if (err?.code === 'incomplete_github_app_config') {
+        expect(err.missing).toContain('private_key')
+        expect(err.missing).toContain('installation_id')
+      }
+    }
+    finally {
+      if (origToken !== undefined)
+        process.env.GITHUB_TOKEN = origToken
+    }
+  })
+
+  it('returns missing_tracker_api_key when api_key is absent and no app fields', () => {
+    const origToken = process.env.GITHUB_TOKEN
+    delete process.env.GITHUB_TOKEN
+    try {
+      const config = buildConfig(makeWorkflow({ tracker: { kind: 'github_projects', owner: 'org', project_number: 1 } }))
+      const err = validateConfig(config)
+      expect(err?.code).toBe('missing_tracker_api_key')
+    }
+    finally {
+      if (origToken !== undefined)
+        process.env.GITHUB_TOKEN = origToken
+    }
   })
 
   it('returns missing_tracker_api_key when api_key is absent', () => {

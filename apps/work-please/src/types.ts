@@ -38,6 +38,10 @@ export interface TrackerConfig {
   project_id?: string | null
   active_statuses?: string[]
   terminal_statuses?: string[]
+  // github_projects — app auth (alternative to api_key)
+  app_id?: string | null
+  private_key?: string | null
+  installation_id?: number | null
 }
 
 export interface ServiceConfig {

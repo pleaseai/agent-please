@@ -1,8 +1,9 @@
 import type { AnyZodRawShape, SdkMcpToolDefinition } from '@anthropic-ai/claude-agent-sdk'
 import type { ServiceConfig } from './types'
 import { createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk'
-import { graphql as createGraphql, GraphqlResponseError } from '@octokit/graphql'
+import { GraphqlResponseError } from '@octokit/graphql'
 import { z } from 'zod'
+import { createAuthenticatedGraphql } from './tracker/github-auth'
 
 const NETWORK_TIMEOUT_MS = 30_000
 const MULTIPLE_OPERATIONS_RE = /\b(query|mutation|subscription)\b/gi
@@ -187,19 +188,14 @@ async function executeGitHubGraphql(config: ServiceConfig, rawArgs: unknown): Pr
     return failureResult({ error: args.error })
 
   const { query, variables } = args
-  const apiKey = config.tracker.api_key
-  if (!apiKey) {
-    return failureResult({ error: { message: 'GitHub auth not configured. Set tracker.api_key or GITHUB_TOKEN.' } })
+  const { api_key, app_id, private_key, installation_id } = config.tracker
+  const hasAuth = api_key || (app_id && private_key && installation_id != null)
+  if (!hasAuth) {
+    return failureResult({ error: { message: 'GitHub auth not configured. Set tracker.api_key or GITHUB_TOKEN, or configure app_id, private_key, and installation_id.' } })
   }
 
-  const base = (config.tracker.endpoint ?? 'https://api.github.com').replace(TRAILING_SLASH_RE, '')
-
   try {
-    const octokit = createGraphql.defaults({
-      baseUrl: base,
-      headers: { authorization: `bearer ${apiKey}` },
-      request: { timeout: NETWORK_TIMEOUT_MS },
-    })
+    const octokit = createAuthenticatedGraphql(config)
     const data = await octokit(query, variables ?? {})
     return {
       success: true,

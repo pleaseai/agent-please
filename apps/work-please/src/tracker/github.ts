@@ -1,25 +1,18 @@
 import type { Issue, ServiceConfig } from '../types'
 import type { TrackerAdapter, TrackerError } from './types'
-import { graphql as createGraphql, GraphqlResponseError } from '@octokit/graphql'
+import { GraphqlResponseError } from '@octokit/graphql'
 import { normalizeState } from '../config'
+import { createAuthenticatedGraphql } from './github-auth'
 
 const PAGE_SIZE = 50
-const NETWORK_TIMEOUT_MS = 30_000
-const TRAILING_SLASH_RE = /\/$/
 
 export function createGitHubAdapter(config: ServiceConfig): TrackerAdapter {
-  const endpoint = (config.tracker.endpoint ?? 'https://api.github.com').replace(TRAILING_SLASH_RE, '')
-  const apiKey = config.tracker.api_key ?? ''
   const owner = config.tracker.owner ?? ''
   const projectNumber = config.tracker.project_number ?? 0
   const projectId = config.tracker.project_id ?? null
   const activeStatuses = config.tracker.active_statuses ?? ['Todo', 'In Progress']
 
-  const octokit = createGraphql.defaults({
-    baseUrl: endpoint,
-    headers: { authorization: `bearer ${apiKey}` },
-    request: { timeout: NETWORK_TIMEOUT_MS },
-  })
+  const octokit = createAuthenticatedGraphql(config)
 
   async function runGraphql(query: string, variables: Record<string, unknown> = {}): Promise<{ data: unknown } | TrackerError> {
     try {

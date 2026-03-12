@@ -95,6 +95,9 @@ function buildTrackerConfig(kind: string | null, tracker: Record<string, unknown
       project_id: stringValue(tracker.project_id) ?? null,
       active_statuses: csvValue(tracker.active_statuses) ?? csvValue(tracker.active_states) ?? DEFAULTS.GITHUB_ACTIVE_STATUSES,
       terminal_statuses: csvValue(tracker.terminal_statuses) ?? csvValue(tracker.terminal_states) ?? DEFAULTS.GITHUB_TERMINAL_STATUSES,
+      app_id: resolveEnvValue(stringValue(tracker.app_id), process.env.GITHUB_APP_ID),
+      private_key: resolveEnvValue(stringValue(tracker.private_key), process.env.GITHUB_APP_PRIVATE_KEY),
+      installation_id: resolveInstallationId(tracker.installation_id),
     }
   }
 
@@ -109,6 +112,7 @@ export type ValidationError
   = | { code: 'missing_tracker_kind' }
     | { code: 'unsupported_tracker_kind', kind: string }
     | { code: 'missing_tracker_api_key' }
+    | { code: 'incomplete_github_app_config', missing: string[] }
     | { code: 'missing_tracker_project_config', field: string }
     | { code: 'missing_claude_command' }
 
@@ -120,8 +124,27 @@ export function validateConfig(config: ServiceConfig): ValidationError | null {
   if (kind !== 'asana' && kind !== 'github_projects') {
     return { code: 'unsupported_tracker_kind', kind }
   }
-  if (!config.tracker.api_key)
+
+  if (kind === 'github_projects' && !config.tracker.api_key) {
+    const appId = config.tracker.app_id
+    const privateKey = config.tracker.private_key
+    const installationId = config.tracker.installation_id
+    const hasAny = appId || privateKey || (installationId != null)
+    if (!hasAny)
+      return { code: 'missing_tracker_api_key' }
+    const missing: string[] = []
+    if (!appId)
+      missing.push('app_id')
+    if (!privateKey)
+      missing.push('private_key')
+    if (installationId == null)
+      missing.push('installation_id')
+    if (missing.length > 0)
+      return { code: 'incomplete_github_app_config', missing }
+  }
+  else if (!config.tracker.api_key) {
     return { code: 'missing_tracker_api_key' }
+  }
 
   if (kind === 'asana' && !config.tracker.project_gid) {
     return { code: 'missing_tracker_project_config', field: 'project_gid' }
@@ -257,6 +280,14 @@ function stateLimitsValue(val: unknown): Record<string, number> {
     }
   }
   return result
+}
+
+function resolveInstallationId(val: unknown): number | null {
+  const strVal = resolveEnvValue(stringValue(val), process.env.GITHUB_APP_INSTALLATION_ID)
+  if (!strVal)
+    return null
+  const n = nonNegIntOrNull(strVal)
+  return n != null && n > 0 ? n : null
 }
 
 function resolveEnvValue(val: string | null, envFallback: string | undefined): string | null {
