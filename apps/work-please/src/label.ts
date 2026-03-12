@@ -15,6 +15,13 @@ const LABEL_COLORS: Record<LabelState, string> = {
 const LABEL_TIMEOUT_MS = 10_000
 const GITHUB_ISSUE_URL_RE = /https?:\/\/[^/]+\/([^/]+)\/([^/]+)\/(?:issues|pull)\/(\d+)/
 
+interface RepoContext {
+  endpoint: string
+  owner: string
+  repo: string
+  headers: Record<string, string>
+}
+
 export function parseGitHubIssueUrl(url: string): { owner: string, repo: string, number: number } | null {
   const match = url.match(GITHUB_ISSUE_URL_RE)
   if (!match)
@@ -53,11 +60,13 @@ export function createLabelService(config: ServiceConfig): LabelService | null {
       if (!parsed)
         return
 
+      const ctx: RepoContext = { endpoint, owner: parsed.owner, repo: parsed.repo, headers }
+
       try {
         const labelName = formatLabelName(prefix, state)
-        await ensureLabelExists(endpoint, parsed.owner, parsed.repo, labelName, state, headers)
-        await removeExistingPrefixLabels(endpoint, parsed.owner, parsed.repo, parsed.number, prefix, headers)
-        await addLabel(endpoint, parsed.owner, parsed.repo, parsed.number, labelName, headers)
+        await ensureLabelExists(ctx, labelName, state)
+        await removeExistingPrefixLabels(ctx, parsed.number, prefix)
+        await addLabel(ctx, parsed.number, labelName)
       }
       catch (err) {
         console.warn(`[label] error setting label issue_url=${issue.url}: ${err}`)
@@ -78,13 +87,11 @@ async function fetchWithTimeout(url: string, options: RequestInit): Promise<Resp
 }
 
 async function ensureLabelExists(
-  endpoint: string,
-  owner: string,
-  repo: string,
+  ctx: RepoContext,
   name: string,
   state: LabelState,
-  headers: Record<string, string>,
 ): Promise<void> {
+  const { endpoint, owner, repo, headers } = ctx
   const url = `${endpoint}/repos/${owner}/${repo}/labels`
   const response = await fetchWithTimeout(url, {
     method: 'POST',
@@ -92,38 +99,45 @@ async function ensureLabelExists(
     body: JSON.stringify({ name, color: LABEL_COLORS[state] }),
   })
   if (!response.ok && response.status !== 422) {
-    console.warn(`[label] failed to ensure label exists: ${response.status}`)
+    console.warn(`[label] failed to ensure label exists label_name=${name} owner=${owner} repo=${repo}: HTTP ${response.status}`)
   }
 }
 
 async function removeExistingPrefixLabels(
-  endpoint: string,
-  owner: string,
-  repo: string,
+  ctx: RepoContext,
   number: number,
   prefix: string,
-  headers: Record<string, string>,
 ): Promise<void> {
+  const { endpoint, owner, repo, headers } = ctx
   const url = `${endpoint}/repos/${owner}/${repo}/issues/${number}/labels`
   const response = await fetchWithTimeout(url, { method: 'GET', headers })
-  if (!response.ok)
+  if (!response.ok) {
+    console.warn(`[label] failed to fetch existing labels owner=${owner} repo=${repo} issue_number=${number}: HTTP ${response.status}`)
     return
-  const labels = await response.json() as Array<{ name: string }>
+  }
+  let labels: Array<{ name: string }>
+  try {
+    labels = await response.json() as Array<{ name: string }>
+  }
+  catch {
+    console.warn(`[label] failed to parse label list response for issue_number=${number}`)
+    return
+  }
   const toRemove = labels.filter(l => l.name.startsWith(`${prefix}: `))
   for (const label of toRemove) {
     const deleteUrl = `${url}/${encodeURIComponent(label.name)}`
-    await fetchWithTimeout(deleteUrl, { method: 'DELETE', headers }).catch(() => {})
+    await fetchWithTimeout(deleteUrl, { method: 'DELETE', headers }).catch((err) => {
+      console.warn(`[label] failed to remove label "${label.name}" issue_number=${number}: ${err}`)
+    })
   }
 }
 
 async function addLabel(
-  endpoint: string,
-  owner: string,
-  repo: string,
+  ctx: RepoContext,
   number: number,
   name: string,
-  headers: Record<string, string>,
 ): Promise<void> {
+  const { endpoint, owner, repo, headers } = ctx
   const url = `${endpoint}/repos/${owner}/${repo}/issues/${number}/labels`
   const response = await fetchWithTimeout(url, {
     method: 'POST',
@@ -131,6 +145,6 @@ async function addLabel(
     body: JSON.stringify({ labels: [name] }),
   })
   if (!response.ok) {
-    console.warn(`[label] failed to add label: ${response.status}`)
+    console.warn(`[label] failed to add label label_name=${name} owner=${owner} repo=${repo} issue_number=${number}: HTTP ${response.status}`)
   }
 }

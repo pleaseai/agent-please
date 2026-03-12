@@ -208,4 +208,29 @@ describe('setLabel', () => {
       globalThis.fetch = origFetch
     }
   })
+
+  it('non-OK GET for existing labels skips DELETE but still adds new label', async () => {
+    const calls: Array<{ method: string, url: string }> = []
+    const origFetch = globalThis.fetch
+    globalThis.fetch = mock(async (url: string, options: RequestInit) => {
+      calls.push({ method: options.method ?? 'GET', url: String(url) })
+      if (options.method === 'GET') {
+        return new Response('Forbidden', { status: 403 })
+      }
+      return new Response(JSON.stringify({}), { status: 201, headers: { 'content-type': 'application/json' } })
+    }) as unknown as typeof fetch
+
+    try {
+      const service = createLabelService(makeGithubConfig('work-please'))!
+      const result = await service.setLabel(makeIssue({ url: 'https://github.com/org/repo/issues/7' }), 'done')
+      expect(result).toBeUndefined()
+      const deleteCalls = calls.filter(c => c.method === 'DELETE')
+      expect(deleteCalls).toHaveLength(0)
+      const postToIssue = calls.filter(c => c.method === 'POST' && c.url.includes('/issues/7/labels'))
+      expect(postToIssue).toHaveLength(1)
+    }
+    finally {
+      globalThis.fetch = origFetch
+    }
+  })
 })

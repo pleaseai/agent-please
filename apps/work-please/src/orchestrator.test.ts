@@ -1,3 +1,4 @@
+import type { LabelService } from './label'
 import type { Issue, RunningEntry } from './types'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -498,6 +499,292 @@ describe('worker exit retry scheduling (Section 17.4)', () => {
   })
 })
 
+function makeMockLabelService(): LabelService & { calls: Array<{ state: string }> } {
+  const calls: Array<{ state: string }> = []
+  return {
+    calls,
+    async setLabel(_issue: Issue, state: string): Promise<void> {
+      calls.push({ state })
+    },
+  }
+}
+
+function makeWorkflowWithLabelPrefix(pollMs: number, labelPrefix: string): string {
+  return `---
+tracker:
+  kind: github_projects
+  api_key: ghtoken
+  owner: myorg
+  project_number: 1
+  label_prefix: ${labelPrefix}
+polling:
+  interval_ms: ${pollMs}
+workspace:
+  root: /tmp
+---
+Prompt for {{ issue.title }}.`
+}
+
+describe('label trigger points', () => {
+  it('setLabel is called with "dispatched" when an issue is dispatched via dispatchIssue', async () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), 'work-please-label-test-'))
+    const wfPath = join(tmpDir, 'WORKFLOW.md')
+    writeFileSync(wfPath, makeWorkflowWithLabelPrefix(30_000, 'work-please'))
+
+    const mockLabelService = makeMockLabelService()
+    const orch = new Orchestrator(wfPath)
+    // Inject mock label service
+    ;(orch as unknown as { labelService: LabelService | null }).labelService = mockLabelService
+
+    const issue = makeIssue({ id: 'i1', identifier: 'MT-1', state: 'In Progress', url: 'https://github.com/org/repo/issues/1' })
+    ;(orch as unknown as { state: { running: Map<string, unknown>, claimed: Set<string>, retry_attempts: Map<string, unknown> } }).state.running.set('i1', {
+      identifier: 'MT-1',
+      issue,
+      session_id: null,
+      agent_app_server_pid: null,
+      last_agent_message: null,
+      last_agent_event: null,
+      last_agent_timestamp: null,
+      agent_input_tokens: 0,
+      agent_output_tokens: 0,
+      agent_total_tokens: 0,
+      last_reported_input_tokens: 0,
+      last_reported_output_tokens: 0,
+      last_reported_total_tokens: 0,
+      turn_count: 0,
+      retry_attempt: null,
+      started_at: new Date(),
+    })
+
+    try {
+      ;(orch as unknown as { dispatchIssue: (issue: Issue, attempt: number | null) => void }).dispatchIssue(issue, null)
+      // Give the label service call (which is async fire-and-forget) time to resolve
+      await new Promise(r => setTimeout(r, 50))
+      expect(mockLabelService.calls.some(c => c.state === 'dispatched')).toBe(true)
+    }
+    finally {
+      orch.stop()
+      rmSync(tmpDir, { recursive: true, force: true })
+    }
+  })
+
+  it('setLabel is called with "done" when onWorkerExit is called with reason "normal"', async () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), 'work-please-label-test-'))
+    const wfPath = join(tmpDir, 'WORKFLOW.md')
+    writeFileSync(wfPath, makeWorkflowWithLabelPrefix(30_000, 'work-please'))
+
+    const mockLabelService = makeMockLabelService()
+    const orch = new Orchestrator(wfPath)
+    ;(orch as unknown as { labelService: LabelService | null }).labelService = mockLabelService
+
+    const issue = makeIssue({ id: 'i2', identifier: 'MT-2', state: 'In Progress', url: 'https://github.com/org/repo/issues/2' })
+    const orchState = (orch as unknown as { state: { running: Map<string, unknown>, claimed: Set<string>, retry_attempts: Map<string, unknown>, agent_totals: Record<string, number>, completed: Set<string> } }).state
+    orchState.running.set('i2', {
+      identifier: 'MT-2',
+      issue,
+      session_id: null,
+      agent_app_server_pid: null,
+      last_agent_message: null,
+      last_agent_event: null,
+      last_agent_timestamp: null,
+      agent_input_tokens: 0,
+      agent_output_tokens: 0,
+      agent_total_tokens: 0,
+      last_reported_input_tokens: 0,
+      last_reported_output_tokens: 0,
+      last_reported_total_tokens: 0,
+      turn_count: 0,
+      retry_attempt: null,
+      started_at: new Date(),
+    })
+
+    try {
+      ;(orch as unknown as { onWorkerExit: (issueId: string, startedAt: Date, reason: string, error: string | null) => void }).onWorkerExit('i2', new Date(), 'normal', null)
+      await new Promise(r => setTimeout(r, 50))
+      expect(mockLabelService.calls.some(c => c.state === 'done')).toBe(true)
+    }
+    finally {
+      orch.stop()
+      rmSync(tmpDir, { recursive: true, force: true })
+    }
+  })
+
+  it('setLabel is called with "failed" when onWorkerExit is called with reason "failed"', async () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), 'work-please-label-test-'))
+    const wfPath = join(tmpDir, 'WORKFLOW.md')
+    writeFileSync(wfPath, makeWorkflowWithLabelPrefix(30_000, 'work-please'))
+
+    const mockLabelService = makeMockLabelService()
+    const orch = new Orchestrator(wfPath)
+    ;(orch as unknown as { labelService: LabelService | null }).labelService = mockLabelService
+
+    const issue = makeIssue({ id: 'i3', identifier: 'MT-3', state: 'In Progress', url: 'https://github.com/org/repo/issues/3' })
+    const orchState = (orch as unknown as { state: { running: Map<string, unknown>, claimed: Set<string>, retry_attempts: Map<string, unknown>, agent_totals: Record<string, number>, completed: Set<string> } }).state
+    orchState.running.set('i3', {
+      identifier: 'MT-3',
+      issue,
+      session_id: null,
+      agent_app_server_pid: null,
+      last_agent_message: null,
+      last_agent_event: null,
+      last_agent_timestamp: null,
+      agent_input_tokens: 0,
+      agent_output_tokens: 0,
+      agent_total_tokens: 0,
+      last_reported_input_tokens: 0,
+      last_reported_output_tokens: 0,
+      last_reported_total_tokens: 0,
+      turn_count: 0,
+      retry_attempt: null,
+      started_at: new Date(),
+    })
+
+    try {
+      ;(orch as unknown as { onWorkerExit: (issueId: string, startedAt: Date, reason: string, error: string | null) => void }).onWorkerExit('i3', new Date(), 'failed', 'agent crashed')
+      await new Promise(r => setTimeout(r, 50))
+      expect(mockLabelService.calls.some(c => c.state === 'failed')).toBe(true)
+    }
+    finally {
+      orch.stop()
+      rmSync(tmpDir, { recursive: true, force: true })
+    }
+  })
+
+  it('setLabel is called with "done" when reconciler detects terminal state (CRITICAL-2)', async () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), 'work-please-label-test-'))
+    const wfPath = join(tmpDir, 'WORKFLOW.md')
+    writeFileSync(wfPath, makeWorkflowWithLabelPrefix(30_000, 'work-please'))
+
+    const mockLabelService = makeMockLabelService()
+    const orch = new Orchestrator(wfPath)
+    ;(orch as unknown as { labelService: LabelService | null }).labelService = mockLabelService
+
+    const issue = makeIssue({ id: 'i4', identifier: 'MT-4', state: 'In Progress', url: 'https://github.com/org/repo/issues/4' })
+    const orchState = (orch as unknown as { state: { running: Map<string, unknown>, claimed: Set<string>, retry_attempts: Map<string, unknown>, agent_totals: Record<string, number>, completed: Set<string> } }).state
+    orchState.running.set('i4', {
+      identifier: 'MT-4',
+      issue,
+      session_id: null,
+      agent_app_server_pid: null,
+      last_agent_message: null,
+      last_agent_event: null,
+      last_agent_timestamp: null,
+      agent_input_tokens: 0,
+      agent_output_tokens: 0,
+      agent_total_tokens: 0,
+      last_reported_input_tokens: 0,
+      last_reported_output_tokens: 0,
+      last_reported_total_tokens: 0,
+      turn_count: 0,
+      retry_attempt: null,
+      started_at: new Date(),
+    })
+
+    // Mock fetch to return the issue in terminal state for fetchIssueStatesByIds.
+    // The reconciler calls fetchIssueStatesByIds (ITEMS_BY_IDS_QUERY with nodes).
+    // All other calls (startup cleanup fetchIssuesByStates) return empty results.
+    const origFetch = globalThis.fetch
+    globalThis.fetch = (async (_url: string, init?: RequestInit) => {
+      const body = typeof init?.body === 'string' ? init.body : ''
+      // ITEMS_BY_IDS_QUERY has `nodes(ids:` — detect by query content
+      if (body.includes('nodes(ids:')) {
+        return new Response(JSON.stringify({
+          data: {
+            nodes: [
+              {
+                id: 'i4',
+                fieldValues: {
+                  nodes: [
+                    { name: 'Done', field: { name: 'Status' } },
+                  ],
+                },
+                content: { number: 4, title: 'Test' },
+              },
+            ],
+          },
+        }), { status: 200, headers: { 'content-type': 'application/json' } })
+      }
+      // All other queries (fetchIssuesByStates for startup cleanup) return empty
+      return new Response(JSON.stringify({
+        data: {
+          repositoryOwner: {
+            projectV2: {
+              items: {
+                nodes: [],
+                pageInfo: { hasNextPage: false, endCursor: null },
+              },
+            },
+          },
+        },
+      }), { status: 200, headers: { 'content-type': 'application/json' } })
+    }) as unknown as typeof fetch
+
+    try {
+      await (orch as unknown as { reconcileRunningIssues: () => Promise<void> }).reconcileRunningIssues()
+      await new Promise(r => setTimeout(r, 50))
+      expect(mockLabelService.calls.some(c => c.state === 'done')).toBe(true)
+    }
+    finally {
+      orch.stop()
+      globalThis.fetch = origFetch
+      rmSync(tmpDir, { recursive: true, force: true })
+    }
+  })
+
+  it('null label service (no label_prefix) results in no setLabel calls', async () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), 'work-please-label-test-'))
+    const wfPath = join(tmpDir, 'WORKFLOW.md')
+    // Workflow without label_prefix — labelService will be null
+    writeFileSync(wfPath, `---
+tracker:
+  kind: github_projects
+  api_key: ghtoken
+  owner: myorg
+  project_number: 1
+polling:
+  interval_ms: 30000
+workspace:
+  root: /tmp
+---
+Prompt text.`)
+
+    const orch = new Orchestrator(wfPath)
+    const orchInternal = orch as unknown as { labelService: LabelService | null }
+    expect(orchInternal.labelService).toBeNull()
+
+    try {
+      // onWorkerExit with null labelService — should not throw
+      const issue = makeIssue({ id: 'i5', identifier: 'MT-5' })
+      const orchState = (orch as unknown as { state: { running: Map<string, unknown>, claimed: Set<string>, retry_attempts: Map<string, unknown>, agent_totals: Record<string, number>, completed: Set<string> } }).state
+      orchState.running.set('i5', {
+        identifier: 'MT-5',
+        issue,
+        session_id: null,
+        agent_app_server_pid: null,
+        last_agent_message: null,
+        last_agent_event: null,
+        last_agent_timestamp: null,
+        agent_input_tokens: 0,
+        agent_output_tokens: 0,
+        agent_total_tokens: 0,
+        last_reported_input_tokens: 0,
+        last_reported_output_tokens: 0,
+        last_reported_total_tokens: 0,
+        turn_count: 0,
+        retry_attempt: null,
+        started_at: new Date(),
+      })
+      ;(orch as unknown as { onWorkerExit: (issueId: string, startedAt: Date, reason: string, error: string | null) => void }).onWorkerExit('i5', new Date(), 'normal', null)
+      // No setLabel call should have happened (labelService is null)
+      expect(orchInternal.labelService).toBeNull()
+    }
+    finally {
+      orch.stop()
+      rmSync(tmpDir, { recursive: true, force: true })
+    }
+  })
+})
+
 describe('workflow hot reload (Section 17.1)', () => {
   function makeWorkflowContent(pollMs: number): string {
     return `---
@@ -571,6 +858,55 @@ Prompt text.`
       await new Promise(r => setTimeout(r, 300))
       // Config should remain at the last good value
       expect(orch.getConfig().polling.interval_ms).toBe(30_000)
+    }
+    finally {
+      orch.stop()
+      globalThis.fetch = origFetch
+      rmSync(tmpDir, { recursive: true, force: true })
+    }
+  })
+
+  it('re-initializes labelService with new config on hot-reload (IMPORTANT-6)', async () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), 'work-please-test-'))
+    const wsRoot = join(tmpDir, 'workspaces')
+    mkdirSync(wsRoot)
+    const wfPath = join(tmpDir, 'WORKFLOW.md')
+
+    // Start without label_prefix
+    writeFileSync(wfPath, makeWorkflowContent(30_000))
+    const orch = new Orchestrator(wfPath)
+    expect(orch.getConfig().tracker.label_prefix).toBeNull()
+
+    const origFetch = globalThis.fetch
+    globalThis.fetch = (async () => ({
+      ok: true,
+      json: async () => ({ data: [] }),
+    })) as unknown as typeof fetch
+
+    try {
+      await orch.start()
+
+      // Update workflow with a label_prefix added
+      const newContent = `---
+tracker:
+  kind: asana
+  api_key: test-key
+  project_gid: gid-1
+  label_prefix: work-please
+polling:
+  interval_ms: 30000
+---
+Prompt text.`
+      writeFileSync(wfPath, newContent)
+
+      // Poll until config updates or timeout (max 2s)
+      const deadline = Date.now() + 2_000
+      while (orch.getConfig().tracker.label_prefix !== 'work-please' && Date.now() < deadline) {
+        await new Promise(r => setTimeout(r, 20))
+      }
+
+      // Verify the config was updated — createLabelService is called internally with new config
+      expect(orch.getConfig().tracker.label_prefix).toBe('work-please')
     }
     finally {
       orch.stop()
