@@ -1,6 +1,8 @@
 import type { Issue, ServiceConfig } from '../types'
 import type { TrackerAdapter, TrackerError } from './types'
 import { normalizeState } from '../config'
+import { matchesFilter } from '../filter'
+import { isTrackerError } from './types'
 
 const PAGE_SIZE = 50
 const NETWORK_TIMEOUT_MS = 30_000
@@ -10,6 +12,7 @@ export function createAsanaAdapter(config: ServiceConfig): TrackerAdapter {
   const apiKey = config.tracker.api_key
   const projectGid = config.tracker.project_gid ?? ''
   const activeSections = config.tracker.active_sections ?? ['To Do', 'In Progress']
+  const filter = config.tracker.filter
 
   function headers(): Record<string, string> {
     return {
@@ -73,7 +76,7 @@ export function createAsanaAdapter(config: ServiceConfig): TrackerAdapter {
     const issues: Issue[] = []
     let offset: string | null = null
 
-    const fields = 'gid,name,notes,dependencies,tags,created_at,modified_at,custom_fields,memberships.section.name'
+    const fields = 'gid,name,notes,dependencies,tags,created_at,modified_at,custom_fields,memberships.section.name,assignee,assignee.email'
 
     do {
       const url = offset
@@ -101,12 +104,17 @@ export function createAsanaAdapter(config: ServiceConfig): TrackerAdapter {
 
   return {
     async fetchCandidateIssues() {
-      return fetchTasks(activeSections)
+      const issues = await fetchTasks(activeSections)
+      if (isTrackerError(issues))
+        return issues
+      return issues.filter(issue => matchesFilter(issue, filter))
     },
 
     async fetchIssuesByStates(states: string[]) {
       if (states.length === 0)
         return []
+      // Filter is intentionally not applied here: this method is used for blocker
+      // revalidation and reconciliation, which must see all issues regardless of filter.
       return fetchTasks(states)
     },
 
@@ -137,6 +145,7 @@ export function createAsanaAdapter(config: ServiceConfig): TrackerAdapter {
           state: state ?? '',
           branch_name: null,
           url: null,
+          assignees: [],
           labels: [],
           blocked_by: [],
           created_at: null,
@@ -162,6 +171,9 @@ function normalizeAsanaTask(task: Record<string, unknown>, sectionName: string):
       }))
     : []
 
+  const assigneeObj = task.assignee as { email?: string } | null | undefined
+  const assignees = assigneeObj?.email ? [assigneeObj.email] : []
+
   return {
     id: gid,
     identifier: gid,
@@ -171,6 +183,7 @@ function normalizeAsanaTask(task: Record<string, unknown>, sectionName: string):
     state: sectionName,
     branch_name: null,
     url: null,
+    assignees,
     labels,
     blocked_by: blockedBy,
     created_at: task.created_at ? new Date(String(task.created_at)) : null,

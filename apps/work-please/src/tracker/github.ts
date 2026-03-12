@@ -1,4 +1,4 @@
-import type { Issue, ServiceConfig } from '../types'
+import type { Issue, IssueFilter, ServiceConfig } from '../types'
 import type { TrackerAdapter, TrackerError } from './types'
 import { GraphqlResponseError } from '@octokit/graphql'
 import { normalizeState } from '../config'
@@ -11,6 +11,7 @@ export function createGitHubAdapter(config: ServiceConfig): TrackerAdapter {
   const projectNumber = config.tracker.project_number ?? 0
   const projectId = config.tracker.project_id ?? null
   const activeStatuses = config.tracker.active_statuses ?? ['Todo', 'In Progress']
+  const filter = config.tracker.filter
 
   const octokit = createAuthenticatedGraphql(config)
 
@@ -32,11 +33,11 @@ export function createGitHubAdapter(config: ServiceConfig): TrackerAdapter {
   }
 
   const PROJECT_ITEMS_QUERY = `
-    query($owner: String!, $number: Int!, $cursor: String) {
+    query($owner: String!, $number: Int!, $cursor: String, $search: String) {
       repositoryOwner(login: $owner) {
         ... on Organization {
           projectV2(number: $number) {
-            items(first: ${PAGE_SIZE}, after: $cursor) {
+            items(first: ${PAGE_SIZE}, after: $cursor, query: $search) {
               pageInfo { hasNextPage endCursor }
               nodes {
                 id
@@ -52,11 +53,13 @@ export function createGitHubAdapter(config: ServiceConfig): TrackerAdapter {
                   ... on Issue {
                     number title body url
                     labels(first: 20) { nodes { name } }
+                    assignees(first: 10) { nodes { login } }
                     createdAt updatedAt
                   }
                   ... on PullRequest {
                     number title body url
                     labels(first: 20) { nodes { name } }
+                    assignees(first: 10) { nodes { login } }
                     createdAt updatedAt
                   }
                 }
@@ -66,7 +69,7 @@ export function createGitHubAdapter(config: ServiceConfig): TrackerAdapter {
         }
         ... on User {
           projectV2(number: $number) {
-            items(first: ${PAGE_SIZE}, after: $cursor) {
+            items(first: ${PAGE_SIZE}, after: $cursor, query: $search) {
               pageInfo { hasNextPage endCursor }
               nodes {
                 id
@@ -82,11 +85,13 @@ export function createGitHubAdapter(config: ServiceConfig): TrackerAdapter {
                   ... on Issue {
                     number title body url
                     labels(first: 20) { nodes { name } }
+                    assignees(first: 10) { nodes { login } }
                     createdAt updatedAt
                   }
                   ... on PullRequest {
                     number title body url
                     labels(first: 20) { nodes { name } }
+                    assignees(first: 10) { nodes { login } }
                     createdAt updatedAt
                   }
                 }
@@ -99,10 +104,10 @@ export function createGitHubAdapter(config: ServiceConfig): TrackerAdapter {
   `
 
   const PROJECT_BY_ID_QUERY = `
-    query($projectId: ID!, $cursor: String) {
+    query($projectId: ID!, $cursor: String, $search: String) {
       node(id: $projectId) {
         ... on ProjectV2 {
-          items(first: ${PAGE_SIZE}, after: $cursor) {
+          items(first: ${PAGE_SIZE}, after: $cursor, query: $search) {
             pageInfo { hasNextPage endCursor }
             nodes {
               id
@@ -118,11 +123,13 @@ export function createGitHubAdapter(config: ServiceConfig): TrackerAdapter {
                 ... on Issue {
                   number title body url
                   labels(first: 20) { nodes { name } }
+                  assignees(first: 10) { nodes { login } }
                   createdAt updatedAt
                 }
                 ... on PullRequest {
                   number title body url
                   labels(first: 20) { nodes { name } }
+                  assignees(first: 10) { nodes { login } }
                   createdAt updatedAt
                 }
               }
@@ -155,14 +162,14 @@ export function createGitHubAdapter(config: ServiceConfig): TrackerAdapter {
     }
   `
 
-  async function fetchAllItems(statusFilter: string[]): Promise<Issue[] | TrackerError> {
+  async function fetchAllItems(statusFilter: string[], search = ''): Promise<Issue[] | TrackerError> {
     const issues: Issue[] = []
     let cursor: string | null = null
 
     do {
       const result = projectId
-        ? await runGraphql(PROJECT_BY_ID_QUERY, { projectId, cursor })
-        : await runGraphql(PROJECT_ITEMS_QUERY, { owner, number: projectNumber, cursor })
+        ? await runGraphql(PROJECT_BY_ID_QUERY, { projectId, cursor, search })
+        : await runGraphql(PROJECT_ITEMS_QUERY, { owner, number: projectNumber, cursor, search })
       if ('code' in result)
         return result
 
@@ -187,10 +194,10 @@ export function createGitHubAdapter(config: ServiceConfig): TrackerAdapter {
         if (!status)
           continue
 
-        const matchesFilter = statusFilter.length === 0
+        const statusMatches = statusFilter.length === 0
           || statusFilter.some(s => normalizeState(s) === normalizeState(status))
 
-        if (matchesFilter) {
+        if (statusMatches) {
           issues.push(normalizeProjectItem(node, status))
         }
       }
@@ -212,12 +219,14 @@ export function createGitHubAdapter(config: ServiceConfig): TrackerAdapter {
 
   return {
     async fetchCandidateIssues() {
-      return fetchAllItems(activeStatuses)
+      return fetchAllItems(activeStatuses, buildQueryString(filter))
     },
 
     async fetchIssuesByStates(states: string[]) {
       if (states.length === 0)
         return []
+      // Filter is intentionally not applied here: this method is used for blocker
+      // revalidation and reconciliation, which must see all issues regardless of filter.
       return fetchAllItems(states)
     },
 
@@ -279,12 +288,25 @@ function extractStatus(node: Record<string, unknown>): string | null {
   return null
 }
 
+function buildQueryString(filter: IssueFilter): string {
+  const parts: string[] = []
+  if (filter.assignee.length > 0)
+    parts.push(`assignee:${filter.assignee.join(',')}`)
+  if (filter.label.length > 0)
+    parts.push(`label:${filter.label.join(',')}`)
+  return parts.join(' ')
+}
+
 function normalizeProjectItem(node: Record<string, unknown>, status: string): Issue {
   const content = node.content as Record<string, unknown>
   const number = content?.number
   const identifier = number ? `#${number}` : String(node.id ?? '')
   const labels = Array.isArray((content?.labels as { nodes?: Array<{ name?: string }> })?.nodes)
     ? ((content.labels as { nodes: Array<{ name?: string }> }).nodes).map(l => (l.name ?? '').toLowerCase()).filter(Boolean)
+    : []
+  const assigneeNodes = (content?.assignees as { nodes?: Array<{ login?: string }> })?.nodes
+  const assignees = Array.isArray(assigneeNodes)
+    ? assigneeNodes.map(n => n.login ?? '').filter(Boolean)
     : []
 
   return {
@@ -296,6 +318,7 @@ function normalizeProjectItem(node: Record<string, unknown>, status: string): Is
     state: status,
     branch_name: null,
     url: content?.url ? String(content.url) : null,
+    assignees,
     labels,
     blocked_by: [],
     created_at: content?.createdAt ? new Date(String(content.createdAt)) : null,

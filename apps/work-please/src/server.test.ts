@@ -4,7 +4,8 @@ import { HttpServer } from './server'
 
 function makeConfig(overrides: Partial<ServiceConfig> = {}): ServiceConfig {
   return {
-    tracker: { kind: 'asana', endpoint: '', api_key: null, label_prefix: null },
+
+    tracker: { kind: 'asana', endpoint: '', api_key: null, label_prefix: null, filter: { assignee: [], label: [] } },
     polling: { interval_ms: 30000 },
     workspace: { root: '/tmp/test_ws' },
     hooks: { after_create: null, before_run: null, after_run: null, before_remove: null, timeout_ms: 60000 },
@@ -18,7 +19,7 @@ function makeConfig(overrides: Partial<ServiceConfig> = {}): ServiceConfig {
 function makeRunningEntry(overrides: Partial<RunningEntry> = {}): RunningEntry {
   return {
     identifier: 'TEST-1',
-    issue: { id: 'issue-1', identifier: 'TEST-1', title: 'Test issue', description: null, priority: 1, state: 'In Progress', branch_name: null, url: null, labels: [], blocked_by: [], created_at: null, updated_at: null },
+    issue: { id: 'issue-1', identifier: 'TEST-1', title: 'Test issue', description: null, priority: 1, state: 'In Progress', branch_name: null, url: null, assignees: [], labels: [], blocked_by: [], created_at: null, updated_at: null },
     session_id: 'sess-1',
     agent_app_server_pid: null,
     last_agent_message: null,

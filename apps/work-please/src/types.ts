@@ -13,6 +13,7 @@ export interface Issue {
   state: string
   branch_name: string | null
   url: string | null
+  assignees: string[]
   labels: string[]
   blocked_by: BlockerRef[]
   created_at: Date | null
@@ -22,6 +23,11 @@ export interface Issue {
 export interface WorkflowDefinition {
   config: Record<string, unknown>
   prompt_template: string
+}
+
+export interface IssueFilter {
+  assignee: string[]
+  label: string[]
 }
 
 export interface TrackerConfig {
@@ -43,6 +49,8 @@ export interface TrackerConfig {
   private_key?: string | null
   installation_id?: number | null
   label_prefix: string | null
+  // shared filter
+  filter: IssueFilter
 }
 
 export interface ServiceConfig {
