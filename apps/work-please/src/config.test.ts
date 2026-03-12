@@ -165,21 +165,37 @@ describe('buildConfig - github app auth fields', () => {
   })
 
   it('falls back to GITHUB_APP_ID env var when app_id is absent', () => {
+    const orig = process.env.GITHUB_APP_ID
     process.env.GITHUB_APP_ID = 'fallback-app-id'
-    const config = buildConfig(makeWorkflow({
-      tracker: { kind: 'github_projects', owner: 'org', project_number: 1 },
-    }))
-    expect(config.tracker.app_id).toBe('fallback-app-id')
-    delete process.env.GITHUB_APP_ID
+    try {
+      const config = buildConfig(makeWorkflow({
+        tracker: { kind: 'github_projects', owner: 'org', project_number: 1 },
+      }))
+      expect(config.tracker.app_id).toBe('fallback-app-id')
+    }
+    finally {
+      if (orig !== undefined)
+        process.env.GITHUB_APP_ID = orig
+      else
+        delete process.env.GITHUB_APP_ID
+    }
   })
 
   it('falls back to GITHUB_APP_INSTALLATION_ID env var when installation_id is absent', () => {
+    const orig = process.env.GITHUB_APP_INSTALLATION_ID
     process.env.GITHUB_APP_INSTALLATION_ID = '9999'
-    const config = buildConfig(makeWorkflow({
-      tracker: { kind: 'github_projects', owner: 'org', project_number: 1 },
-    }))
-    expect(config.tracker.installation_id).toBe(9999)
-    delete process.env.GITHUB_APP_INSTALLATION_ID
+    try {
+      const config = buildConfig(makeWorkflow({
+        tracker: { kind: 'github_projects', owner: 'org', project_number: 1 },
+      }))
+      expect(config.tracker.installation_id).toBe(9999)
+    }
+    finally {
+      if (orig !== undefined)
+        process.env.GITHUB_APP_INSTALLATION_ID = orig
+      else
+        delete process.env.GITHUB_APP_INSTALLATION_ID
+    }
   })
 
   it('resolves installation_id from $VAR env reference', () => {

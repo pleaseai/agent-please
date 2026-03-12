@@ -125,25 +125,28 @@ export function validateConfig(config: ServiceConfig): ValidationError | null {
     return { code: 'unsupported_tracker_kind', kind }
   }
 
-  if (kind === 'github_projects' && !config.tracker.api_key) {
-    const appId = config.tracker.app_id
-    const privateKey = config.tracker.private_key
-    const installationId = config.tracker.installation_id
-    const hasAny = appId || privateKey || (installationId != null)
-    if (!hasAny)
+  if (!config.tracker.api_key) {
+    if (kind === 'github_projects') {
+      const appId = config.tracker.app_id
+      const privateKey = config.tracker.private_key
+      const installationId = config.tracker.installation_id
+      const hasAny = appId || privateKey || (installationId != null)
+      if (!hasAny)
+        return { code: 'missing_tracker_api_key' }
+      const missing: string[] = []
+      if (!appId)
+        missing.push('app_id')
+      if (!privateKey)
+        missing.push('private_key')
+      if (installationId == null)
+        missing.push('installation_id')
+      if (missing.length > 0)
+        return { code: 'incomplete_github_app_config', missing }
+      // Valid app auth — fall through
+    }
+    else {
       return { code: 'missing_tracker_api_key' }
-    const missing: string[] = []
-    if (!appId)
-      missing.push('app_id')
-    if (!privateKey)
-      missing.push('private_key')
-    if (installationId == null)
-      missing.push('installation_id')
-    if (missing.length > 0)
-      return { code: 'incomplete_github_app_config', missing }
-  }
-  else if (!config.tracker.api_key) {
-    return { code: 'missing_tracker_api_key' }
+    }
   }
 
   if (kind === 'asana' && !config.tracker.project_gid) {
