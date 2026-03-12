@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import process from 'node:process'
-import { Command } from 'commander'
+import { Command, CommanderError } from 'commander'
 import { runInit } from './init'
 import { Orchestrator } from './orchestrator'
 import { HttpServer } from './server'
@@ -71,6 +71,28 @@ export async function runCli(argv: string[]): Promise<void> {
   }
 }
 
+function registerInitCommand(program: Command, onResult: (r: ParsedArgs) => void): void {
+  program
+    .command('init')
+    .allowUnknownOption()
+    .allowExcessArguments(true)
+    .option('--owner <value>', 'repository owner')
+    .option('--title <value>', 'project title')
+    .option('--token <value>', 'API token')
+    .action((opts: { owner?: string, title?: string, token?: string }) => {
+      onResult({
+        command: 'init',
+        workflowPath: WORKFLOW_FILE_NAME,
+        portOverride: null,
+        initOptions: {
+          owner: opts.owner ?? null,
+          title: opts.title ?? null,
+          token: opts.token ?? null,
+        },
+      })
+    })
+}
+
 export function parseArgs(args: string[]): ParsedArgs {
   let result: ParsedArgs = {
     command: 'run',
@@ -101,30 +123,22 @@ export function parseArgs(args: string[]): ParsedArgs {
       }
     })
 
-  program
-    .command('init')
-    .option('--owner <value>', 'repository owner')
-    .option('--title <value>', 'project title')
-    .option('--token <value>', 'API token')
-    .action(function (this: Command) {
-      const opts = this.opts<{ owner?: string, title?: string, token?: string }>()
-      result = {
-        command: 'init',
-        workflowPath: WORKFLOW_FILE_NAME,
-        portOverride: null,
-        initOptions: {
-          owner: opts.owner ?? null,
-          title: opts.title ?? null,
-          token: opts.token ?? null,
-        },
-      }
-    })
+  registerInitCommand(program, (r) => {
+    result = r
+  })
 
   try {
     program.parse(['node', 'work-please', ...args])
   }
-  catch {
-    // exitOverride throws CommanderError for --help/--version; ignore
+  catch (err) {
+    if (err instanceof CommanderError) {
+      const informational = new Set(['commander.help', 'commander.helpDisplayed', 'commander.version'])
+      if (informational.has(err.code))
+        return result
+      console.error(err.message)
+      process.exit(err.exitCode)
+    }
+    throw err
   }
 
   return result
