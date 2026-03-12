@@ -45,7 +45,6 @@ export function buildConfig(workflow: WorkflowDefinition): ServiceConfig {
     },
     workspace: {
       root: resolvePathValue(stringValue(workspace.root), DEFAULTS.WORKSPACE_ROOT),
-      repository_root: resolvePathOrNull(stringValue(workspace.repository_root)),
     },
     hooks: {
       after_create: hookScriptValue(hooks.after_create),
@@ -304,17 +303,6 @@ function resolveEnvValue(val: string | null, envFallback: string | undefined): s
     return envVal || null
   }
   return val.trim() || null
-}
-
-function resolvePathOrNull(val: string | null): string | null {
-  if (!val)
-    return null
-  const envRefMatch = val.match(ENV_VAR_RE)
-  if (envRefMatch) {
-    const envVal = process.env[envRefMatch[1]]?.trim()
-    return envVal ? expandPath(envVal) || null : null
-  }
-  return expandPath(val) || null
 }
 
 function resolvePathValue(val: string | null, fallback: string): string {

@@ -18,6 +18,7 @@ workspace:
   repository_root: ~/.please/repositories
 hooks:
   before_run: |
+    set -e
     git fetch origin
     git rebase origin/main || git rebase --abort
 agent:

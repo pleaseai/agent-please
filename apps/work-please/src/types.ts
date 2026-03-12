@@ -49,7 +49,6 @@ export interface ServiceConfig {
   polling: { interval_ms: number }
   workspace: {
     root: string
-    repository_root: string | null
   }
   hooks: {
     after_create: string | null
