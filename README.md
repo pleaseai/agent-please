@@ -29,7 +29,7 @@ For full technical details, see [SPEC.md](SPEC.md).
 | Tracker Auth | `LINEAR_API_KEY` | `ASANA_ACCESS_TOKEN` or `GITHUB_TOKEN` |
 | Project Config | `project_slug` | `project_gid` (Asana) or `owner` + `project_number` (GitHub Projects v2) |
 | Issue States | Linear workflow states | Asana sections / GitHub Projects v2 Status field |
-| Agent Protocol | JSON-RPC over stdio | Stream-JSON CLI output |
+| Agent Protocol | JSON-RPC over stdio | `@anthropic-ai/claude-agent-sdk` |
 | Permission Model | Codex approval/sandbox policies | Claude Code `--permission-mode` |
 
 ## Features
@@ -82,8 +82,7 @@ See [SPEC.md](SPEC.md) for the full specification.
 ### Prerequisites
 
 - **Bun** (see [bun.sh](https://bun.sh) for installation)
-- **Claude Code CLI** (`npm install -g @anthropic-ai/claude-code` or follow the
-  [official installation guide](https://docs.anthropic.com/en/docs/claude-code))
+- **Claude Code CLI** (see the [official installation guide](https://docs.anthropic.com/en/docs/claude-code))
 - **Asana access token** (`ASANA_ACCESS_TOKEN`) **or** **GitHub token** (`GITHUB_TOKEN`) with
   access to the target project
 
@@ -229,7 +228,7 @@ export GITHUB_TOKEN=ghp_your_token_here
 bunx work-please
 
 # Or specify a WORKFLOW.md path
-bunx work-please --workflow /path/to/WORKFLOW.md
+bunx work-please /path/to/WORKFLOW.md
 
 # Enable the optional HTTP dashboard on port 3000
 bunx work-please --port 3000
@@ -262,11 +261,16 @@ tracker:
   # endpoint: https://api.github.com  # Optional: override GitHub API base URL
   # owner: your-org                   # Required: GitHub organization or user login
   # project_number: 42                # Required: GitHub Projects v2 project number
+  # project_id: PVT_kwDOxxxxx         # Optional: project node ID (bypasses owner+project_number lookup)
   # active_statuses:                  # Optional: default ["Todo", "In Progress"]
   #   - In Progress
   # terminal_statuses:                # Optional: default ["Done", "Cancelled"]
   #   - Done
   #   - Cancelled
+  # GitHub App authentication (alternative to api_key):
+  # app_id: 12345                     # Optional: GitHub App ID
+  # private_key: $GITHUB_APP_PRIVATE_KEY  # Optional: GitHub App private key or $ENV_VAR
+  # installation_id: 67890            # Optional: GitHub App installation ID
 
 polling:
   interval_ms: 30000                  # Optional: poll cadence in ms, default 30000
@@ -293,12 +297,13 @@ agent:
 
 claude:
   command: claude                     # Optional: Claude Code CLI command, default "claude"
-  permission_mode: acceptEdits        # Optional: default|acceptEdits|bypassPermissions
+  permission_mode: acceptEdits        # Optional: default|acceptEdits|bypassPermissions; default: bypassPermissions
   allowed_tools:                      # Optional: restrict available tools
     - Read
     - Write
     - Bash
   turn_timeout_ms: 3600000            # Optional: per-turn timeout in ms, default 3600000
+  read_timeout_ms: 5000               # Optional: initial subprocess read timeout in ms, default 5000
   stall_timeout_ms: 300000            # Optional: stall detection timeout, default 300000
 
 server:
@@ -347,14 +352,17 @@ Retry attempt: {{ attempt }}
 ## CLI Usage
 
 ```bash
-# Basic usage
+# Basic usage (reads WORKFLOW.md from current directory)
 work-please
 
-# Specify WORKFLOW.md path
-work-please --workflow ./WORKFLOW.md
+# Specify WORKFLOW.md path (positional argument)
+work-please ./WORKFLOW.md
 
 # Enable HTTP dashboard
 work-please --port 3000
+
+# Initialize a new GitHub Projects v2 project and scaffold WORKFLOW.md
+work-please init --owner <org-or-user> --title "My Project" --token $GITHUB_TOKEN
 
 # Show help
 work-please --help
