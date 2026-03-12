@@ -297,7 +297,7 @@ agent:
 
 claude:
   command: claude                     # Optional: Claude Code CLI command, default "claude"
-  permission_mode: acceptEdits        # Optional: default|acceptEdits|bypassPermissions; default: bypassPermissions
+  permission_mode: acceptEdits        # Optional: one of 'default', 'acceptEdits', 'bypassPermissions'. Defaults to 'bypassPermissions'.
   allowed_tools:                      # Optional: restrict available tools
     - Read
     - Write
@@ -362,7 +362,11 @@ work-please ./WORKFLOW.md
 work-please --port 3000
 
 # Initialize a new GitHub Projects v2 project and scaffold WORKFLOW.md
-work-please init --owner <org-or-user> --title "My Project" --token $GITHUB_TOKEN
+# (Requires GITHUB_TOKEN environment variable to be set)
+work-please init --owner <org-or-user> --title "My Project"
+
+# Alternatively, provide the token via a flag:
+work-please init --owner <org-or-user> --title "My Project" --token <your-github-token>
 
 # Show help
 work-please --help
