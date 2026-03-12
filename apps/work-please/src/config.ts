@@ -1,4 +1,4 @@
-import type { ServiceConfig, WorkflowDefinition } from './types'
+import type { IssueFilter, ServiceConfig, WorkflowDefinition } from './types'
 import { tmpdir } from 'node:os'
 import { join, sep } from 'node:path'
 import process from 'node:process'
@@ -117,7 +117,7 @@ function buildTrackerConfig(kind: string | null, tracker: Record<string, unknown
   }
 }
 
-function buildFilterConfig(filter: Record<string, unknown>): { assignee: string[], label: string[] } {
+function buildFilterConfig(filter: Record<string, unknown>): IssueFilter {
   return {
     assignee: csvValue(filter.assignee) ?? [],
     label: csvValue(filter.label) ?? [],

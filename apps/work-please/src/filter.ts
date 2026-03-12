@@ -1,8 +1,6 @@
-import type { Issue, TrackerConfig } from './types'
+import type { Issue, IssueFilter } from './types'
 
-type FilterConfig = NonNullable<TrackerConfig['filter']>
-
-export function matchesFilter(issue: Issue, filter: FilterConfig): boolean {
+export function matchesFilter(issue: Issue, filter: IssueFilter): boolean {
   if (filter.assignee.length > 0) {
     if (!issue.assignee
       || !filter.assignee.some(a => a.toLowerCase() === issue.assignee!.toLowerCase())) {

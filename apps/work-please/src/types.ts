@@ -25,6 +25,11 @@ export interface WorkflowDefinition {
   prompt_template: string
 }
 
+export interface IssueFilter {
+  assignee: string[]
+  label: string[]
+}
+
 export interface TrackerConfig {
   kind: string | null
   endpoint: string
@@ -45,10 +50,7 @@ export interface TrackerConfig {
   installation_id?: number | null
   label_prefix: string | null
   // shared filter
-  filter?: {
-    assignee: string[]
-    label: string[]
-  }
+  filter: IssueFilter
 }
 
 export interface ServiceConfig {

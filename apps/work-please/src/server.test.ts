@@ -4,7 +4,8 @@ import { HttpServer } from './server'
 
 function makeConfig(overrides: Partial<ServiceConfig> = {}): ServiceConfig {
   return {
-    tracker: { kind: 'asana', endpoint: '', api_key: null, label_prefix: null },
+
+    tracker: { kind: 'asana', endpoint: '', api_key: null, label_prefix: null, filter: { assignee: [], label: [] } },
     polling: { interval_ms: 30000 },
     workspace: { root: '/tmp/test_ws' },
     hooks: { after_create: null, before_run: null, after_run: null, before_remove: null, timeout_ms: 60000 },

@@ -36,8 +36,10 @@ For full technical details, see [SPEC.md](SPEC.md).
 
 - **Multi-tracker support** — Dispatch work from Asana tasks or GitHub Projects v2 items on a
   fixed cadence.
-- **Assignee & label filters** — Narrow eligible issues by assignee (OR) and label (OR); both
-  filters AND together. Configured per-tracker in `WORKFLOW.md`.
+- **Assignee & label filters** — Filter eligible issues by assignee and/or label. Multiple values
+  within each filter use OR logic; assignee and label filters are ANDed when both are specified.
+  Applies at dispatch time only — already-running issues are unaffected. Configured per-tracker
+  in `WORKFLOW.md`.
 - **Isolated workspaces** — Each issue gets a dedicated directory; workspaces persist across runs.
 - **`WORKFLOW.md` config** — Version agent prompt and runtime settings alongside your code.
 - **Bounded concurrency** — Global and per-state concurrent agent limits.
@@ -272,8 +274,10 @@ tracker:
 
   # --- Shared filter fields (both trackers) ---
   # filter:
-  #   assignee: user1, user2          # Optional: CSV or array; issue must be assigned to one of these
-  #   label: bug, feature             # Optional: CSV or array; issue must have at least one of these
+  #   assignee: user1, user2          # Optional: CSV or YAML array; case-insensitive OR match
+  #                                   # (unassigned issues are excluded when this filter is set)
+  #   label: bug, feature             # Optional: CSV or YAML array; case-insensitive OR match
+  # Both filters AND together when both are specified. Applies at dispatch time only.
 
 polling:
   interval_ms: 30000                  # Optional: poll cadence in ms, default 30000
@@ -320,7 +324,7 @@ Your prompt template goes here. Available variables:
 - {{ issue.description }}  — Issue body/description
 - {{ issue.state }}        — Current tracker state name
 - {{ issue.url }}          — Issue URL
-- {{ issue.assignee }}     — Assignee login (GitHub) or email (Asana), or null
+- {{ issue.assignee }}     — Primary assignee login (GitHub) or email (Asana), or null if unassigned
 - {{ issue.labels }}       — Array of label strings (normalized to lowercase)
 - {{ issue.blocked_by }}   — Array of blocker refs (each has id, identifier, state)
 - {{ issue.priority }}     — Numeric priority or null

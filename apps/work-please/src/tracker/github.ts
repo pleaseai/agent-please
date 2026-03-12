@@ -13,7 +13,7 @@ export function createGitHubAdapter(config: ServiceConfig): TrackerAdapter {
   const projectNumber = config.tracker.project_number ?? 0
   const projectId = config.tracker.project_id ?? null
   const activeStatuses = config.tracker.active_statuses ?? ['Todo', 'In Progress']
-  const filter = config.tracker.filter ?? { assignee: [], label: [] }
+  const filter = config.tracker.filter
 
   const octokit = createAuthenticatedGraphql(config)
 

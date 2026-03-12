@@ -10,9 +10,10 @@ tracker:
   terminal_states:
     - Done
     - Cancelled
-  # filter:
-  #   assignee: user1, user2      # optional: only dispatch issues assigned to these users
-  #   label: bug, feature         # optional: only dispatch issues with at least one of these labels
+  # filter:                        # optional: applies at dispatch time only
+  #   assignee: user1, user2      # CSV or YAML array; case-insensitive OR; unassigned issues excluded
+  #   label: bug, feature         # CSV or YAML array; case-insensitive OR; at least one label must match
+  # (Both fields AND together when both are set)
 polling:
   interval_ms: 30000                 # default: 30s
 workspace:

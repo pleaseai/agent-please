@@ -12,7 +12,7 @@ export function createAsanaAdapter(config: ServiceConfig): TrackerAdapter {
   const apiKey = config.tracker.api_key
   const projectGid = config.tracker.project_gid ?? ''
   const activeSections = config.tracker.active_sections ?? ['To Do', 'In Progress']
-  const filter = config.tracker.filter ?? { assignee: [], label: [] }
+  const filter = config.tracker.filter
 
   function headers(): Record<string, string> {
     return {
