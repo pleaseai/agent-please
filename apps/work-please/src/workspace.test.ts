@@ -269,14 +269,14 @@ describe('runAfterRunHook', () => {
 
   it('does nothing when no after_run hook configured', async () => {
     const config = makeConfig(tmpRoot)
-    await expect(runAfterRunHook(config, tmpRoot)).resolves.toBeUndefined()
+    expect(await runAfterRunHook(config, tmpRoot)).toBeUndefined()
   })
 
   it('runs after_run hook and logs (does not throw) on failure', async () => {
     const config = makeConfig(tmpRoot, {
       hooks: { after_run: 'exit 2' },
     })
-    await expect(runAfterRunHook(config, tmpRoot)).resolves.toBeUndefined()
+    expect(await runAfterRunHook(config, tmpRoot)).toBeUndefined()
   })
 })
 
