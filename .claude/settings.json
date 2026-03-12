@@ -35,6 +35,7 @@
     "markitdown@pleaseai": true,
     "typescript-lsp@code-intelligence": true,
     "eslint-lsp@code-intelligence": true,
+    "graphql-lsp@code-intelligence": true,
     "ralph-loop@claude-plugins-official": true,
     "ast-grep@pleaseai": true
   },
