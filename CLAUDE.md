@@ -60,6 +60,11 @@ bun run lint:fix               # all workspaces, auto-fix
 bun run lint:app:fix           # work-please only, auto-fix
 ```
 
+## Workspace
+
+Project planning artifacts (specs, plans, decisions, research) live in [`.please/`](.please/INDEX.md).
+API schema references live in [`.please/references/`](.please/references/INDEX.md) — includes the [GitHub Projects v2 GraphQL schema](.please/references/github.graphql).
+
 ## Architecture
 
 Work Please is a TypeScript monorepo (Bun + Turbo) implementing the [Symphony spec](vendor/symphony/SPEC.md) for Claude

@@ -4,3 +4,6 @@ dist/
 *.tsbuildinfo
 .claude/settings.local.json
 .claude/worktrees/
+
+# please plugin runtime state
+.please/state/
