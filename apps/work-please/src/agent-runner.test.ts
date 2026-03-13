@@ -288,9 +288,28 @@ describe('AppServerClient - startSession workspace validation (Section 17.5)', (
     expect(result instanceof Error).toBe(false)
     if (result instanceof Error)
       return
-    expect(typeof result.sessionId).toBe('string')
-    expect(result.sessionId.length).toBeGreaterThan(0)
+    expect(result.sessionId).toMatch(/^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i)
     expect(result.workspace).toBe(wsPath)
+  })
+
+  it('returns Error when provided sessionId is not a valid UUID', async () => {
+    const wsPath = join(tmpRoot, 'ws-invalid')
+    mkdirSync(wsPath)
+
+    const config = buildConfig({
+      config: {
+        tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
+        workspace: { root: tmpRoot },
+        claude: { command: 'claude', read_timeout_ms: 2000, turn_timeout_ms: 5000 },
+      },
+      prompt_template: '',
+    })
+
+    const client = new AppServerClient(config, wsPath)
+    const result = await client.startSession('not-a-uuid')
+    expect(result instanceof Error).toBe(true)
+    if (result instanceof Error)
+      expect(result.message).toContain('invalid_session_id')
   })
 
   it('uses provided sessionId when given to startSession', async () => {
@@ -564,11 +583,11 @@ describe('AppServerClient - runTurn with SDK mock (Section 17.5)', () => {
 
   it('resumes previous session on 2nd turn (passes resume option)', async () => {
     const sessionId = 'sdk-resume-session'
-    const capturedOptions: { resume?: string }[] = []
+    const capturedOptions: { sessionId?: string | undefined, resume?: string }[] = []
 
     const config = makeConfig()
     const client = new AppServerClient(config, wsPath, ({ options }) => {
-      capturedOptions.push({ resume: options?.resume })
+      capturedOptions.push({ sessionId: (options as Record<string, unknown>)?.sessionId as string | undefined, resume: options?.resume })
       return (async function* () {
         yield makeInitMsg(sessionId, wsPath)
         yield makeSuccessMsg(sessionId)
@@ -583,9 +602,42 @@ describe('AppServerClient - runTurn with SDK mock (Section 17.5)', () => {
     await client.runTurn(session, 'turn 1', makeIssue(), () => {})
     expect(capturedOptions[0]?.resume).toBeUndefined()
 
-    // Second turn — should resume previous session
+    // Second turn — should resume previous session; options.sessionId must be absent
     await client.runTurn(session, 'turn 2', makeIssue(), () => {})
     expect(capturedOptions[1]?.resume).toBe(sessionId)
+    expect(capturedOptions[1]?.sessionId).toBeUndefined()
+  })
+
+  it('stopSession then startSession uses fresh options.sessionId (not resume from previous)', async () => {
+    const firstSdkSessionId = 'first-sdk-session'
+    const capturedOptions: { sessionId?: string | undefined, resume?: string }[] = []
+
+    const config = makeConfig()
+    const client = new AppServerClient(config, wsPath, ({ options }) => {
+      capturedOptions.push({ sessionId: (options as Record<string, unknown>)?.sessionId as string | undefined, resume: options?.resume })
+      return (async function* () {
+        yield makeInitMsg(firstSdkSessionId, wsPath)
+        yield makeSuccessMsg(firstSdkSessionId)
+      })()
+    })
+
+    // First session
+    const session1 = await client.startSession()
+    if (session1 instanceof Error)
+      return
+    await client.runTurn(session1, 'turn 1', makeIssue(), () => {})
+    client.stopSession()
+
+    // Second session — must get a fresh options.sessionId, not resume the first
+    const session2 = await client.startSession()
+    if (session2 instanceof Error)
+      return
+    await client.runTurn(session2, 'turn 2', makeIssue(), () => {})
+
+    expect(capturedOptions[0]?.resume).toBeUndefined()
+    expect(capturedOptions[1]?.resume).toBeUndefined()
+    expect(capturedOptions[1]?.sessionId).toBe(session2.sessionId)
+    expect(session2.sessionId).not.toBe(session1.sessionId)
   })
 
   it('passes options.resume on first turn when sessionId provided to startSession (cross-restart resume)', async () => {

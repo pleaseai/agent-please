@@ -17,6 +17,8 @@ export interface AgentSession {
 
 type QueryFn = (params: { prompt: string, options?: Options }) => AsyncIterable<unknown>
 
+const UUID_PATTERN = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i
+
 // Minimal discriminated shape for SDK messages received in the for-await loop
 interface SdkMsgBase { type: string }
 interface SdkMsgInit extends SdkMsgBase { type: 'system', subtype: 'init', session_id: string }
@@ -40,12 +42,21 @@ export class AppServerClient {
   }
 
   async startSession(sessionId?: string): Promise<AgentSession | Error> {
+    // Reset state unconditionally to prevent stale fields on instance reuse or retry
+    this.assignedSessionId = null
+    this.sessionId = null
+
+    if (sessionId !== undefined && !UUID_PATTERN.test(sessionId))
+      return new Error(`invalid_session_id: expected UUID format, got "${sessionId}"`)
+
     const validationErr = this.validateWorkspaceCwd()
     if (validationErr)
       return validationErr
+
     const id = sessionId ?? randomUUID()
     this.assignedSessionId = id
-    // If a sessionId is provided (resume), treat it as already confirmed by SDK
+    // Set sessionId immediately so runTurn uses options.resume (cross-restart resume path).
+    // The SDK has NOT confirmed this session — it may reject if the session no longer exists.
     this.sessionId = sessionId ?? null
     return { sessionId: id, workspace: this.workspace }
   }
@@ -178,8 +189,11 @@ export class AppServerClient {
     catch (err) {
       clearTimeout(timeoutHandle)
       const error = err instanceof Error ? err : new Error(String(err))
+      // If init was never received the session never started — report startup_failed.
+      // If init was already received and the turn was aborted mid-execution, report startup_failed
+      // with the abort reason so callers can distinguish timeout from other failures.
       onMessage({
-        event: 'startup_failed',
+        event: sessionId ? 'turn_failed' : 'startup_failed',
         timestamp: new Date(),
         payload: { reason: error.message },
       })
