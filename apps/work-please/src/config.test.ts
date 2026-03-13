@@ -129,6 +129,18 @@ describe('buildConfig', () => {
     expect(config.claude.model).toBe('claude-sonnet-4-6')
   })
 
+  it('coerces empty or whitespace-only claude.model to null (Section 17.1)', () => {
+    expect(buildConfig(makeWorkflow({ claude: { model: '' } })).claude.model).toBeNull()
+    expect(buildConfig(makeWorkflow({ claude: { model: '   ' } })).claude.model).toBeNull()
+  })
+
+  it('does not resolve $VAR for claude.model (no env expansion for model field)', () => {
+    process.env.TEST_CLAUDE_MODEL = 'claude-haiku-4-5'
+    const config = buildConfig(makeWorkflow({ claude: { model: '$TEST_CLAUDE_MODEL' } }))
+    expect(config.claude.model).toBe('$TEST_CLAUDE_MODEL')
+    delete process.env.TEST_CLAUDE_MODEL
+  })
+
   it('preserves claude.command as shell command string including spaces (Section 17.1)', () => {
     const config = buildConfig(makeWorkflow({
       claude: { command: 'claude --permission-mode full --no-ansi' },
