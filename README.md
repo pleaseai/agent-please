@@ -478,8 +478,13 @@ When both are present, `api_key` (PAT) takes precedence.
 
 ### Setting up GitHub App credentials
 
-1. Create a GitHub App with **read** access to your project's repository and **write** access to
-   pull requests and issues.
+1. Create a GitHub App with the following permissions:
+   - **Repository permissions**:
+     - `Contents`: Read-only
+     - `Issues`: Read & write
+     - `Pull requests`: Read & write
+   - **Organization permissions**:
+     - `Projects`: Read & write
 2. Install the app on your organization and note the **installation ID** (visible in the app's
    installation settings URL).
 3. Generate a **private key** (`.pem` file) from the app's settings page.
