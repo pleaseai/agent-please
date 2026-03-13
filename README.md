@@ -133,6 +133,7 @@ bun run build
 ### Configure
 
 Create a `WORKFLOW.md` in your target repository. Two examples are shown below.
+See also the [example WORKFLOW.md](https://github.com/pleaseai/workflow/blob/main/WORKFLOW.md) for a real-world reference.
 
 #### Asana
 
