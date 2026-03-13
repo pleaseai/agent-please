@@ -135,10 +135,18 @@ describe('buildConfig', () => {
   })
 
   it('does not resolve $VAR for claude.model (no env expansion for model field)', () => {
+    const orig = process.env.TEST_CLAUDE_MODEL
     process.env.TEST_CLAUDE_MODEL = 'claude-haiku-4-5'
-    const config = buildConfig(makeWorkflow({ claude: { model: '$TEST_CLAUDE_MODEL' } }))
-    expect(config.claude.model).toBe('$TEST_CLAUDE_MODEL')
-    delete process.env.TEST_CLAUDE_MODEL
+    try {
+      const config = buildConfig(makeWorkflow({ claude: { model: '$TEST_CLAUDE_MODEL' } }))
+      expect(config.claude.model).toBe('$TEST_CLAUDE_MODEL')
+    }
+    finally {
+      if (orig !== undefined)
+        process.env.TEST_CLAUDE_MODEL = orig
+      else
+        delete process.env.TEST_CLAUDE_MODEL
+    }
   })
 
   it('preserves claude.command as shell command string including spaces (Section 17.1)', () => {
