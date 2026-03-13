@@ -242,6 +242,23 @@ You are working on a GitHub issue for the repository `your-org/your-repo`.
 Issue {{ issue.identifier }}: {{ issue.title }}
 
 {{ issue.description }}
+
+{% if issue.blocked_by.size > 0 %}
+Blocked by:
+{% for blocker in issue.blocked_by %}
+- {{ blocker.identifier }} ({{ blocker.state }})
+{% endfor %}
+{% endif %}
+
+{% if attempt %}
+This is attempt #{{ attempt }}. Review any prior work in the workspace before continuing.
+{% endif %}
+
+Your task:
+1. Understand the issue requirements.
+2. Implement the requested changes.
+3. Write or update tests as needed.
+4. Open a pull request and move this issue to the review status.
 ```
 
 #### Asana (under development)
@@ -314,6 +331,8 @@ export GITHUB_TOKEN=ghp_your_token_here
 export GITHUB_APP_ID=12345
 export GITHUB_APP_PRIVATE_KEY="$(cat path/to/private-key.pem)"
 export GITHUB_APP_INSTALLATION_ID=67890
+# or (Asana — under development)
+export ASANA_ACCESS_TOKEN=your_token_here
 
 # Run Work Please against a WORKFLOW.md in the current directory
 bunx work-please
