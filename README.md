@@ -8,6 +8,30 @@ instead of supervising coding agents.
 
 > **Warning**: Work Please is an engineering preview for use in trusted environments.
 
+## Table of Contents
+
+- [Overview](#overview)
+- [Key Differences from Symphony](#key-differences-from-symphony)
+- [Features](#features)
+- [Architecture](#architecture)
+- [Quick Start](#quick-start)
+  - [Prerequisites](#prerequisites)
+  - [Install](#install)
+  - [Configure](#configure)
+  - [Run](#run)
+- [WORKFLOW.md Configuration](#workflowmd-configuration)
+  - [Full Front Matter Schema](#full-front-matter-schema)
+  - [Template Variables](#template-variables)
+- [CLI Usage](#cli-usage)
+- [GitHub App Authentication](#github-app-authentication)
+  - [Setting up GitHub App credentials](#setting-up-github-app-credentials)
+  - [Validation](#validation)
+- [Trust and Safety](#trust-and-safety)
+  - [Permission Modes](#permission-modes)
+  - [Workspace Isolation](#workspace-isolation)
+  - [Recommendations](#recommendations)
+- [License](#license)
+
 ## Overview
 
 Work Please is a long-running TypeScript service that:
@@ -29,7 +53,7 @@ For full technical details, see [SPEC.md](SPEC.md).
 | Issue Tracker | Linear | Asana & GitHub Projects v2 |
 | Coding Agent | Codex (app-server mode) | Claude Code CLI |
 | Language | Elixir/OTP | TypeScript + Bun |
-| Tracker Auth | `LINEAR_API_KEY` | `ASANA_ACCESS_TOKEN` or `GITHUB_TOKEN` |
+| Tracker Auth | `LINEAR_API_KEY` | `ASANA_ACCESS_TOKEN`, `GITHUB_TOKEN`, or GitHub App credentials |
 | Project Config | `project_slug` | `project_gid` (Asana) or `owner` + `project_number` (GitHub Projects v2) |
 | Issue States | Linear workflow states | Asana sections / GitHub Projects v2 Status field |
 | Agent Protocol | JSON-RPC over stdio | `@anthropic-ai/claude-agent-sdk` |
@@ -39,6 +63,9 @@ For full technical details, see [SPEC.md](SPEC.md).
 
 - **Multi-tracker support** — Dispatch work from Asana tasks or GitHub Projects v2 items on a
   fixed cadence.
+- **GitHub App authentication** — Authenticate the GitHub tracker with a GitHub App installation
+  token (`app_id` + `private_key` + `installation_id`) instead of a PAT, for fine-grained
+  permissions and higher API rate limits.
 - **Assignee & label filters** — Filter eligible issues by assignee and/or label. Multiple values
   within each filter use OR logic; assignee and label filters are ANDed when both are specified.
   Applies at dispatch time only — already-running issues are unaffected. Configured per-tracker
@@ -91,7 +118,8 @@ See [SPEC.md](SPEC.md) for the full specification.
 - **Bun** (see [bun.sh](https://bun.sh) for installation)
 - **Claude Code CLI** (see the [official installation guide](https://docs.anthropic.com/en/docs/claude-code))
 - **Asana access token** (`ASANA_ACCESS_TOKEN`) **or** **GitHub token** (`GITHUB_TOKEN`) with
-  access to the target project
+  access to the target project, **or** **GitHub App credentials** (`GITHUB_APP_ID`,
+  `GITHUB_APP_PRIVATE_KEY`, `GITHUB_APP_INSTALLATION_ID`) — see [GitHub App Authentication](#github-app-authentication)
 
 ### Install
 
@@ -164,7 +192,7 @@ Your task:
 4. Open a pull request and move this task to the review section.
 ```
 
-#### GitHub Projects v2
+#### GitHub Projects v2 (PAT)
 
 ```markdown
 ---
@@ -223,13 +251,63 @@ Your task:
 4. Open a pull request and move this issue to the review status.
 ```
 
+#### GitHub Projects v2 (GitHub App)
+
+Use GitHub App credentials instead of a PAT for fine-grained permissions and higher API rate limits:
+
+```markdown
+---
+tracker:
+  kind: github_projects
+  app_id: $GITHUB_APP_ID
+  private_key: $GITHUB_APP_PRIVATE_KEY
+  installation_id: $GITHUB_APP_INSTALLATION_ID
+  owner: your-org
+  project_number: 42
+  active_statuses:
+    - In Progress
+  terminal_statuses:
+    - Done
+    - Cancelled
+
+polling:
+  interval_ms: 30000
+
+workspace:
+  root: ~/work-please_workspaces
+
+hooks:
+  after_create: |
+    git clone https://github.com/your-org/your-repo.git .
+    bun install
+
+agent:
+  max_concurrent_agents: 3
+  max_turns: 20
+
+claude:
+  permission_mode: acceptEdits
+  turn_timeout_ms: 3600000
+---
+
+You are working on a GitHub issue for the repository `your-org/your-repo`.
+
+Issue {{ issue.identifier }}: {{ issue.title }}
+
+{{ issue.description }}
+```
+
 ### Run
 
 ```bash
 # Set your tracker token
 export ASANA_ACCESS_TOKEN=your_token_here
-# or
+# or (GitHub PAT)
 export GITHUB_TOKEN=ghp_your_token_here
+# or (GitHub App)
+export GITHUB_APP_ID=12345
+export GITHUB_APP_PRIVATE_KEY="$(cat path/to/private-key.pem)"
+export GITHUB_APP_INSTALLATION_ID=67890
 
 # Run Work Please against a WORKFLOW.md in the current directory
 bunx work-please
@@ -274,10 +352,10 @@ tracker:
   # terminal_statuses:                # Optional: default ["Done", "Cancelled"]
   #   - Done
   #   - Cancelled
-  # GitHub App authentication (alternative to api_key):
-  # app_id: 12345                     # Optional: GitHub App ID
-  # private_key: $GITHUB_APP_PRIVATE_KEY  # Optional: GitHub App private key or $ENV_VAR
-  # installation_id: 67890            # Optional: GitHub App installation ID
+  # GitHub App authentication (alternative to api_key — all three required together):
+  # app_id: $GITHUB_APP_ID            # Optional: GitHub App ID (integer or $ENV_VAR)
+  # private_key: $GITHUB_APP_PRIVATE_KEY  # Optional: GitHub App private key PEM or $ENV_VAR
+  # installation_id: $GITHUB_APP_INSTALLATION_ID  # Optional: installation ID (integer or $ENV_VAR)
 
   # --- Shared filter fields (both trackers) ---
   # filter:
@@ -386,6 +464,68 @@ work-please init --owner <org-or-user> --title "My Project" --token <your-github
 # Show help
 work-please --help
 ```
+
+## GitHub App Authentication
+
+The `github_projects` tracker supports two authentication methods:
+
+| Method | Config fields | When to use |
+|--------|--------------|-------------|
+| **PAT** | `api_key` | Personal access tokens — quick setup |
+| **GitHub App** | `app_id`, `private_key`, `installation_id` | Organizations — fine-grained permissions, higher rate limits |
+
+When both are present, `api_key` (PAT) takes precedence.
+
+### Setting up GitHub App credentials
+
+1. Create a GitHub App with the following permissions:
+   - **Repository permissions**:
+     - `Contents`: Read-only
+     - `Issues`: Read & write
+     - `Pull requests`: Read & write
+   - **Organization permissions**:
+     - `Projects`: Read & write
+2. Install the app on your organization and note the **installation ID** (visible in the app's
+   installation settings URL).
+3. Generate a **private key** (`.pem` file) from the app's settings page.
+4. Set the environment variables:
+
+```bash
+export GITHUB_APP_ID=12345
+export GITHUB_APP_PRIVATE_KEY="$(cat /path/to/private-key.pem)"
+export GITHUB_APP_INSTALLATION_ID=67890
+```
+
+5. Reference them in `WORKFLOW.md`:
+
+```yaml
+tracker:
+  kind: github_projects
+  app_id: $GITHUB_APP_ID
+  private_key: $GITHUB_APP_PRIVATE_KEY
+  installation_id: $GITHUB_APP_INSTALLATION_ID
+  owner: your-org
+  project_number: 42
+```
+
+The values can also be inlined directly (not recommended for secrets):
+
+```yaml
+app_id: 12345
+private_key: "-----BEGIN RSA PRIVATE KEY-----\n..."
+installation_id: 67890
+```
+
+### Validation
+
+Work Please validates GitHub App config at startup:
+
+| Scenario | Result |
+|----------|--------|
+| `api_key` set | PAT auth — app fields ignored |
+| All three app fields set (`app_id`, `private_key`, `installation_id`) | App auth |
+| Only some app fields set | `incomplete_github_app_config` error |
+| No auth configured | `missing_tracker_api_key` error |
 
 ## Trust and Safety
 
