@@ -91,6 +91,7 @@ export interface ServiceConfig {
     command: string
     permission_mode: string
     allowed_tools: string[]
+    setting_sources: string[]
     turn_timeout_ms: number
     read_timeout_ms: number
     stall_timeout_ms: number
