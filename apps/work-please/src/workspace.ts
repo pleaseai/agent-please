@@ -191,7 +191,12 @@ export async function createWorkspace(
         if (hookErr)
           return hookErr
       }
-      ensureClaudeSettings(wtPath, config.claude.settings.attribution)
+      try {
+        ensureClaudeSettings(wtPath, config.claude.settings.attribution)
+      }
+      catch (err) {
+        return err instanceof Error ? err : new Error(String(err))
+      }
       return { path: wtPath, workspace_key: key, created_now: createdNow }
     }
   }
@@ -231,7 +236,12 @@ export async function createWorkspace(
       return hookErr
   }
 
-  ensureClaudeSettings(wsPath, config.claude.settings.attribution)
+  try {
+    ensureClaudeSettings(wsPath, config.claude.settings.attribution)
+  }
+  catch (err) {
+    return err instanceof Error ? err : new Error(String(err))
+  }
   return workspace
 }
 

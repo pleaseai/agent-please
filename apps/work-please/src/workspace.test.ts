@@ -151,6 +151,9 @@ describe('createWorkspace creates attribution settings', () => {
 
     const settingsPath = join(result.path, '.claude', 'settings.local.json')
     expect(existsSync(settingsPath)).toBe(true)
+    const parsed = JSON.parse(readFileSync(settingsPath, 'utf-8'))
+    expect(parsed.attribution.commit).toContain('Work Please')
+    expect(parsed.attribution.pr).toContain('Work Please')
   })
 
   it('uses custom attribution from config when generating settings', async () => {
