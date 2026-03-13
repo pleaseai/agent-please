@@ -309,6 +309,11 @@ function buildQueryString(filter: IssueFilter): string {
   return parts.join(' ')
 }
 
+function normalizePrState(raw: unknown): LinkedPR['state'] {
+  const s = String(raw ?? '').toLowerCase()
+  return s === 'closed' || s === 'merged' ? s : 'open'
+}
+
 function normalizeProjectItem(node: Record<string, unknown>, status: string): Issue {
   const content = node.content as Record<string, unknown>
   const number = content?.number
@@ -321,15 +326,17 @@ function normalizeProjectItem(node: Record<string, unknown>, status: string): Is
     ? assigneeNodes.map(n => n.login ?? '').filter(Boolean)
     : []
 
-  const prRefNodes = (content?.closedByPullRequestsReferences as { nodes?: Array<Record<string, unknown>> })?.nodes
+  const prRefNodes = (content?.closedByPullRequestsReferences as { nodes?: Array<Record<string, unknown> | null> })?.nodes
   const pullRequests: LinkedPR[] = Array.isArray(prRefNodes)
-    ? prRefNodes.map(pr => ({
-        number: Number(pr.number ?? 0),
-        title: String(pr.title ?? ''),
-        url: String(pr.url ?? ''),
-        state: String(pr.state ?? '').toLowerCase(),
-        branch_name: pr.headRefName ? String(pr.headRefName) : null,
-      }))
+    ? prRefNodes
+        .filter((pr): pr is Record<string, unknown> => pr !== null && typeof pr === 'object')
+        .map(pr => ({
+          number: Number(pr.number ?? 0),
+          title: String(pr.title ?? ''),
+          url: pr.url ? String(pr.url) : null,
+          state: normalizePrState(pr.state),
+          branch_name: pr.headRefName ? String(pr.headRefName) : null,
+        }))
     : []
 
   const headRefName = content?.headRefName ? String(content.headRefName) : null

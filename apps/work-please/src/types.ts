@@ -7,8 +7,8 @@ export interface BlockerRef {
 export interface LinkedPR {
   number: number
   title: string
-  url: string
-  state: string
+  url: string | null
+  state: 'open' | 'closed' | 'merged'
   branch_name: string | null
 }
 
