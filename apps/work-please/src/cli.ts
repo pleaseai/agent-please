@@ -2,13 +2,14 @@ import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import process from 'node:process'
 import { Command, CommanderError } from 'commander'
+import pkg from '../package.json' with { type: 'json' }
 import { runInit } from './init'
 import { Orchestrator } from './orchestrator'
 import { HttpServer } from './server'
 import { WORKFLOW_FILE_NAME } from './workflow'
 
 export interface ParsedArgs {
-  command: 'run' | 'init'
+  command: 'run' | 'init' | 'version'
   workflowPath: string
   portOverride: number | null
   initOptions: { owner: string | null, title: string | null, token: string | null } | null
@@ -16,6 +17,9 @@ export interface ParsedArgs {
 
 export async function runCli(argv: string[]): Promise<void> {
   const parsed = parseArgs(argv.slice(2))
+
+  if (parsed.command === 'version')
+    return
 
   if (parsed.command === 'init') {
     await runInit(parsed.initOptions!)
@@ -102,6 +106,7 @@ export function parseArgs(args: string[]): ParsedArgs {
   }
 
   const program = new Command()
+  program.version(pkg.version)
   program.exitOverride()
   program.allowUnknownOption()
   program.allowExcessArguments(true)
@@ -132,7 +137,9 @@ export function parseArgs(args: string[]): ParsedArgs {
   }
   catch (err) {
     if (err instanceof CommanderError) {
-      const informational = new Set(['commander.help', 'commander.helpDisplayed', 'commander.version'])
+      if (err.code === 'commander.version')
+        return { ...result, command: 'version' }
+      const informational = new Set(['commander.help', 'commander.helpDisplayed'])
       if (informational.has(err.code))
         return result
       console.error(err.message)
