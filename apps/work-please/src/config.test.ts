@@ -193,6 +193,13 @@ describe('buildConfig', () => {
     }))
     expect(config.claude.setting_sources).toEqual([])
   })
+
+  it('filters out blank string values from setting_sources', () => {
+    const config = buildConfig(makeWorkflow({
+      claude: { setting_sources: ['project', '', '  ', 'local'] },
+    }))
+    expect(config.claude.setting_sources).toEqual(['project', 'local'])
+  })
 })
 
 describe('buildConfig - github app auth fields', () => {
