@@ -687,6 +687,45 @@ describe('AppServerClient - runTurn with SDK mock (Section 17.5)', () => {
     expect(capturedOptions[0]?.sessionId).toBeUndefined()
   })
 
+  it('preserves resume session ID on pre-init failure so next turn can retry', async () => {
+    const existingId = 'aaaaaaaa-bbbb-cccc-dddd-ffffffffffff'
+    const capturedOptions: { resume?: string }[] = []
+    let callCount = 0
+
+    const config = makeConfig()
+    const client = new AppServerClient(config, wsPath, ({ options }) => {
+      capturedOptions.push({ resume: options?.resume })
+      callCount++
+      if (callCount === 1) {
+        // First turn: transient error before system/init
+        return (async function* () {
+          throw new Error('transient_network_error')
+          // unreachable but satisfies generator return type
+          yield makeInitMsg(existingId, wsPath)
+        })()
+      }
+      // Second turn: succeeds
+      return (async function* () {
+        yield makeInitMsg(existingId, wsPath)
+        yield makeSuccessMsg(existingId)
+      })()
+    })
+
+    const session = await client.startSession(existingId)
+    if (session instanceof Error)
+      return
+
+    // First turn fails before init
+    const result1 = await client.runTurn(session, 'try 1', makeIssue(), () => {})
+    expect(result1 instanceof Error).toBe(true)
+    expect(capturedOptions[0]?.resume).toBe(existingId)
+
+    // Second turn should still pass resume (session ID preserved after pre-init failure)
+    const result2 = await client.runTurn(session, 'try 2', makeIssue(), () => {})
+    expect(result2 instanceof Error).toBe(false)
+    expect(capturedOptions[1]?.resume).toBe(existingId)
+  })
+
   it('sessionId on AgentSession remains stable across turns', async () => {
     const sdkSessionId = 'stable-session-id'
 

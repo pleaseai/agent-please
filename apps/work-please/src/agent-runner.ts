@@ -198,8 +198,12 @@ export class AppServerClient {
       // If init was already received and the turn was aborted mid-execution, report turn_failed
       // so callers can distinguish a startup failure from a mid-turn failure.
       if (!sessionId) {
-        this.sessionId = null
-        this.assignedSessionId = null
+        // Preserve resume state on transient pre-init failures so the next turn can retry.
+        // Only clear state for new sessions where no session was ever confirmed.
+        if (!options.resume) {
+          this.sessionId = null
+          this.assignedSessionId = null
+        }
       }
       onMessage({
         event: sessionId ? 'turn_failed' : 'startup_failed',
