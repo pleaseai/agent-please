@@ -50,7 +50,7 @@ For full technical details, see [SPEC.md](SPEC.md).
 
 | | Symphony (reference) | Work Please |
 |---|---|---|
-| Issue Tracker | Linear | Asana & GitHub Projects v2 |
+| Issue Tracker | Linear | Asana (under development) & GitHub Projects v2 |
 | Coding Agent | Codex (app-server mode) | Claude Code CLI |
 | Language | Elixir/OTP | TypeScript + Bun |
 | Tracker Auth | `LINEAR_API_KEY` | `ASANA_ACCESS_TOKEN`, `GITHUB_TOKEN`, or GitHub App credentials |
@@ -61,7 +61,7 @@ For full technical details, see [SPEC.md](SPEC.md).
 
 ## Features
 
-- **Multi-tracker support** — Dispatch work from Asana tasks or GitHub Projects v2 items on a
+- **Multi-tracker support** — Dispatch work from Asana tasks (under development) or GitHub Projects v2 items on a
   fixed cadence.
 - **GitHub App authentication** — Authenticate the GitHub tracker with a GitHub App installation
   token (`app_id` + `private_key` + `installation_id`) instead of a PAT, for fine-grained
@@ -117,7 +117,7 @@ See [SPEC.md](SPEC.md) for the full specification.
 
 - **Bun** (see [bun.sh](https://bun.sh) for installation)
 - **Claude Code CLI** (see the [official installation guide](https://docs.anthropic.com/en/docs/claude-code))
-- **Asana access token** (`ASANA_ACCESS_TOKEN`) **or** **GitHub token** (`GITHUB_TOKEN`) with
+- **Asana access token** (`ASANA_ACCESS_TOKEN`) *(under development)* **or** **GitHub token** (`GITHUB_TOKEN`) with
   access to the target project, **or** **GitHub App credentials** (`GITHUB_APP_ID`,
   `GITHUB_APP_PRIVATE_KEY`, `GITHUB_APP_INSTALLATION_ID`) — see [GitHub App Authentication](#github-app-authentication)
 
@@ -135,6 +135,8 @@ bun run build
 Create a `WORKFLOW.md` in your target repository. Two examples are shown below.
 
 #### Asana
+
+> **Note**: Asana support is under development. The configuration below is a preview and may change.
 
 ```markdown
 ---
@@ -303,7 +305,7 @@ Issue {{ issue.identifier }}: {{ issue.title }}
 ### Run
 
 ```bash
-# Set your tracker token
+# Set your tracker token (Asana support is under development)
 export ASANA_ACCESS_TOKEN=your_token_here
 # or (GitHub PAT)
 export GITHUB_TOKEN=ghp_your_token_here
