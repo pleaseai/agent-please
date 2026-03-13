@@ -1,4 +1,4 @@
-import type { IssueFilter, ServiceConfig, SettingSource, SystemPromptConfig, WorkflowDefinition } from './types'
+import type { ClaudeEffort, IssueFilter, ServiceConfig, SettingSource, SystemPromptConfig, WorkflowDefinition } from './types'
 import { tmpdir } from 'node:os'
 import { join, sep } from 'node:path'
 import process from 'node:process'
@@ -13,7 +13,7 @@ const DEFAULTS = {
   MAX_CONCURRENT_AGENTS: 10,
   AGENT_MAX_TURNS: 20,
   MAX_RETRY_BACKOFF_MS: 300_000,
-  CLAUDE_EFFORT: 'high' as 'low' | 'medium' | 'high' | 'max',
+  CLAUDE_EFFORT: 'high' as ClaudeEffort,
   CLAUDE_COMMAND: 'claude',
   CLAUDE_PERMISSION_MODE: 'bypassPermissions',
   CLAUDE_ALLOWED_TOOLS: [] as string[],
@@ -304,7 +304,7 @@ function hookScriptValue(val: unknown): string | null {
   return trimmed === '' ? null : trimmed
 }
 
-function effortValue(val: unknown, fallback: 'low' | 'medium' | 'high' | 'max'): 'low' | 'medium' | 'high' | 'max' {
+function effortValue(val: unknown, fallback: ClaudeEffort): ClaudeEffort {
   if (val === 'low' || val === 'medium' || val === 'high' || val === 'max')
     return val
   return fallback
