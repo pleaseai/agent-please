@@ -778,9 +778,38 @@ describe('AppServerClient - runTurn with SDK mock (Section 17.5)', () => {
     expect(capturedModel).toBeUndefined()
   })
 
-  it('does not set settingSources when setting_sources is empty (default)', async () => {
+  it('does not set settingSources when setting_sources is explicitly empty', async () => {
     const sessionId = 'sdk-no-setting-sources'
     let capturedSettingSources: unknown = 'INITIAL'
+
+    const config = buildConfig({
+      config: {
+        tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
+        workspace: { root: tmpRoot },
+        claude: { command: 'claude', read_timeout_ms: 2000, turn_timeout_ms: 5000, setting_sources: [] },
+      },
+      prompt_template: '',
+    })
+    const client = new AppServerClient(config, wsPath, ({ options }) => {
+      capturedSettingSources = options?.settingSources
+      return (async function* () {
+        yield makeInitMsg(sessionId, wsPath)
+        yield makeSuccessMsg(sessionId)
+      })()
+    })
+
+    const session = await client.startSession()
+    if (session instanceof Error)
+      return
+
+    const result = await client.runTurn(session, 'hello', makeIssue(), () => {})
+    expect(result instanceof Error).toBe(false)
+    expect(capturedSettingSources).toBeUndefined()
+  })
+
+  it('passes default settingSources [project, local, user] when setting_sources not configured', async () => {
+    const sessionId = 'sdk-default-setting-sources'
+    let capturedSettingSources: unknown
 
     const config = makeConfig()
     const client = new AppServerClient(config, wsPath, ({ options }) => {
@@ -797,7 +826,7 @@ describe('AppServerClient - runTurn with SDK mock (Section 17.5)', () => {
 
     const result = await client.runTurn(session, 'hello', makeIssue(), () => {})
     expect(result instanceof Error).toBe(false)
-    expect(capturedSettingSources).toBeUndefined()
+    expect(capturedSettingSources).toEqual(['project', 'local', 'user'])
   })
 
   it('passes settingSources when setting_sources is configured', async () => {
