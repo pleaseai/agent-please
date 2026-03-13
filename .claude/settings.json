@@ -83,5 +83,9 @@
         ]
       }
     ]
+  },
+  "sandbox": {
+    "enabled": true,
+    "allowUnixSockets": ["~/.gnupg/S.gpg-agent"]
   }
 }
