@@ -17,6 +17,7 @@
     "check:app": "turbo run check --filter=@pleaseai/work",
     "test": "turbo run test",
     "test:app": "turbo run test --filter=@pleaseai/work",
+    "test:coverage": "turbo run test:coverage",
     "prepare": "husky"
   },
   "devDependencies": {
