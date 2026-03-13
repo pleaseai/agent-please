@@ -198,6 +198,8 @@ Your task:
 
 #### GitHub Projects v2 (PAT)
 
+See also the [example GitHub Project](https://github.com/orgs/pleaseai/projects/2) for a real-world reference.
+
 ```markdown
 ---
 tracker:
