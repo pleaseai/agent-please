@@ -6,13 +6,12 @@ import { query as sdkQuery } from '@anthropic-ai/claude-agent-sdk'
 import { createToolsMcpServer, getToolSpecs } from './tools'
 
 export interface SessionResult {
-  thread_id: string
   turn_id: string
   session_id: string
 }
 
 export interface AgentSession {
-  threadId: string
+  sessionId: string
   workspace: string
 }
 
@@ -27,6 +26,7 @@ interface SdkMsgRateLimit extends SdkMsgBase { type: 'rate_limit_event', rate_li
 type SdkMsg = SdkMsgInit | SdkMsgSuccess | SdkMsgError | SdkMsgRateLimit | SdkMsgBase
 
 export class AppServerClient {
+  private assignedSessionId: string | null = null
   private sessionId: string | null = null
   private abortController: AbortController | null = null
   private workspace: string
@@ -39,11 +39,15 @@ export class AppServerClient {
     this.queryFn = queryFn
   }
 
-  async startSession(): Promise<AgentSession | Error> {
+  async startSession(sessionId?: string): Promise<AgentSession | Error> {
     const validationErr = this.validateWorkspaceCwd()
     if (validationErr)
       return validationErr
-    return { threadId: randomUUID(), workspace: this.workspace }
+    const id = sessionId ?? randomUUID()
+    this.assignedSessionId = id
+    // If a sessionId is provided (resume), treat it as already confirmed by SDK
+    this.sessionId = sessionId ?? null
+    return { sessionId: id, workspace: this.workspace }
   }
 
   async runTurn(
@@ -77,6 +81,9 @@ export class AppServerClient {
     if (this.sessionId) {
       options.resume = this.sessionId
     }
+    else if (this.assignedSessionId) {
+      options.sessionId = this.assignedSessionId as `${string}-${string}-${string}-${string}-${string}`
+    }
 
     if (this.config.claude.command !== 'claude') {
       options.pathToClaudeCodeExecutable = this.config.claude.command
@@ -106,7 +113,6 @@ export class AppServerClient {
             event: 'session_started',
             timestamp: new Date(),
             session_id: sessionId,
-            thread_id: session.threadId,
             turn_id: turnId,
           })
         }
@@ -167,7 +173,7 @@ export class AppServerClient {
         return err
       }
 
-      return { thread_id: session.threadId, turn_id: turnId, session_id: sessionId }
+      return { turn_id: turnId, session_id: sessionId }
     }
     catch (err) {
       clearTimeout(timeoutHandle)
@@ -183,6 +189,7 @@ export class AppServerClient {
 
   stopSession(): void {
     this.abortController?.abort()
+    this.assignedSessionId = null
     this.sessionId = null
     this.abortController = null
   }

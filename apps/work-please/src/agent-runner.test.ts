@@ -270,7 +270,7 @@ describe('AppServerClient - startSession workspace validation (Section 17.5)', (
       expect(result.message).toContain('outside_workspace_root')
   })
 
-  it('returns AgentSession with UUID threadId on valid workspace', async () => {
+  it('returns AgentSession with UUID sessionId on valid workspace', async () => {
     const wsPath = join(tmpRoot, 'ws')
     mkdirSync(wsPath)
 
@@ -288,9 +288,31 @@ describe('AppServerClient - startSession workspace validation (Section 17.5)', (
     expect(result instanceof Error).toBe(false)
     if (result instanceof Error)
       return
-    expect(typeof result.threadId).toBe('string')
-    expect(result.threadId.length).toBeGreaterThan(0)
+    expect(typeof result.sessionId).toBe('string')
+    expect(result.sessionId.length).toBeGreaterThan(0)
     expect(result.workspace).toBe(wsPath)
+  })
+
+  it('uses provided sessionId when given to startSession', async () => {
+    const wsPath = join(tmpRoot, 'ws2')
+    mkdirSync(wsPath)
+
+    const config = buildConfig({
+      config: {
+        tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
+        workspace: { root: tmpRoot },
+        claude: { command: 'claude', read_timeout_ms: 2000, turn_timeout_ms: 5000 },
+      },
+      prompt_template: '',
+    })
+
+    const existingId = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'
+    const client = new AppServerClient(config, wsPath)
+    const result = await client.startSession(existingId)
+    expect(result instanceof Error).toBe(false)
+    if (result instanceof Error)
+      return
+    expect(result.sessionId).toBe(existingId)
   })
 })
 
@@ -342,7 +364,6 @@ describe('AppServerClient - runTurn with SDK mock (Section 17.5)', () => {
     const sessionStarted = messages.find(m => m.event === 'session_started')
     expect(sessionStarted).toBeDefined()
     expect(sessionStarted?.session_id).toBe(sessionId)
-    expect(sessionStarted?.thread_id).toBe(session.threadId)
 
     const turnCompleted = messages.find(m => m.event === 'turn_completed')
     expect(turnCompleted).toBeDefined()
@@ -352,7 +373,6 @@ describe('AppServerClient - runTurn with SDK mock (Section 17.5)', () => {
     if (result instanceof Error)
       return
     expect(result.session_id).toBe(sessionId)
-    expect(result.thread_id).toBe(session.threadId)
     expect(typeof result.turn_id).toBe('string')
   })
 
@@ -521,6 +541,27 @@ describe('AppServerClient - runTurn with SDK mock (Section 17.5)', () => {
     expect(result instanceof Error).toBe(true)
   })
 
+  it('passes options.sessionId (not resume) on first turn of a new session', async () => {
+    const capturedOptions: { sessionId?: string, resume?: string }[] = []
+
+    const config = makeConfig()
+    const client = new AppServerClient(config, wsPath, ({ options }) => {
+      capturedOptions.push({ sessionId: (options as Record<string, unknown>)?.sessionId as string | undefined, resume: options?.resume })
+      return (async function* () {
+        yield makeInitMsg('new-session-id', wsPath)
+        yield makeSuccessMsg('new-session-id')
+      })()
+    })
+
+    const session = await client.startSession()
+    if (session instanceof Error)
+      return
+
+    await client.runTurn(session, 'turn 1', makeIssue(), () => {})
+    expect(capturedOptions[0]?.resume).toBeUndefined()
+    expect(capturedOptions[0]?.sessionId).toBe(session.sessionId)
+  })
+
   it('resumes previous session on 2nd turn (passes resume option)', async () => {
     const sessionId = 'sdk-resume-session'
     const capturedOptions: { resume?: string }[] = []
@@ -538,13 +579,53 @@ describe('AppServerClient - runTurn with SDK mock (Section 17.5)', () => {
     if (session instanceof Error)
       return
 
-    // First turn — no resume
+    // First turn — no resume (uses options.sessionId instead)
     await client.runTurn(session, 'turn 1', makeIssue(), () => {})
     expect(capturedOptions[0]?.resume).toBeUndefined()
 
     // Second turn — should resume previous session
     await client.runTurn(session, 'turn 2', makeIssue(), () => {})
     expect(capturedOptions[1]?.resume).toBe(sessionId)
+  })
+
+  it('passes options.resume on first turn when sessionId provided to startSession (cross-restart resume)', async () => {
+    const existingId = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'
+    const capturedOptions: { sessionId?: string, resume?: string }[] = []
+
+    const config = makeConfig()
+    const client = new AppServerClient(config, wsPath, ({ options }) => {
+      capturedOptions.push({ sessionId: (options as Record<string, unknown>)?.sessionId as string | undefined, resume: options?.resume })
+      return (async function* () {
+        yield makeInitMsg(existingId, wsPath)
+        yield makeSuccessMsg(existingId)
+      })()
+    })
+
+    const session = await client.startSession(existingId)
+    if (session instanceof Error)
+      return
+
+    await client.runTurn(session, 'resume turn', makeIssue(), () => {})
+    expect(capturedOptions[0]?.resume).toBe(existingId)
+    expect(capturedOptions[0]?.sessionId).toBeUndefined()
+  })
+
+  it('sessionId on AgentSession remains stable across turns', async () => {
+    const sdkSessionId = 'stable-session-id'
+
+    const config = makeConfig()
+    const client = new AppServerClient(config, wsPath, () => (async function* () {
+      yield makeInitMsg(sdkSessionId, wsPath)
+      yield makeSuccessMsg(sdkSessionId)
+    })())
+
+    const session = await client.startSession()
+    if (session instanceof Error)
+      return
+
+    const idBeforeTurn = session.sessionId
+    await client.runTurn(session, 'turn 1', makeIssue(), () => {})
+    expect(session.sessionId).toBe(idBeforeTurn)
   })
 
   it('passes bypassPermissions and allowDangerouslySkipPermissions when configured', async () => {
