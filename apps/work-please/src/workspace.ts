@@ -1,7 +1,23 @@
 import type { Issue, ServiceConfig, Workspace } from './types'
-import { existsSync, lstatSync, mkdirSync, rmSync, statSync } from 'node:fs'
-import { join, resolve, sep } from 'node:path'
+import { existsSync, lstatSync, mkdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { dirname, join, resolve, sep } from 'node:path'
 import process from 'node:process'
+
+const CLAUDE_SETTINGS_PATH = '.claude/settings.local.json'
+const WORK_PLEASE_URL = 'https://github.com/pleaseai/work-please'
+const ATTRIBUTION_TEXT = `🙏 Generated with [Work Please](${WORK_PLEASE_URL})`
+
+export function generateClaudeSettings(): string {
+  return `${JSON.stringify({ attribution: { commit: ATTRIBUTION_TEXT, pr: ATTRIBUTION_TEXT } }, null, 2)}\n`
+}
+
+export function ensureClaudeSettings(wsPath: string): void {
+  const settingsPath = join(wsPath, CLAUDE_SETTINGS_PATH)
+  if (existsSync(settingsPath))
+    return
+  mkdirSync(dirname(settingsPath), { recursive: true })
+  writeFileSync(settingsPath, generateClaudeSettings(), 'utf-8')
+}
 
 // Thin wrapper around Bun.spawnSync — replaced by spyOn(_git, 'spawnSync') in unit tests
 export const _git = {
@@ -170,6 +186,7 @@ export async function createWorkspace(
         if (hookErr)
           return hookErr
       }
+      ensureClaudeSettings(wtPath)
       return { path: wtPath, workspace_key: key, created_now: createdNow }
     }
   }
@@ -209,6 +226,7 @@ export async function createWorkspace(
       return hookErr
   }
 
+  ensureClaudeSettings(wsPath)
   return workspace
 }
 
