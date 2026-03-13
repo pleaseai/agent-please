@@ -1,6 +1,7 @@
 node_modules/
 dist/
 .turbo/
+coverage/
 *.tsbuildinfo
 .claude/settings.local.json
 .claude/worktrees/
