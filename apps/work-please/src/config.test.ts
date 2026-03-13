@@ -20,6 +20,7 @@ describe('buildConfig', () => {
     expect(config.claude.read_timeout_ms).toBe(5_000)
     expect(config.claude.stall_timeout_ms).toBe(300_000)
     expect(config.hooks.timeout_ms).toBe(60_000)
+    expect(config.claude.setting_sources).toEqual([])
     expect(config.hooks.after_create).toBeNull()
     expect(config.hooks.before_run).toBeNull()
   })
@@ -163,6 +164,20 @@ describe('buildConfig', () => {
     }))
     expect(config.workspace.root).toBe('/tmp/test-workspaces')
     delete process.env.TEST_WORKSPACE_ROOT
+  })
+
+  it('parses setting_sources array from YAML', () => {
+    const config = buildConfig(makeWorkflow({
+      claude: { setting_sources: ['project', 'user'] },
+    }))
+    expect(config.claude.setting_sources).toEqual(['project', 'user'])
+  })
+
+  it('filters out non-string values from setting_sources', () => {
+    const config = buildConfig(makeWorkflow({
+      claude: { setting_sources: ['project', 42, null, 'local'] },
+    }))
+    expect(config.claude.setting_sources).toEqual(['project', 'local'])
   })
 })
 
