@@ -1,0 +1,15 @@
+# Turbo cache (speeds up incremental builds)
+.turbo/
+
+# TypeScript build info cache
+*.tsbuildinfo
+
+# Nuxt Nitro generated files
+packages/web/.nitro/
+
+# Local environment overrides (required for DB, API connections)
+.env.local
+.env.*.local
+
+# Claude Code local settings
+.claude/settings.local.json
