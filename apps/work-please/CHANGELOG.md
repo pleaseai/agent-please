@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.7](https://github.com/pleaseai/work-please/compare/work-v0.1.6...work-v0.1.7) (2026-03-13)
+
+
+### Features
+
+* **config:** add effort field to claude configuration ([#73](https://github.com/pleaseai/work-please/issues/73)) ([05e4230](https://github.com/pleaseai/work-please/commit/05e4230504de13da4b6e76e0119ea847ab4794f3))
+
 ## [0.1.6](https://github.com/pleaseai/work-please/compare/work-v0.1.5...work-v0.1.6) (2026-03-13)
 
 
