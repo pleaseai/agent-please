@@ -90,6 +90,7 @@ export interface ServiceConfig {
   claude: {
     /** null = use the Claude CLI default model */
     model: string | null
+    effort: 'low' | 'medium' | 'high' | 'max'
     command: string
     permission_mode: string
     allowed_tools: string[]

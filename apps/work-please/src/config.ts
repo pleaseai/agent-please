@@ -13,6 +13,7 @@ const DEFAULTS = {
   MAX_CONCURRENT_AGENTS: 10,
   AGENT_MAX_TURNS: 20,
   MAX_RETRY_BACKOFF_MS: 300_000,
+  CLAUDE_EFFORT: 'high' as 'low' | 'medium' | 'high' | 'max',
   CLAUDE_COMMAND: 'claude',
   CLAUDE_PERMISSION_MODE: 'bypassPermissions',
   CLAUDE_ALLOWED_TOOLS: [] as string[],
@@ -73,6 +74,7 @@ function buildClaudeConfig(claude: Record<string, unknown>): ServiceConfig['clau
   const attributionSec = sectionMap(settingsSec, 'attribution')
   return {
     model: stringValue(claude.model),
+    effort: effortValue(claude.effort, DEFAULTS.CLAUDE_EFFORT),
     command: commandValue(claude.command) ?? DEFAULTS.CLAUDE_COMMAND,
     permission_mode: stringValue(claude.permission_mode) ?? DEFAULTS.CLAUDE_PERMISSION_MODE,
     allowed_tools: stringArrayValue(claude.allowed_tools, DEFAULTS.CLAUDE_ALLOWED_TOOLS),
@@ -300,6 +302,12 @@ function hookScriptValue(val: unknown): string | null {
     return null
   const trimmed = val.trimEnd()
   return trimmed === '' ? null : trimmed
+}
+
+function effortValue(val: unknown, fallback: 'low' | 'medium' | 'high' | 'max'): 'low' | 'medium' | 'high' | 'max' {
+  if (val === 'low' || val === 'medium' || val === 'high' || val === 'max')
+    return val
+  return fallback
 }
 
 function commandValue(val: unknown): string | null {
