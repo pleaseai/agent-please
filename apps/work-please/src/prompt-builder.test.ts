@@ -15,6 +15,7 @@ function makeIssue(overrides: Partial<Issue> = {}): Issue {
     assignees: [],
     labels: ['bug'],
     blocked_by: [],
+    pull_requests: [],
     created_at: null,
     updated_at: null,
     ...overrides,
@@ -119,6 +120,20 @@ describe('buildPrompt', () => {
       makeIssue({ created_at: null }),
     )
     expect(isPromptBuildError(result)).toBe(false)
+  })
+
+  it('renders pull_requests fields in Liquid template', async () => {
+    const issue = makeIssue({
+      pull_requests: [
+        { number: 99, title: 'My PR', url: 'https://github.com/org/repo/pull/99', state: 'open', branch_name: 'fix/bug' },
+      ],
+    })
+    const result = await buildPrompt(
+      makeWorkflow('{% for pr in issue.pull_requests %}PR #{{ pr.number }}: {{ pr.title }} ({{ pr.state }}) branch={{ pr.branch_name }}{% endfor %}'),
+      issue,
+    )
+    expect(isPromptBuildError(result)).toBe(false)
+    expect(result).toContain('PR #99: My PR (open) branch=fix/bug')
   })
 })
 

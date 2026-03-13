@@ -4,6 +4,14 @@ export interface BlockerRef {
   state: string | null
 }
 
+export interface LinkedPR {
+  number: number
+  title: string
+  url: string
+  state: string
+  branch_name: string | null
+}
+
 export interface Issue {
   id: string
   identifier: string
@@ -16,6 +24,7 @@ export interface Issue {
   assignees: string[]
   labels: string[]
   blocked_by: BlockerRef[]
+  pull_requests: LinkedPR[]
   created_at: Date | null
   updated_at: Date | null
 }

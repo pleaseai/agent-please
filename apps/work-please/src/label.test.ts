@@ -15,6 +15,7 @@ function makeIssue(overrides: Partial<Issue> = {}): Issue {
     assignees: [],
     labels: [],
     blocked_by: [],
+    pull_requests: [],
     created_at: null,
     updated_at: null,
     ...overrides,

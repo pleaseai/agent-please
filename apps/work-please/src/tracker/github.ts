@@ -1,4 +1,4 @@
-import type { Issue, IssueFilter, ServiceConfig } from '../types'
+import type { Issue, IssueFilter, LinkedPR, ServiceConfig } from '../types'
 import type { TrackerAdapter, TrackerError } from './types'
 import { GraphqlResponseError } from '@octokit/graphql'
 import { normalizeState } from '../config'
@@ -55,12 +55,16 @@ export function createGitHubAdapter(config: ServiceConfig): TrackerAdapter {
                     labels(first: 20) { nodes { name } }
                     assignees(first: 10) { nodes { login } }
                     createdAt updatedAt
+                    closedByPullRequestsReferences(first: 10, includeClosedPrs: true) {
+                      nodes { number title url state headRefName }
+                    }
                   }
                   ... on PullRequest {
                     number title body url
                     labels(first: 20) { nodes { name } }
                     assignees(first: 10) { nodes { login } }
                     createdAt updatedAt
+                    headRefName
                   }
                 }
               }
@@ -87,12 +91,16 @@ export function createGitHubAdapter(config: ServiceConfig): TrackerAdapter {
                     labels(first: 20) { nodes { name } }
                     assignees(first: 10) { nodes { login } }
                     createdAt updatedAt
+                    closedByPullRequestsReferences(first: 10, includeClosedPrs: true) {
+                      nodes { number title url state headRefName }
+                    }
                   }
                   ... on PullRequest {
                     number title body url
                     labels(first: 20) { nodes { name } }
                     assignees(first: 10) { nodes { login } }
                     createdAt updatedAt
+                    headRefName
                   }
                 }
               }
@@ -125,12 +133,16 @@ export function createGitHubAdapter(config: ServiceConfig): TrackerAdapter {
                   labels(first: 20) { nodes { name } }
                   assignees(first: 10) { nodes { login } }
                   createdAt updatedAt
+                  closedByPullRequestsReferences(first: 10, includeClosedPrs: true) {
+                    nodes { number title url state headRefName }
+                  }
                 }
                 ... on PullRequest {
                   number title body url
                   labels(first: 20) { nodes { name } }
                   assignees(first: 10) { nodes { login } }
                   createdAt updatedAt
+                  headRefName
                 }
               }
             }
@@ -309,6 +321,19 @@ function normalizeProjectItem(node: Record<string, unknown>, status: string): Is
     ? assigneeNodes.map(n => n.login ?? '').filter(Boolean)
     : []
 
+  const prRefNodes = (content?.closedByPullRequestsReferences as { nodes?: Array<Record<string, unknown>> })?.nodes
+  const pullRequests: LinkedPR[] = Array.isArray(prRefNodes)
+    ? prRefNodes.map(pr => ({
+        number: Number(pr.number ?? 0),
+        title: String(pr.title ?? ''),
+        url: String(pr.url ?? ''),
+        state: String(pr.state ?? '').toLowerCase(),
+        branch_name: pr.headRefName ? String(pr.headRefName) : null,
+      }))
+    : []
+
+  const headRefName = content?.headRefName ? String(content.headRefName) : null
+
   return {
     id: String(node.id ?? ''),
     identifier,
@@ -316,11 +341,12 @@ function normalizeProjectItem(node: Record<string, unknown>, status: string): Is
     description: content?.body ? String(content.body) : null,
     priority: null,
     state: status,
-    branch_name: null,
+    branch_name: headRefName,
     url: content?.url ? String(content.url) : null,
     assignees,
     labels,
     blocked_by: [],
+    pull_requests: pullRequests,
     created_at: content?.createdAt ? new Date(String(content.createdAt)) : null,
     updated_at: content?.updatedAt ? new Date(String(content.updatedAt)) : null,
   }

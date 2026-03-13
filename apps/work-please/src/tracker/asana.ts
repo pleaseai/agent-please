@@ -148,6 +148,7 @@ export function createAsanaAdapter(config: ServiceConfig): TrackerAdapter {
           assignees: [],
           labels: [],
           blocked_by: [],
+          pull_requests: [],
           created_at: null,
           updated_at: null,
         })
@@ -186,6 +187,7 @@ function normalizeAsanaTask(task: Record<string, unknown>, sectionName: string):
     assignees,
     labels,
     blocked_by: blockedBy,
+    pull_requests: [],
     created_at: task.created_at ? new Date(String(task.created_at)) : null,
     updated_at: task.modified_at ? new Date(String(task.modified_at)) : null,
   }
