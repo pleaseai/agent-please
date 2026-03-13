@@ -165,6 +165,7 @@ agent:
 
 claude:
   permission_mode: acceptEdits
+  # setting_sources: [project]       # uncomment to load CLAUDE.md from the workspace
   turn_timeout_ms: 3600000
 ---
 
@@ -224,6 +225,7 @@ agent:
 
 claude:
   permission_mode: acceptEdits
+  # setting_sources: [project]       # uncomment to load CLAUDE.md from the workspace
   turn_timeout_ms: 3600000
 ---
 
@@ -287,6 +289,7 @@ agent:
 
 claude:
   permission_mode: acceptEdits
+  # setting_sources: [project]       # uncomment to load CLAUDE.md from the workspace
   turn_timeout_ms: 3600000
 ---
 
@@ -394,8 +397,11 @@ claude:
     - Read
     - Write
     - Bash
-  setting_sources:                    # Optional: filesystem settings to load (default [] = SDK isolation mode)
-    - project                         # "project" loads .claude/settings.json and CLAUDE.md; "user" loads ~/.claude/settings.json; "local" loads .claude/settings.local.json
+  setting_sources:                    # Optional: filesystem settings to load. Default [] = SDK isolation (no filesystem settings)
+    - project                         # load .claude/settings.json + CLAUDE.md from the workspace directory
+    # - user                          # load ~/.claude/settings.json + global CLAUDE.md
+    # - local                         # load .claude/settings.local.json from the workspace directory
+                                      # Only "user", "project", and "local" are valid — other values are ignored
   turn_timeout_ms: 3600000            # Optional: per-turn timeout in ms, default 3600000
   read_timeout_ms: 5000               # Optional: initial subprocess read timeout in ms, default 5000
   stall_timeout_ms: 300000            # Optional: stall detection timeout, default 300000
