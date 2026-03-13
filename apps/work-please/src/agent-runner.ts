@@ -86,6 +86,17 @@ export class AppServerClient {
       options.model = this.config.claude.model
     }
 
+    const sp = this.config.claude.system_prompt
+    if (sp.type === 'custom') {
+      options.systemPrompt = sp.value
+    }
+    else if (sp.append) {
+      options.systemPrompt = { type: 'preset', preset: sp.preset, append: sp.append }
+    }
+    else {
+      options.systemPrompt = { type: 'preset', preset: sp.preset }
+    }
+
     const toolSpecs = getToolSpecs(this.config)
     if (toolSpecs.length > 0) {
       options.mcpServers = {
