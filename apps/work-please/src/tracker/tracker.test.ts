@@ -719,6 +719,279 @@ describe('github_projects label normalization (Section 17.3)', () => {
   })
 })
 
+describe('github_projects pull_requests normalization', () => {
+  test('normalizes closedByPullRequestsReferences into pull_requests', async () => {
+    const config = makeGitHubConfig()
+    const adapter = createGitHubAdapter(config)
+
+    const origFetch = globalThis.fetch
+    globalThis.fetch = mock(async () => new Response(JSON.stringify({
+      data: {
+        repositoryOwner: {
+          projectV2: {
+            items: {
+              nodes: [
+                {
+                  id: 'PVTI_1',
+                  fieldValues: { nodes: [{ name: 'In Progress', field: { name: 'Status' } }] },
+                  content: {
+                    number: 10,
+                    title: 'Issue with PRs',
+                    body: null,
+                    url: 'https://github.com/org/repo/issues/10',
+                    labels: { nodes: [] },
+                    assignees: { nodes: [] },
+                    createdAt: null,
+                    updatedAt: null,
+                    closedByPullRequestsReferences: {
+                      nodes: [
+                        { number: 42, title: 'Fix it', url: 'https://github.com/org/repo/pull/42', state: 'MERGED', headRefName: 'fix/issue-10' },
+                        { number: 43, title: 'Alt fix', url: null, state: 'OPEN', headRefName: null },
+                      ],
+                    },
+                  },
+                },
+              ],
+              pageInfo: { hasNextPage: false, endCursor: null },
+            },
+          },
+        },
+      },
+    }), { status: 200, headers: { 'content-type': 'application/json' } })) as unknown as typeof fetch
+
+    try {
+      const result = await adapter.fetchIssuesByStates(['In Progress'])
+      expect(Array.isArray(result)).toBe(true)
+      if (!Array.isArray(result))
+        return
+      expect(result).toHaveLength(1)
+      const issue = result[0]
+      expect(issue.pull_requests).toHaveLength(2)
+      expect(issue.pull_requests[0].number).toBe(42)
+      expect(issue.pull_requests[0].title).toBe('Fix it')
+      expect(issue.pull_requests[0].url).toBe('https://github.com/org/repo/pull/42')
+      expect(issue.pull_requests[0].state).toBe('merged')
+      expect(issue.pull_requests[0].branch_name).toBe('fix/issue-10')
+      expect(issue.pull_requests[1].number).toBe(43)
+      expect(issue.pull_requests[1].state).toBe('open')
+      expect(issue.pull_requests[1].branch_name).toBeNull()
+      expect(issue.pull_requests[1].url).toBeNull()
+    }
+    finally {
+      globalThis.fetch = origFetch
+    }
+  })
+
+  test('populates branch_name from PullRequest headRefName', async () => {
+    const config = makeGitHubConfig()
+    const adapter = createGitHubAdapter(config)
+
+    const origFetch = globalThis.fetch
+    globalThis.fetch = mock(async () => new Response(JSON.stringify({
+      data: {
+        repositoryOwner: {
+          projectV2: {
+            items: {
+              nodes: [
+                {
+                  id: 'PVTI_2',
+                  fieldValues: { nodes: [{ name: 'In Progress', field: { name: 'Status' } }] },
+                  content: {
+                    number: 55,
+                    title: 'A pull request',
+                    body: null,
+                    url: 'https://github.com/org/repo/pull/55',
+                    labels: { nodes: [] },
+                    assignees: { nodes: [] },
+                    createdAt: null,
+                    updatedAt: null,
+                    headRefName: 'feature/my-branch',
+                  },
+                },
+              ],
+              pageInfo: { hasNextPage: false, endCursor: null },
+            },
+          },
+        },
+      },
+    }), { status: 200, headers: { 'content-type': 'application/json' } })) as unknown as typeof fetch
+
+    try {
+      const result = await adapter.fetchIssuesByStates(['In Progress'])
+      expect(Array.isArray(result)).toBe(true)
+      if (!Array.isArray(result))
+        return
+      expect(result).toHaveLength(1)
+      expect(result[0].branch_name).toBe('feature/my-branch')
+    }
+    finally {
+      globalThis.fetch = origFetch
+    }
+  })
+
+  test('returns null branch_name when PullRequest headRefName is null', async () => {
+    const config = makeGitHubConfig()
+    const adapter = createGitHubAdapter(config)
+
+    const origFetch = globalThis.fetch
+    globalThis.fetch = mock(async () => new Response(JSON.stringify({
+      data: {
+        repositoryOwner: {
+          projectV2: {
+            items: {
+              nodes: [
+                {
+                  id: 'PVTI_3',
+                  fieldValues: { nodes: [{ name: 'In Progress', field: { name: 'Status' } }] },
+                  content: {
+                    number: 66,
+                    title: 'A pull request without branch',
+                    body: null,
+                    url: 'https://github.com/org/repo/pull/66',
+                    labels: { nodes: [] },
+                    assignees: { nodes: [] },
+                    createdAt: null,
+                    updatedAt: null,
+                    headRefName: null,
+                  },
+                },
+              ],
+              pageInfo: { hasNextPage: false, endCursor: null },
+            },
+          },
+        },
+      },
+    }), { status: 200, headers: { 'content-type': 'application/json' } })) as unknown as typeof fetch
+
+    try {
+      const result = await adapter.fetchIssuesByStates(['In Progress'])
+      expect(Array.isArray(result)).toBe(true)
+      if (!Array.isArray(result))
+        return
+      expect(result).toHaveLength(1)
+      expect(result[0].branch_name).toBeNull()
+    }
+    finally {
+      globalThis.fetch = origFetch
+    }
+  })
+
+  test('skips null entries in closedByPullRequestsReferences nodes', async () => {
+    const config = makeGitHubConfig()
+    const adapter = createGitHubAdapter(config)
+
+    const origFetch = globalThis.fetch
+    globalThis.fetch = mock(async () => new Response(JSON.stringify({
+      data: {
+        repositoryOwner: {
+          projectV2: {
+            items: {
+              nodes: [
+                {
+                  id: 'PVTI_null_test',
+                  fieldValues: { nodes: [{ name: 'In Progress', field: { name: 'Status' } }] },
+                  content: {
+                    number: 20,
+                    title: 'Issue with mixed PR nodes',
+                    body: null,
+                    url: 'https://github.com/org/repo/issues/20',
+                    labels: { nodes: [] },
+                    assignees: { nodes: [] },
+                    createdAt: null,
+                    updatedAt: null,
+                    closedByPullRequestsReferences: {
+                      nodes: [
+                        null,
+                        { number: 77, title: 'Valid PR', url: 'https://github.com/org/repo/pull/77', state: 'OPEN', headRefName: 'fix/20' },
+                      ],
+                    },
+                  },
+                },
+              ],
+              pageInfo: { hasNextPage: false, endCursor: null },
+            },
+          },
+        },
+      },
+    }), { status: 200, headers: { 'content-type': 'application/json' } })) as unknown as typeof fetch
+
+    try {
+      const result = await adapter.fetchIssuesByStates(['In Progress'])
+      expect(Array.isArray(result)).toBe(true)
+      if (!Array.isArray(result))
+        return
+      expect(result).toHaveLength(1)
+      expect(result[0].pull_requests).toHaveLength(1)
+      expect(result[0].pull_requests[0].number).toBe(77)
+    }
+    finally {
+      globalThis.fetch = origFetch
+    }
+  })
+
+  test('returns empty pull_requests when field absent (ITEMS_BY_IDS_QUERY path)', async () => {
+    const config = makeGitHubConfig()
+    const adapter = createGitHubAdapter(config)
+
+    const origFetch = globalThis.fetch
+    globalThis.fetch = mock(async () => new Response(JSON.stringify({
+      data: {
+        nodes: [
+          {
+            id: 'PVTI_abc',
+            fieldValues: { nodes: [{ name: 'In Progress', field: { name: 'Status' } }] },
+            content: { number: 42, title: 'Test Issue' },
+          },
+        ],
+      },
+    }), { status: 200, headers: { 'content-type': 'application/json' } })) as unknown as typeof fetch
+
+    try {
+      const result = await adapter.fetchIssueStatesByIds(['PVTI_abc'])
+      expect(Array.isArray(result)).toBe(true)
+      if (!Array.isArray(result))
+        return
+      expect(result[0].pull_requests).toEqual([])
+    }
+    finally {
+      globalThis.fetch = origFetch
+    }
+  })
+})
+
+describe('asana pull_requests field', () => {
+  test('always returns empty pull_requests array', async () => {
+    const config = makeAsanaConfig()
+    const adapter = createAsanaAdapter(config)
+
+    const origFetch = globalThis.fetch
+    globalThis.fetch = mock(async (url: string | URL | Request) => {
+      const urlStr = String(url)
+      if (urlStr.includes('/projects/')) {
+        return { ok: true, json: async () => ({ data: [{ gid: 'sec1', name: 'Todo' }] }) } as unknown as Response
+      }
+      return {
+        ok: true,
+        json: async () => ({
+          data: [{ gid: 'task1', name: 'Task', notes: null, tags: [], dependencies: [], created_at: null, modified_at: null }],
+          next_page: null,
+        }),
+      } as unknown as Response
+    }) as unknown as typeof fetch
+
+    try {
+      const result = await adapter.fetchIssuesByStates(['Todo'])
+      expect(Array.isArray(result)).toBe(true)
+      if (!Array.isArray(result))
+        return
+      expect(result[0].pull_requests).toEqual([])
+    }
+    finally {
+      globalThis.fetch = origFetch
+    }
+  })
+})
+
 describe('asana assignee extraction', () => {
   test('extracts assignee email from task response', async () => {
     const config = makeAsanaConfig()
