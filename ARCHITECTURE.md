@@ -25,7 +25,7 @@ Code agent using tools available in the runtime environment.
 | `apps/work-please/src/index.ts` | Binary entry point — calls `runCli()` |
 | `apps/work-please/src/cli.ts` | CLI argument parsing (`run`, `init`, `--port`) and startup sequence |
 | `apps/work-please/src/orchestrator.ts` | Core poll/dispatch/retry loop — start reading here for runtime behavior |
-| `apps/work-please/src/server.ts` | Optional HTTP dashboard and JSON API (`/api/v1/state`, `/api/v1/refresh`) |
+| `apps/work-please/src/server.ts` | Optional HTTP dashboard (`/`) and JSON API (`/api/v1/state`, `/api/v1/refresh`, `/api/v1/<identifier>`) |
 | `WORKFLOW.md` | User-authored config file in the **target repository** (not this repo) — defines tracker settings, hooks, agent limits, and the Liquid prompt template |
 
 ## Module Structure
@@ -92,6 +92,12 @@ work-please/                      # Monorepo root (Bun + Turborepo)
                   └────────┘
 ```
 
+### Startup
+
+Before the first tick, `start()` calls `startupTerminalWorkspaceCleanup()`, which fetches all
+issues in terminal states and removes their local workspaces. This keeps the workspace root clean
+after a service restart.
+
 ### Orchestrator Tick Cycle
 
 Each poll tick executes in order:
@@ -99,12 +105,14 @@ Each poll tick executes in order:
 1. **Reconcile** — Refresh running issue states from the tracker; terminate workers for
    terminal/non-active issues; detect stalled agents.
 2. **Validate** — Re-check config validity (supports live reload via file watcher).
-3. **Process watched states** — Evaluate auto-transition rules for issues in `Human Review`
+3. **Create tracker adapter** — Instantiate a `TrackerAdapter` from config. On adapter error,
+   log and skip remaining steps.
+4. **Process watched states** — Evaluate auto-transition rules for issues in `Human Review`
    (→ `Rework` on changes requested, → `Merging` on approved).
-4. **Fetch candidates** — Poll active issues from the tracker with optional assignee/label filters.
-5. **Sort and dispatch** — Priority ascending, then oldest first. Check global and per-state
+5. **Fetch candidates** — Poll active issues from the tracker with optional assignee/label filters.
+6. **Sort and dispatch** — Priority ascending, then oldest first. Check global and per-state
    concurrency limits. Create workspace, run hooks, start agent session.
-6. **Schedule next tick** — Wait `polling.interval_ms` before repeating.
+7. **Schedule next tick** — Wait `polling.interval_ms` before repeating.
 
 ### Agent Session Lifecycle
 
@@ -112,9 +120,10 @@ Each poll tick executes in order:
    points to a GitHub repo). Runs `after_create` hook on first creation.
 2. `runBeforeRunHook()` — Executes the optional `before_run` shell hook.
 3. `AppServerClient.startSession()` — Validates workspace path against `workspace.root`
-   (path traversal prevention), creates a session ID.
+   (path traversal prevention) and assigns a local session UUID. No SDK communication occurs
+   yet — the real session is established when `runTurn()` receives a `system/init` event.
 4. `AppServerClient.runTurn()` — Calls `query()` from `@anthropic-ai/claude-agent-sdk` with the
-   rendered prompt. Streams SDK events (init, result, rate_limit) back to the orchestrator.
+   rendered prompt. Streams SDK events (`system/init`, `result`, `rate_limit_event`) back to the orchestrator.
    Supports multi-turn: after each turn, refreshes issue state; continues if still active and
    under `max_turns`.
 5. `runAfterRunHook()` — Executes the optional `after_run` shell hook.
@@ -125,9 +134,11 @@ Each poll tick executes in order:
 
 These constraints must hold across the codebase. Violating them is a bug.
 
-1. **Read-only tracker access** — The orchestrator never writes to the issue tracker. All state
-   transitions and PR operations are performed by the agent. The only exception is
-   `auto-transition.ts` which moves items between watched states (e.g., Human Review → Rework).
+1. **Minimal tracker writes** — The orchestrator does not write to the issue tracker except for
+   two cases: (a) `processWatchedStates()` calls `adapter.updateItemStatus()` to advance items
+   between watched states (e.g., Human Review → Rework); (b) the `LabelService` (`label.ts`)
+   applies `dispatched`/`done`/`failed` labels to GitHub issues. All other state transitions,
+   PR operations, and comments are performed by the agent.
 
 2. **Workspace path validation** — Every workspace path must be validated against
    `config.workspace.root` before any agent launch. The path must be a strict child of the root
