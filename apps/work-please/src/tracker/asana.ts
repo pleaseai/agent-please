@@ -110,6 +110,10 @@ export function createAsanaAdapter(config: ServiceConfig): TrackerAdapter {
       return issues.filter(issue => matchesFilter(issue, filter))
     },
 
+    async updateItemStatus(_itemId: string, _targetState: string): Promise<true | TrackerError> {
+      return { code: 'tracker_write_not_supported' }
+    },
+
     async fetchIssuesByStates(states: string[]) {
       if (states.length === 0)
         return []
