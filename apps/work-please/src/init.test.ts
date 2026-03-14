@@ -74,6 +74,7 @@ describe('generateWorkflow', () => {
     expect(activeStatesBlock).toContain('- In Progress')
     expect(activeStatesBlock).toContain('- Merging')
     expect(activeStatesBlock).toContain('- Rework')
+    expect(activeStatesBlock).not.toContain('- Human Review')
   })
 
   it('includes standard terminal_states', () => {
@@ -132,7 +133,7 @@ describe('generateWorkflow', () => {
 
   it('includes "Human Review" instruction in PR step', () => {
     const content = generateWorkflow('myorg', 42)
-    expect(content).toContain('Human Review')
+    expect(content).toContain('move the issue status to `Human Review`')
   })
 
   it('includes Rework Mode block for Rework state', () => {

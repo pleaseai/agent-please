@@ -291,7 +291,7 @@ If any blocker is still open, document it and stop.
 {% if issue.state == "Rework" %}
 ## Rework Mode
 
-The reviewer has requested changes. A PR exists on branch \`{{ issue.branch_name }}\`.
+The reviewer has requested changes. A PR exists on branch \`{{ issue.branch_name | escape }}\`.
 
 1. Fetch all review feedback:
    - \`gh pr view --json reviewDecision,reviews,comments\`
