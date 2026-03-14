@@ -21,6 +21,7 @@ function makeIssue(overrides: Partial<Issue> = {}): Issue {
     has_unresolved_human_threads: false,
     created_at: null,
     updated_at: null,
+    project: null,
     ...overrides,
   }
 }

@@ -72,5 +72,15 @@ function issueToTemplateVars(issue: Issue): Record<string, unknown> {
     has_unresolved_human_threads: issue.has_unresolved_human_threads,
     created_at: issue.created_at?.toISOString() ?? null,
     updated_at: issue.updated_at?.toISOString() ?? null,
+    project: issue.project
+      ? {
+          owner: issue.project.owner,
+          number: issue.project.number,
+          project_id: issue.project.project_id,
+          item_id: issue.project.item_id,
+          field_id: issue.project.field_id,
+          status_options: issue.project.status_options,
+        }
+      : null,
   }
 }

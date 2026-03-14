@@ -14,6 +14,15 @@ export interface LinkedPR {
   branch_name: string | null
 }
 
+export interface ProjectItemContext {
+  owner: string
+  number: number
+  project_id: string | null
+  item_id: string
+  field_id: string | null
+  status_options: Array<{ name: string, id: string }>
+}
+
 export interface Issue {
   id: string
   identifier: string
@@ -32,6 +41,7 @@ export interface Issue {
   has_unresolved_human_threads: boolean
   created_at: Date | null
   updated_at: Date | null
+  project: ProjectItemContext | null
 }
 
 export type SystemPromptConfig

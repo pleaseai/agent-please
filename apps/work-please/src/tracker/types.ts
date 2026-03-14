@@ -1,10 +1,17 @@
 import type { Issue } from '../types'
 
+export interface StatusFieldInfo {
+  project_id: string
+  field_id: string
+  options: Array<{ name: string, id: string }>
+}
+
 export interface TrackerAdapter {
   fetchCandidateIssues: () => Promise<Issue[] | TrackerError>
   fetchIssuesByStates: (states: string[]) => Promise<Issue[] | TrackerError>
   fetchIssueStatesByIds: (ids: string[]) => Promise<Issue[] | TrackerError>
   updateItemStatus?: (itemId: string, targetState: string) => Promise<true | TrackerError>
+  resolveStatusField?: () => Promise<StatusFieldInfo | null>
 }
 
 export type TrackerError

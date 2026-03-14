@@ -444,12 +444,14 @@ hooks:
 
 agent:
   max_concurrent_agents: 10           # Optional: global concurrency limit, default 10
+  max_turns: 20                       # Optional: max turns per agent run, default 20
   max_retry_backoff_ms: 300000        # Optional: max retry delay in ms, default 300000
   max_concurrent_agents_by_state:     # Optional: per-state concurrency limits
     in progress: 5
 
 claude:
   command: claude                     # Optional: Claude Code CLI command, default "claude"
+  model: claude-sonnet-4-5-20250514   # Optional: override Claude model. Default: CLI default
   effort: high                        # Optional: reasoning depth — 'low', 'medium', 'high', or 'max'. Default 'high'.
   permission_mode: acceptEdits        # Optional: one of 'default', 'acceptEdits', 'bypassPermissions'. Defaults to 'bypassPermissions'.
   allowed_tools:                      # Optional: restrict available tools
@@ -464,13 +466,26 @@ claude:
   turn_timeout_ms: 3600000            # Optional: per-turn timeout in ms, default 3600000
   read_timeout_ms: 5000               # Optional: initial subprocess read timeout in ms, default 5000
   stall_timeout_ms: 300000            # Optional: stall detection timeout, default 300000
+  system_prompt: "custom prompt"      # Optional: custom system prompt string. Default: built-in claude_code preset
   settings:
     attribution:
       commit: "🙏 Generated with [Work Please](https://github.com/pleaseai/work-please)"  # Optional: appended to git commit messages. Defaults to Work Please link.
       pr: "🙏 Generated with [Work Please](https://github.com/pleaseai/work-please)"      # Optional: appended to PR descriptions. Defaults to Work Please link.
 
+# worker:                              # Optional: SSH worker support (experimental)
+#   ssh_hosts:                         # List of SSH host aliases for remote execution
+#     - worker-1
+#     - worker-2
+#   max_concurrent_agents_per_host: 5  # Max agents per SSH host
+
+# observability:                       # Optional: TUI dashboard settings
+#   dashboard_enabled: true            # Enable TUI dashboard, default true
+#   refresh_ms: 1000                   # Dashboard data refresh interval, default 1000
+#   render_interval_ms: 16             # TUI render interval, default 16
+
 server:
   port: 3000                          # Optional: enable HTTP dashboard on this port
+  host: "127.0.0.1"                   # Optional: bind address, default "127.0.0.1"
 ---
 
 Your prompt template goes here. Available variables:
@@ -492,6 +507,13 @@ Your prompt template goes here. Available variables:
 - {{ issue.priority }}     — Numeric priority or null
 - {{ issue.created_at }}   — ISO-8601 creation timestamp
 - {{ issue.updated_at }}   — ISO-8601 last-updated timestamp
+- {{ issue.project }}      — GitHub Projects v2 context (null for Asana):
+  - {{ issue.project.owner }}          — Project owner login
+  - {{ issue.project.number }}         — Project number
+  - {{ issue.project.project_id }}     — Project GraphQL node ID (resolved at runtime)
+  - {{ issue.project.item_id }}        — Project item GraphQL node ID
+  - {{ issue.project.field_id }}       — Status field GraphQL node ID (resolved at runtime)
+  - {{ issue.project.status_options }} — Array of { name, id } for status field options
 - {{ attempt }}            — Retry attempt number (null on first run)
 ```
 

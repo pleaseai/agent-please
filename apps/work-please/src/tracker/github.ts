@@ -3,7 +3,7 @@ import type { TrackerAdapter, TrackerError } from './types'
 import { GraphqlResponseError } from '@octokit/graphql'
 import { normalizeState } from '../config'
 import { createAuthenticatedGraphql } from './github-auth'
-import { createUpdateItemStatus } from './github-status-update'
+import { createStatusUpdateContext } from './github-status-update'
 
 const PAGE_SIZE = 50
 
@@ -260,7 +260,7 @@ export function createGitHubAdapter(config: ServiceConfig): TrackerAdapter {
           || statusFilter.some(s => normalizeState(s) === normalizeState(status))
 
         if (statusMatches) {
-          issues.push(normalizeProjectItem(node, status))
+          issues.push(normalizeProjectItem(node, status, owner, projectNumber))
         }
       }
 
@@ -278,6 +278,8 @@ export function createGitHubAdapter(config: ServiceConfig): TrackerAdapter {
 
     return issues
   }
+
+  const statusCtx = createStatusUpdateContext(runGraphql, owner, projectNumber, projectId)
 
   return {
     async fetchCandidateIssues() {
@@ -310,11 +312,12 @@ export function createGitHubAdapter(config: ServiceConfig): TrackerAdapter {
         .map((node) => {
           const n = node as Record<string, unknown>
           const status = extractStatus(n) ?? ''
-          return normalizeProjectItem(n, status)
+          return normalizeProjectItem(n, status, owner, projectNumber)
         })
     },
 
-    updateItemStatus: createUpdateItemStatus(runGraphql, owner, projectNumber, projectId),
+    updateItemStatus: statusCtx.updateItemStatus,
+    resolveStatusField: statusCtx.resolveStatusField,
   }
 }
 
@@ -413,7 +416,7 @@ function normalizeReviewDecision(raw: unknown): Issue['review_decision'] {
   }
 }
 
-function normalizeProjectItem(node: Record<string, unknown>, status: string): Issue {
+function normalizeProjectItem(node: Record<string, unknown>, status: string, projectOwner?: string, projectNum?: number): Issue {
   const content = node.content as Record<string, unknown>
   const number = content?.number
   const identifier = number ? `#${number}` : String(node.id ?? '')
@@ -461,5 +464,8 @@ function normalizeProjectItem(node: Record<string, unknown>, status: string): Is
     has_unresolved_human_threads: hasUnresolvedHumanThreads,
     created_at: content?.createdAt ? new Date(String(content.createdAt)) : null,
     updated_at: content?.updatedAt ? new Date(String(content.updatedAt)) : null,
+    project: (projectOwner || projectNum)
+      ? { owner: projectOwner ?? '', number: projectNum ?? 0, project_id: null, item_id: String(node.id ?? ''), field_id: null, status_options: [] }
+      : null,
   }
 }

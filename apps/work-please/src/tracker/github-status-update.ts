@@ -1,4 +1,4 @@
-import type { TrackerError } from './types'
+import type { StatusFieldInfo, TrackerError } from './types'
 
 const RESOLVE_PROJECT_ID_QUERY = `
   query($owner: String!, $number: Int!) {
@@ -39,15 +39,21 @@ const UPDATE_ITEM_STATUS_MUTATION = `
 
 type RunGraphql = (query: string, variables?: Record<string, unknown>) => Promise<{ data: unknown } | TrackerError>
 
-export function createUpdateItemStatus(
+export interface StatusUpdateContext {
+  updateItemStatus: (itemId: string, targetState: string) => Promise<true | TrackerError>
+  resolveStatusField: () => Promise<StatusFieldInfo | null>
+}
+
+export function createStatusUpdateContext(
   runGraphql: RunGraphql,
   owner: string,
   projectNumber: number,
   projectId: string | null,
-): (itemId: string, targetState: string) => Promise<true | TrackerError> {
+): StatusUpdateContext {
   let resolvedProjectId: string | null = projectId
   let cachedFieldId: string | null = null
   let cachedOptions: Map<string, string> | null = null
+  let cachedOptionsArray: Array<{ name: string, id: string }> | null = null
 
   async function ensureProjectId(): Promise<string | TrackerError> {
     if (resolvedProjectId)
@@ -85,37 +91,71 @@ export function createUpdateItemStatus(
     }
 
     cachedFieldId = field.id
+    cachedOptionsArray = field.options.map(o => ({ name: o.name, id: o.id }))
     cachedOptions = new Map(field.options.map(o => [o.name, o.id]))
     return { fieldId: cachedFieldId, options: cachedOptions }
   }
 
-  return async function updateItemStatus(itemId: string, targetState: string): Promise<true | TrackerError> {
-    const pidOrError = await ensureProjectId()
-    if (typeof pidOrError !== 'string')
-      return pidOrError
+  return {
+    async updateItemStatus(itemId: string, targetState: string): Promise<true | TrackerError> {
+      const pidOrError = await ensureProjectId()
+      if (typeof pidOrError !== 'string')
+        return pidOrError
 
-    const fieldOrError = await ensureStatusField(pidOrError)
-    if ('code' in fieldOrError)
-      return fieldOrError
+      const fieldOrError = await ensureStatusField(pidOrError)
+      if ('code' in fieldOrError)
+        return fieldOrError
 
-    const { fieldId, options } = fieldOrError
-    const optionId = options.get(targetState)
-    if (!optionId) {
-      return {
-        code: 'github_projects_status_update_failed' as const,
-        cause: new Error(`No option found for status: ${targetState}`),
+      const { fieldId, options } = fieldOrError
+      const optionId = options.get(targetState)
+      if (!optionId) {
+        return {
+          code: 'github_projects_status_update_failed' as const,
+          cause: new Error(`No option found for status: ${targetState}`),
+        }
       }
-    }
 
-    const result = await runGraphql(UPDATE_ITEM_STATUS_MUTATION, {
-      projectId: pidOrError,
-      itemId,
-      fieldId,
-      optionId,
-    })
-    if ('code' in result)
-      return result
+      const result = await runGraphql(UPDATE_ITEM_STATUS_MUTATION, {
+        projectId: pidOrError,
+        itemId,
+        fieldId,
+        optionId,
+      })
+      if ('code' in result)
+        return result
 
-    return true as const
+      return true as const
+    },
+
+    async resolveStatusField(): Promise<StatusFieldInfo | null> {
+      const pidOrError = await ensureProjectId()
+      if (typeof pidOrError !== 'string') {
+        console.warn(`[github-status-update] failed to resolve project ID: ${pidOrError.code}`)
+        return null
+      }
+
+      const fieldOrError = await ensureStatusField(pidOrError)
+      if ('code' in fieldOrError) {
+        console.warn(`[github-status-update] failed to resolve status field: ${fieldOrError.code}`)
+        return null
+      }
+
+      return {
+        project_id: pidOrError,
+        field_id: fieldOrError.fieldId,
+        options: cachedOptionsArray ?? [],
+      }
+    },
   }
+}
+
+/** @deprecated Use createStatusUpdateContext instead */
+export function createUpdateItemStatus(
+  runGraphql: RunGraphql,
+  owner: string,
+  projectNumber: number,
+  projectId: string | null,
+): (itemId: string, targetState: string) => Promise<true | TrackerError> {
+  const ctx = createStatusUpdateContext(runGraphql, owner, projectNumber, projectId)
+  return ctx.updateItemStatus
 }
