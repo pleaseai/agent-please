@@ -35,11 +35,16 @@ export class AppServerClient {
   private workspace: string
   private config: ServiceConfig
   private queryFn: QueryFn
+  private agentEnv: Record<string, string> | null = null
 
   constructor(config: ServiceConfig, workspace: string, queryFn: QueryFn = sdkQuery) {
     this.config = config
     this.workspace = workspace
     this.queryFn = queryFn
+  }
+
+  setAgentEnv(env: Record<string, string>): void {
+    this.agentEnv = env
   }
 
   async startSession(sessionId?: string): Promise<AgentSession | Error> {
@@ -126,6 +131,10 @@ export class AppServerClient {
 
     if (this.config.claude.setting_sources.length > 0) {
       options.settingSources = this.config.claude.setting_sources
+    }
+
+    if (this.agentEnv) {
+      options.env = this.agentEnv
     }
 
     const turnId = randomUUID()
