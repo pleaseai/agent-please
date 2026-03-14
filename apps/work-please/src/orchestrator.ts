@@ -2,6 +2,7 @@ import type { LabelService } from './label'
 import type { TrackerAdapter } from './tracker/types'
 import type { Issue, OrchestratorState, RetryEntry, RunningEntry, ServiceConfig, WorkflowDefinition } from './types'
 import { watch } from 'node:fs'
+import { resolveAgentEnv } from './agent-env'
 import { AppServerClient } from './agent-runner'
 import { evaluateAutoTransition } from './auto-transition'
 import { buildConfig, getActiveStates, getAutoTransitions, getTerminalStates, getWatchedStates, maxConcurrentForState, normalizeState, validateConfig } from './config'
@@ -253,8 +254,12 @@ export class Orchestrator {
       throw beforeRunErr
     }
 
-    // Start agent session
+    // Resolve agent environment variables (including runtime tokens)
     const client = new AppServerClient(this.config, wsResult.path)
+    const agentEnv = await resolveAgentEnv(this.config, this.buildTokenProvider())
+    client.setAgentEnv(agentEnv)
+
+    // Start agent session
     const session = await client.startSession()
     if (session instanceof Error) {
       await runAfterRunHook(this.config, wsResult.path, issue)
@@ -643,6 +648,10 @@ export class Orchestrator {
     }
   }
 
+  private buildTokenProvider(): import('./agent-env').TokenProvider | undefined {
+    return buildTokenProvider(this.config.tracker)
+  }
+
   private reloadWorkflow(): void {
     const wf = loadWorkflow(this.workflowPath)
     if (isWorkflowError(wf)) {
@@ -714,4 +723,40 @@ function retryBackoffMs(attempt: number, maxMs: number): number {
 
 function nextAttemptFrom(currentAttempt: number | null): number {
   return currentAttempt === null ? 1 : currentAttempt + 1
+}
+
+export function buildTokenProvider(tracker: ServiceConfig['tracker']): import('./agent-env').TokenProvider | undefined {
+  const { kind, api_key, app_id, private_key, installation_id } = tracker
+  if (kind !== 'github_projects')
+    return undefined
+
+  // PAT auth: provide the api_key directly as the token
+  if (api_key) {
+    return {
+      installationAccessToken: async () => api_key,
+    }
+  }
+
+  // App auth: requires all three fields
+  if (!app_id || !private_key || installation_id == null)
+    return undefined
+
+  return {
+    installationAccessToken: async () => {
+      try {
+        const { createAppAuth } = await import('@octokit/auth-app')
+        const auth = createAppAuth({
+          appId: app_id,
+          privateKey: private_key,
+          installationId: installation_id,
+        })
+        const { token } = await auth({ type: 'installation' })
+        return token
+      }
+      catch (err) {
+        console.error(`[orchestrator] failed to generate installation access token: ${err}`)
+        return null
+      }
+    },
+  }
 }

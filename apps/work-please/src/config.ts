@@ -4,6 +4,8 @@ import { join, sep } from 'node:path'
 import process from 'node:process'
 
 const ENV_VAR_RE = /^\$([A-Z_]\w*)$/i
+const ENV_KEY_RE = /^[A-Z_]\w*$/i
+const RUNTIME_VAR_RE = /^\$\{\w+\}$/
 const VALID_SETTING_SOURCES = new Set<string>(['user', 'project', 'local'])
 
 const DEFAULTS = {
@@ -66,6 +68,7 @@ export function buildConfig(workflow: WorkflowDefinition): ServiceConfig {
       max_concurrent_agents_by_state: stateLimitsValue(agent.max_concurrent_agents_by_state),
     },
     claude: buildClaudeConfig(claude),
+    env: buildEnvConfig(raw),
     server: {
       port: nonNegIntOrNull(server.port),
     },
@@ -449,6 +452,49 @@ function expandPath(val: string): string {
   }
   // bare relative name — preserve as-is
   return val
+}
+
+function buildEnvConfig(raw: Record<string, unknown>): Record<string, string> {
+  const envSection = raw.env
+  if (!envSection || typeof envSection !== 'object' || Array.isArray(envSection))
+    return {}
+
+  const result: Record<string, string> = {}
+  for (const [key, val] of Object.entries(envSection as Record<string, unknown>)) {
+    if (!ENV_KEY_RE.test(key)) {
+      console.warn(`[config] ignoring invalid env key: ${JSON.stringify(key)}`)
+      continue
+    }
+    let str: string | null = null
+    if (typeof val === 'string')
+      str = val
+    else if (typeof val === 'number' || typeof val === 'boolean')
+      str = String(val)
+    if (str === null)
+      continue
+
+    // Preserve ${RUNTIME_VAR} references for later resolution
+    if (RUNTIME_VAR_RE.test(str)) {
+      result[key] = str
+      continue
+    }
+
+    // Resolve $VAR from process.env
+    const envRefMatch = str.match(ENV_VAR_RE)
+    if (envRefMatch) {
+      const envVal = process.env[envRefMatch[1]]?.trim()
+      if (envVal) {
+        result[key] = envVal
+      }
+      else {
+        console.warn(`[config] env.${key} references $${envRefMatch[1]} which is not set — dropping`)
+      }
+      continue
+    }
+
+    result[key] = str
+  }
+  return result
 }
 
 function normalizeTrackerKind(kind: string | null): string | null {

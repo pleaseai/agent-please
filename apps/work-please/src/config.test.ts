@@ -1,3 +1,4 @@
+/* eslint-disable no-template-curly-in-string */
 import type { WorkflowDefinition } from './types'
 import process from 'node:process'
 import { describe, expect, it } from 'bun:test'
@@ -761,6 +762,86 @@ describe('getWatchedStates', () => {
   it('returns empty array for unknown tracker kind', () => {
     const config = buildConfig(makeWorkflow({ tracker: { kind: 'linear' } }))
     expect(getWatchedStates(config)).toEqual([])
+  })
+})
+
+describe('buildConfig - env section', () => {
+  it('defaults to empty object when env section absent', () => {
+    const config = buildConfig(makeWorkflow({}))
+    expect(config.env).toEqual({})
+  })
+
+  it('parses literal string values', () => {
+    const config = buildConfig(makeWorkflow({
+      env: { MY_VAR: 'hello', OTHER: 'world' },
+    }))
+    expect(config.env).toEqual({ MY_VAR: 'hello', OTHER: 'world' })
+  })
+
+  it('resolves $VAR references from process.env', () => {
+    const orig = process.env.TEST_ENV_VALUE
+    process.env.TEST_ENV_VALUE = 'resolved-val'
+    try {
+      const config = buildConfig(makeWorkflow({
+        env: { MY_VAR: '$TEST_ENV_VALUE' },
+      }))
+      expect(config.env.MY_VAR).toBe('resolved-val')
+    }
+    finally {
+      if (orig !== undefined)
+        process.env.TEST_ENV_VALUE = orig
+      else
+        delete process.env.TEST_ENV_VALUE
+    }
+  })
+
+  it('removes entries where $VAR reference cannot be resolved', () => {
+    delete process.env.NONEXISTENT_VAR_12345
+    const config = buildConfig(makeWorkflow({
+      env: { GOOD: 'literal', BAD: '$NONEXISTENT_VAR_12345' },
+    }))
+    expect(config.env.GOOD).toBe('literal')
+    expect(config.env.BAD).toBeUndefined()
+  })
+
+  it('preserves ${INSTALLATION_ACCESS_TOKEN} as-is for runtime resolution', () => {
+    const config = buildConfig(makeWorkflow({
+      env: { GH_TOKEN: '${INSTALLATION_ACCESS_TOKEN}' },
+    }))
+    expect(config.env.GH_TOKEN).toBe('${INSTALLATION_ACCESS_TOKEN}')
+  })
+
+  it('coerces numeric values to strings', () => {
+    const config = buildConfig(makeWorkflow({
+      env: { PORT: 3000 },
+    }))
+    expect(config.env.PORT).toBe('3000')
+  })
+
+  it('coerces boolean values to strings', () => {
+    const config = buildConfig(makeWorkflow({
+      env: { DEBUG: true },
+    }))
+    expect(config.env.DEBUG).toBe('true')
+  })
+
+  it('ignores non-object env section', () => {
+    const config = buildConfig(makeWorkflow({ env: 'not-an-object' }))
+    expect(config.env).toEqual({})
+  })
+
+  it('ignores array env section', () => {
+    const config = buildConfig(makeWorkflow({ env: ['a', 'b'] }))
+    expect(config.env).toEqual({})
+  })
+
+  it('rejects invalid env key names', () => {
+    const config = buildConfig(makeWorkflow({
+      env: { 'VALID_KEY': 'ok', '': 'empty', 'has space': 'bad', '123start': 'bad', 'ALSO_VALID': 'ok' },
+    }))
+    expect(config.env.VALID_KEY).toBe('ok')
+    expect(config.env.ALSO_VALID).toBe('ok')
+    expect(Object.keys(config.env)).toHaveLength(2)
   })
 })
 
