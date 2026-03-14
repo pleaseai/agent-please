@@ -262,11 +262,26 @@ export class Orchestrator {
     }
 
     try {
+      // Resolve project status field metadata for prompt context
+      await this.populateProjectContext(issue)
       await this.runAgentTurns(client, session, issue, attempt)
     }
     finally {
       client.stopSession()
       await runAfterRunHook(this.config, wsResult.path, issue)
+    }
+  }
+
+  private async populateProjectContext(issue: Issue): Promise<void> {
+    if (!issue.project)
+      return
+    const adapter = createTrackerAdapter(this.config)
+    if (isTrackerError(adapter) || !adapter.resolveStatusField)
+      return
+    const fieldInfo = await adapter.resolveStatusField()
+    if (fieldInfo) {
+      issue.project.field_id = fieldInfo.field_id
+      issue.project.status_options = fieldInfo.options
     }
   }
 
