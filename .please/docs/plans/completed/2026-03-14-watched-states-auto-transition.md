@@ -52,7 +52,7 @@ The GitHub adapter caches the Status field ID and option IDs on first use (they 
 - [ ] T006 Implement stub updateItemStatus for Asana adapter (file: apps/work-please/src/tracker/asana.ts) (depends on T004)
 - [ ] T007 Add getWatchedStates and getAutoTransitions config helpers (file: apps/work-please/src/config.ts) (depends on T001)
 - [ ] T008 Implement processWatchedStates in orchestrator tick loop (file: apps/work-please/src/orchestrator.ts) (depends on T003, T005, T007)
-- [ ] T009 Update generateWorkflow template with watched_states and auto_transitions (file: apps/work-please/src/init.ts) (depends on T001)
+- [x] T009 Update generateWorkflow template with watched_states and auto_transitions (file: apps/work-please/src/init.ts) (depends on T001)
 - [ ] T010 Update WORKFLOW.md and README.md with new config fields (file: WORKFLOW.md, README.md) (depends on T009)
 - [ ] T011 [P] Add config tests for watched_states and auto_transitions parsing (file: apps/work-please/src/config.test.ts) (depends on T001, T007)
 - [ ] T012 [P] Add tracker tests for reviewThreads normalization and updateItemStatus (file: apps/work-please/src/tracker/tracker.test.ts) (depends on T003, T005)
@@ -109,17 +109,17 @@ The GitHub adapter caches the Status field ID and option IDs on first use (they 
 
 - [x] (2026-03-14 18:47 KST) T001 Add watched_states and auto_transitions to config types and parsing
 - [x] (2026-03-14 18:47 KST) T002 Add has_unresolved_threads and unresolved_thread_authors to Issue type
-- [ ] T003 Add reviewThreads to GitHub GraphQL queries and normalize into Issue
+- [x] (2026-03-14 19:10 KST) T003 Add reviewThreads to GitHub GraphQL queries and normalize into Issue
 - [x] (2026-03-14 18:44 KST) T004 Add updateItemStatus to TrackerAdapter interface
-- [ ] T005 Implement updateItemStatus for GitHub adapter with field/option ID caching
+- [x] (2026-03-14 19:10 KST) T005 Implement updateItemStatus for GitHub adapter with field/option ID caching
 - [x] (2026-03-14 18:52 KST) T006 Implement stub updateItemStatus for Asana adapter
 - [x] (2026-03-14 18:47 KST) T007 Add getWatchedStates and getAutoTransitions config helpers
-- [ ] T008 Implement processWatchedStates in orchestrator tick loop
-- [ ] T009 Update generateWorkflow template with watched_states and auto_transitions
-- [ ] T010 Update WORKFLOW.md and README.md with new config fields
+- [x] (2026-03-14 19:30 KST) T008 Implement processWatchedStates in orchestrator tick loop
+- [x] (2026-03-14 19:45 KST) T009 Update generateWorkflow template with watched_states and auto_transitions
+- [x] (2026-03-14 20:00 KST) T010 Update WORKFLOW.md and README.md with new config fields
 - [x] (2026-03-14 18:47 KST) T011 Add config tests for watched_states and auto_transitions parsing
-- [ ] T012 Add tracker tests for reviewThreads normalization and updateItemStatus
-- [ ] T013 Add orchestrator tests for processWatchedStates
+- [x] (2026-03-14 19:10 KST) T012 Add tracker tests for reviewThreads normalization and updateItemStatus
+- [x] (2026-03-14 20:45 KST) T013 Add orchestrator tests for processWatchedStates
 
 ## Decision Log
 
@@ -132,3 +132,39 @@ The GitHub adapter caches the Status field ID and option IDs on first use (they 
 - Decision: Default include_bot_reviews to true
   Rationale: Work-please's value is autonomous code fixing — bot feedback should be auto-addressed by default
   Date/Author: 2026-03-14 / Claude
+- Decision: Use -B (force-create) instead of -b for checkoutExistingBranch
+  Rationale: -b fails if local branch already exists after worktree cleanup; -B is idempotent
+  Date/Author: 2026-03-14 / Claude (from review feedback)
+- Decision: Extract evaluateAutoTransition and updateItemStatus to separate modules
+  Rationale: orchestrator.ts (713 LOC) and github.ts (574 LOC) exceeded 500 LOC limit
+  Date/Author: 2026-03-14 / Claude (from quality review)
+
+## Surprises & Discoveries
+
+- Observation: orchestrator.ts was already over 500 LOC before this PR (pre-existing debt)
+  Evidence: 694 LOC even after extracting evaluateAutoTransition (~28 lines)
+- Observation: GitHub reviewDecision is only set by formal reviews (Approve/Request Changes), not by comment-only reviews from AI bots
+  Evidence: AI bots (gemini-code-assist, cubic-dev-ai) leave comments without formal review decisions
+- Observation: git worktree add with -b fails on reopen when the local branch still exists in the shared clone
+  Evidence: cubic-dev-ai review comment, confirmed by git documentation
+
+## Outcomes & Retrospective
+
+### What Was Shipped
+- Watched states polling (Human Review) without agent dispatch
+- Auto-transition rules: CHANGES_REQUESTED/unresolved → Rework, APPROVED → Merging
+- Bot review filtering via include_bot_reviews config
+- TrackerAdapter write capability with GraphQL field/option ID caching
+- PR existing branch checkout with idempotent -B flag
+
+### What Went Well
+- Design discussion before implementation caught the bot review edge case early
+- Symphony reference implementation provided clear patterns for status map and polling
+- Quality review caught file size violations and error handling gaps quickly
+
+### What Could Improve
+- orchestrator.ts needs a broader refactor to get under 500 LOC (pre-existing debt)
+- Plan could have included the has_unresolved_human_threads field from the start (was added during T003)
+
+### Tech Debt Created
+- orchestrator.ts at 694 LOC (limit: 500) — needs extraction of retry/reconciliation logic
