@@ -100,7 +100,7 @@ export function checkoutExistingBranch(repoDir: string, wsPath: string, remoteBr
     return err instanceof Error ? err : new Error(String(err))
   }
   try {
-    const result = _git.spawnSync(['git', '-C', repoDir, 'worktree', 'add', wsPath, '-b', remoteBranch, `origin/${remoteBranch}`])
+    const result = _git.spawnSync(['git', '-C', repoDir, 'worktree', 'add', wsPath, '-B', remoteBranch, `origin/${remoteBranch}`])
     if (!result.success) {
       const output = ((result.stdout?.toString() ?? '') + (result.stderr?.toString() ?? '')).trim().slice(0, 2048)
       return new Error(`git worktree checkout failed (existing branch origin/${remoteBranch}): ${output}`)

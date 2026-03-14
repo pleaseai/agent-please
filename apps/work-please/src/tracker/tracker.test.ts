@@ -1340,77 +1340,23 @@ describe('github_projects review_decision normalization', () => {
     }), { status: 200, headers: { 'content-type': 'application/json' } })
   }
 
-  test('maps CHANGES_REQUESTED to changes_requested', async () => {
+  test.each([
+    ['CHANGES_REQUESTED', 'changes_requested'],
+    ['APPROVED', 'approved'],
+    ['COMMENTED', 'commented'],
+    ['REVIEW_REQUIRED', 'review_required'],
+    [null, null],
+  ] as const)('maps %s to %s', async (apiValue, expectedValue) => {
     const config = makeGitHubConfig()
     const adapter = createGitHubAdapter(config)
     const origFetch = globalThis.fetch
-    globalThis.fetch = mock(async () => makePrResponse('CHANGES_REQUESTED')) as unknown as typeof fetch
+    globalThis.fetch = mock(async () => makePrResponse(apiValue)) as unknown as typeof fetch
     try {
       const result = await adapter.fetchIssuesByStates(['In Review'])
       expect(Array.isArray(result)).toBe(true)
       if (!Array.isArray(result))
         return
-      expect(result[0].review_decision).toBe('changes_requested')
-    }
-    finally { globalThis.fetch = origFetch }
-  })
-
-  test('maps APPROVED to approved', async () => {
-    const config = makeGitHubConfig()
-    const adapter = createGitHubAdapter(config)
-    const origFetch = globalThis.fetch
-    globalThis.fetch = mock(async () => makePrResponse('APPROVED')) as unknown as typeof fetch
-    try {
-      const result = await adapter.fetchIssuesByStates(['In Review'])
-      expect(Array.isArray(result)).toBe(true)
-      if (!Array.isArray(result))
-        return
-      expect(result[0].review_decision).toBe('approved')
-    }
-    finally { globalThis.fetch = origFetch }
-  })
-
-  test('maps COMMENTED to commented', async () => {
-    const config = makeGitHubConfig()
-    const adapter = createGitHubAdapter(config)
-    const origFetch = globalThis.fetch
-    globalThis.fetch = mock(async () => makePrResponse('COMMENTED')) as unknown as typeof fetch
-    try {
-      const result = await adapter.fetchIssuesByStates(['In Review'])
-      expect(Array.isArray(result)).toBe(true)
-      if (!Array.isArray(result))
-        return
-      expect(result[0].review_decision).toBe('commented')
-    }
-    finally { globalThis.fetch = origFetch }
-  })
-
-  test('maps REVIEW_REQUIRED to review_required', async () => {
-    const config = makeGitHubConfig()
-    const adapter = createGitHubAdapter(config)
-    const origFetch = globalThis.fetch
-    globalThis.fetch = mock(async () => makePrResponse('REVIEW_REQUIRED')) as unknown as typeof fetch
-    try {
-      const result = await adapter.fetchIssuesByStates(['In Review'])
-      expect(Array.isArray(result)).toBe(true)
-      if (!Array.isArray(result))
-        return
-      expect(result[0].review_decision).toBe('review_required')
-    }
-    finally { globalThis.fetch = origFetch }
-  })
-
-  test('maps null reviewDecision to null', async () => {
-    const config = makeGitHubConfig()
-    const adapter = createGitHubAdapter(config)
-    const origFetch = globalThis.fetch
-    globalThis.fetch = mock(async () => makePrResponse(null)) as unknown as typeof fetch
-    try {
-      const result = await adapter.fetchIssuesByStates(['In Review'])
-      expect(Array.isArray(result)).toBe(true)
-      if (!Array.isArray(result))
-        return
-      expect(result[0].review_decision).toBeNull()
+      expect(result[0].review_decision).toBe(expectedValue)
     }
     finally { globalThis.fetch = origFetch }
   })

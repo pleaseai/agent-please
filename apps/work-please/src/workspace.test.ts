@@ -889,7 +889,7 @@ describe('checkoutExistingBranch', () => {
     const call = calls[0]
     expect(call).toContain('worktree')
     expect(call).toContain('add')
-    expect(call).toContain('-b')
+    expect(call).toContain('-B')
     expect(call).toContain('feature/my-branch')
     expect(call).toContain('origin/feature/my-branch')
   })
@@ -947,7 +947,7 @@ describe('createWorkspace uses checkoutExistingBranch for PRs', () => {
     const worktreeCall = calls.find(args => args.includes('worktree') && args.includes('add'))
     expect(worktreeCall).toBeDefined()
     expect(worktreeCall).toContain('origin/feature/review-fix')
-    expect(worktreeCall).toContain('-b')
+    expect(worktreeCall).toContain('-B')
     expect(worktreeCall).toContain('feature/review-fix')
   })
 
