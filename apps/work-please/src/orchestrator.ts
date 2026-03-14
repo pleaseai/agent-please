@@ -1,8 +1,9 @@
 import type { LabelService } from './label'
-import type { Issue, OrchestratorState, RetryEntry, RunningEntry, ServiceConfig, WorkflowDefinition } from './types'
+import type { TrackerAdapter } from './tracker/types'
+import type { AutoTransitions, Issue, OrchestratorState, RetryEntry, RunningEntry, ServiceConfig, WorkflowDefinition } from './types'
 import { watch } from 'node:fs'
 import { AppServerClient } from './agent-runner'
-import { buildConfig, getActiveStates, getTerminalStates, maxConcurrentForState, normalizeState, validateConfig } from './config'
+import { buildConfig, getActiveStates, getAutoTransitions, getTerminalStates, getWatchedStates, maxConcurrentForState, normalizeState, validateConfig } from './config'
 import { createLabelService } from './label'
 import { buildContinuationPrompt, buildPrompt, isPromptBuildError } from './prompt-builder'
 import { createTrackerAdapter, formatTrackerError, isTrackerError } from './tracker/index'
@@ -119,6 +120,9 @@ export class Orchestrator {
       this.scheduleTick(this.state.poll_interval_ms)
       return
     }
+
+    // 3b. Process watched states (auto-transitions)
+    await this.processWatchedStates(adapter)
 
     const candidatesResult = await adapter.fetchCandidateIssues()
     if (isTrackerError(candidatesResult)) {
@@ -543,6 +547,37 @@ export class Orchestrator {
     }
   }
 
+  private async processWatchedStates(adapter: TrackerAdapter): Promise<void> {
+    const watchedStates = getWatchedStates(this.config)
+    if (watchedStates.length === 0)
+      return
+
+    const autoTransitions = getAutoTransitions(this.config)
+    if (!autoTransitions.human_review_to_rework && !autoTransitions.human_review_to_merging)
+      return
+
+    const result = await adapter.fetchIssuesByStates(watchedStates)
+    if (isTrackerError(result)) {
+      console.error(`[orchestrator] watched states fetch failed: ${formatTrackerError(result)}`)
+      return
+    }
+
+    if (!adapter.updateItemStatus)
+      return
+
+    for (const issue of result) {
+      const targetState = evaluateAutoTransition(issue, autoTransitions)
+      if (!targetState)
+        continue
+
+      console.warn(`[orchestrator] auto-transition: ${issue.identifier} ${issue.state} → ${targetState}`)
+      const updateResult = await adapter.updateItemStatus(issue.id, targetState)
+      if (isTrackerError(updateResult)) {
+        console.error(`[orchestrator] auto-transition failed for ${issue.identifier}: ${formatTrackerError(updateResult)}`)
+      }
+    }
+  }
+
   private async startupTerminalWorkspaceCleanup(): Promise<void> {
     const terminalStates = getTerminalStates(this.config)
 
@@ -648,4 +683,31 @@ function retryBackoffMs(attempt: number, maxMs: number): number {
 
 function nextAttemptFrom(currentAttempt: number | null): number {
   return currentAttempt === null ? 1 : currentAttempt + 1
+}
+
+export function evaluateAutoTransition(issue: Issue, autoTransitions: Required<AutoTransitions>): string | null {
+  // Rule 1: CHANGES_REQUESTED or unresolved threads → Rework
+  if (autoTransitions.human_review_to_rework) {
+    if (issue.review_decision === 'changes_requested')
+      return 'Rework'
+
+    const hasUnresolved = autoTransitions.include_bot_reviews
+      ? issue.has_unresolved_threads
+      : issue.has_unresolved_human_threads
+    if (hasUnresolved)
+      return 'Rework'
+  }
+
+  // Rule 2: APPROVED + no unresolved threads → Merging
+  if (autoTransitions.human_review_to_merging) {
+    if (issue.review_decision === 'approved') {
+      const hasUnresolved = autoTransitions.include_bot_reviews
+        ? issue.has_unresolved_threads
+        : issue.has_unresolved_human_threads
+      if (!hasUnresolved)
+        return 'Merging'
+    }
+  }
+
+  return null
 }
