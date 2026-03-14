@@ -487,11 +487,18 @@ describe('getActiveStates / getTerminalStates', () => {
     expect(getActiveStates(config)).toEqual(['In Progress'])
   })
 
-  it('includes "In Review" in default github_projects active_statuses', () => {
+  it('includes "Rework" in default github_projects active_statuses', () => {
     const config = buildConfig(makeWorkflow({
       tracker: { kind: 'github_projects', owner: 'org', project_number: 1 },
     }))
-    expect(getActiveStates(config)).toContain('In Review')
+    expect(getActiveStates(config)).toContain('Rework')
+  })
+
+  it('does not include "Human Review" in default github_projects active_statuses', () => {
+    const config = buildConfig(makeWorkflow({
+      tracker: { kind: 'github_projects', owner: 'org', project_number: 1 },
+    }))
+    expect(getActiveStates(config)).not.toContain('Human Review')
   })
 
   it('returns defaults when not configured', () => {
