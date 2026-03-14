@@ -61,6 +61,11 @@ claude:
   #   attribution:
   #     commit: "🙏 Generated with Work Please"
   #     pr: "🙏 Generated with Work Please"
+# env:                                 # optional: environment variables injected into agent sessions
+#   GH_TOKEN: ${INSTALLATION_ACCESS_TOKEN}  # resolved at dispatch time from GitHub App credentials or PAT
+#   GITHUB_PERSONAL_ACCESS_TOKEN: ${INSTALLATION_ACCESS_TOKEN}  # for GitHub MCP tools
+#   CUSTOM_VAR: "literal-value"        # literal string passed as-is
+#   FROM_HOST: $MY_HOST_ENV_VAR        # resolved from process.env at config parse time
 # worker:                            # optional: SSH worker support
 #   ssh_hosts: []                    # list of SSH host aliases for remote execution
 #   max_concurrent_agents_per_host: 5

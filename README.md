@@ -213,7 +213,8 @@ Your task:
 
 #### GitHub Projects v2 (GitHub App)
 
-Use GitHub App credentials instead of a PAT for fine-grained permissions and higher API rate limits:
+Use GitHub App credentials instead of a PAT for fine-grained permissions and higher API rate limits.
+Use `env:` to inject the installation access token into the agent's environment for `gh` CLI and GitHub MCP:
 
 ```markdown
 ---
@@ -261,6 +262,10 @@ claude:
   permission_mode: acceptEdits
   # setting_sources: []               # default: [project, local, user]; set [] for SDK isolation mode
   turn_timeout_ms: 3600000
+
+env:
+  GH_TOKEN: ${INSTALLATION_ACCESS_TOKEN}
+  GITHUB_PERSONAL_ACCESS_TOKEN: ${INSTALLATION_ACCESS_TOKEN}
 ---
 
 You are working on a GitHub issue for the repository `your-org/your-repo`.
@@ -473,6 +478,12 @@ claude:
     attribution:
       commit: "🙏 Generated with [Work Please](https://github.com/pleaseai/work-please)"  # Optional: appended to git commit messages. Defaults to Work Please link.
       pr: "🙏 Generated with [Work Please](https://github.com/pleaseai/work-please)"      # Optional: appended to PR descriptions. Defaults to Work Please link.
+
+env:                                    # Optional: environment variables injected into agent sessions
+  GH_TOKEN: ${INSTALLATION_ACCESS_TOKEN}  # Resolves to GitHub App installation token at runtime
+  GITHUB_PERSONAL_ACCESS_TOKEN: ${INSTALLATION_ACCESS_TOKEN}  # For GitHub MCP tools
+  CUSTOM_VAR: "literal-value"           # Literal string passed as-is
+  FROM_HOST: $MY_HOST_ENV_VAR           # Resolved from process.env at config parse time
 
 # worker:                              # Optional: SSH worker support (experimental)
 #   ssh_hosts:                         # List of SSH host aliases for remote execution
