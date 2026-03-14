@@ -28,6 +28,7 @@ export interface Issue {
   blocked_by: BlockerRef[]
   pull_requests: LinkedPR[]
   review_decision: 'approved' | 'changes_requested' | 'commented' | 'review_required' | null
+  has_unresolved_threads: boolean
   created_at: Date | null
   updated_at: Date | null
 }
@@ -44,6 +45,12 @@ export interface WorkflowDefinition {
 export interface IssueFilter {
   assignee: string[]
   label: string[]
+}
+
+export interface AutoTransitions {
+  human_review_to_rework?: boolean
+  human_review_to_merging?: boolean
+  include_bot_reviews?: boolean
 }
 
 export interface TrackerConfig {
@@ -67,6 +74,9 @@ export interface TrackerConfig {
   label_prefix: string | null
   // shared filter
   filter: IssueFilter
+  // watched states and auto-transitions (shared)
+  watched_statuses?: string[]
+  auto_transitions?: AutoTransitions
 }
 
 export type SettingSource = 'user' | 'project' | 'local'

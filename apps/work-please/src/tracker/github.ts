@@ -375,6 +375,7 @@ function normalizeProjectItem(node: Record<string, unknown>, status: string): Is
     blocked_by: [],
     pull_requests: pullRequests,
     review_decision: reviewDecision,
+    has_unresolved_threads: false,
     created_at: content?.createdAt ? new Date(String(content.createdAt)) : null,
     updated_at: content?.updatedAt ? new Date(String(content.updatedAt)) : null,
   }
