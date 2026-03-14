@@ -1,12 +1,12 @@
 import type { LabelService } from './label'
-import type { AutoTransitions, Issue, RunningEntry } from './types'
+import type { AutoTransitions, Issue, RunningEntry, TrackerConfig } from './types'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'bun:test'
 import { evaluateAutoTransition } from './auto-transition'
 import { normalizeState } from './config'
-import { Orchestrator } from './orchestrator'
+import { buildTokenProvider, Orchestrator } from './orchestrator'
 
 // Test the sort/dispatch logic utilities in isolation
 
@@ -971,5 +971,94 @@ Prompt text.`
       globalThis.fetch = origFetch
       rmSync(tmpDir, { recursive: true, force: true })
     }
+  })
+})
+
+describe('buildTokenProvider', () => {
+  function makeTracker(overrides: Partial<TrackerConfig> = {}): TrackerConfig {
+    return {
+      kind: 'github_projects',
+      endpoint: 'https://api.github.com',
+      api_key: null,
+      label_prefix: null,
+      filter: { assignee: [], label: [] },
+      ...overrides,
+    }
+  }
+
+  it('returns undefined for non-github_projects tracker', () => {
+    const result = buildTokenProvider(makeTracker({ kind: 'asana' }))
+    expect(result).toBeUndefined()
+  })
+
+  it('returns undefined for null tracker kind', () => {
+    const result = buildTokenProvider(makeTracker({ kind: null }))
+    expect(result).toBeUndefined()
+  })
+
+  it('returns PAT-based provider when api_key is set', async () => {
+    const provider = buildTokenProvider(makeTracker({ api_key: 'ghp_my_pat_token' }))
+    expect(provider).toBeDefined()
+    const token = await provider!.installationAccessToken()
+    expect(token).toBe('ghp_my_pat_token')
+  })
+
+  it('prefers PAT over app auth when both are present', async () => {
+    const provider = buildTokenProvider(makeTracker({
+      api_key: 'ghp_pat',
+      app_id: '12345',
+      private_key: 'key',
+      installation_id: 1,
+    }))
+    expect(provider).toBeDefined()
+    const token = await provider!.installationAccessToken()
+    expect(token).toBe('ghp_pat')
+  })
+
+  it('returns undefined when no api_key and incomplete app auth', () => {
+    const result = buildTokenProvider(makeTracker({
+      app_id: '12345',
+      // missing private_key and installation_id
+    }))
+    expect(result).toBeUndefined()
+  })
+
+  it('returns undefined when app_id present but private_key missing', () => {
+    const result = buildTokenProvider(makeTracker({
+      app_id: '12345',
+      installation_id: 1,
+    }))
+    expect(result).toBeUndefined()
+  })
+
+  it('returns undefined when installation_id is null', () => {
+    const result = buildTokenProvider(makeTracker({
+      app_id: '12345',
+      private_key: 'key',
+      installation_id: null,
+    }))
+    expect(result).toBeUndefined()
+  })
+
+  it('returns app-auth provider when all app fields present', () => {
+    const provider = buildTokenProvider(makeTracker({
+      app_id: '12345',
+      private_key: '-----BEGIN RSA PRIVATE KEY-----\ntest',
+      installation_id: 67890,
+    }))
+    expect(provider).toBeDefined()
+    // Don't call installationAccessToken — it would try real auth
+  })
+
+  it('app-auth provider returns null on auth error', async () => {
+    const provider = buildTokenProvider(makeTracker({
+      app_id: '12345',
+      private_key: 'invalid-key',
+      installation_id: 67890,
+    }))
+    expect(provider).toBeDefined()
+    // createAppAuth with invalid key will throw — our try-catch returns null
+    const token = await provider!.installationAccessToken()
+    expect(token).toBeNull()
   })
 })

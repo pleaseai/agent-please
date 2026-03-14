@@ -649,39 +649,7 @@ export class Orchestrator {
   }
 
   private buildTokenProvider(): import('./agent-env').TokenProvider | undefined {
-    const { kind, api_key, app_id, private_key, installation_id } = this.config.tracker
-    if (kind !== 'github_projects')
-      return undefined
-
-    // PAT auth: provide the api_key directly as the token
-    if (api_key) {
-      return {
-        installationAccessToken: async () => api_key,
-      }
-    }
-
-    // App auth: requires all three fields
-    if (!app_id || !private_key || installation_id == null)
-      return undefined
-
-    return {
-      installationAccessToken: async () => {
-        try {
-          const { createAppAuth } = await import('@octokit/auth-app')
-          const auth = createAppAuth({
-            appId: app_id,
-            privateKey: private_key,
-            installationId: installation_id,
-          })
-          const { token } = await auth({ type: 'installation' })
-          return token
-        }
-        catch (err) {
-          console.error(`[orchestrator] failed to generate installation access token: ${err}`)
-          return null
-        }
-      },
-    }
+    return buildTokenProvider(this.config.tracker)
   }
 
   private reloadWorkflow(): void {
@@ -755,4 +723,40 @@ function retryBackoffMs(attempt: number, maxMs: number): number {
 
 function nextAttemptFrom(currentAttempt: number | null): number {
   return currentAttempt === null ? 1 : currentAttempt + 1
+}
+
+export function buildTokenProvider(tracker: ServiceConfig['tracker']): import('./agent-env').TokenProvider | undefined {
+  const { kind, api_key, app_id, private_key, installation_id } = tracker
+  if (kind !== 'github_projects')
+    return undefined
+
+  // PAT auth: provide the api_key directly as the token
+  if (api_key) {
+    return {
+      installationAccessToken: async () => api_key,
+    }
+  }
+
+  // App auth: requires all three fields
+  if (!app_id || !private_key || installation_id == null)
+    return undefined
+
+  return {
+    installationAccessToken: async () => {
+      try {
+        const { createAppAuth } = await import('@octokit/auth-app')
+        const auth = createAppAuth({
+          appId: app_id,
+          privateKey: private_key,
+          installationId: installation_id,
+        })
+        const { token } = await auth({ type: 'installation' })
+        return token
+      }
+      catch (err) {
+        console.error(`[orchestrator] failed to generate installation access token: ${err}`)
+        return null
+      }
+    },
+  }
 }
