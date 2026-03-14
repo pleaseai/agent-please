@@ -264,6 +264,7 @@ When a ticket has an attached PR, run this protocol before moving to `Human Revi
 4. After addressing a comment (code update or pushback reply), reply explaining what was done (`gh api … pulls/<pr>/comments/<id>/replies -f body='…'`).
    For **bot threads only** (`user.type == "Bot"` in the comment payload), also resolve the thread (`gh api graphql -f query='mutation { resolveReviewThread(input:{threadId:"<id>"}) { thread { id } } }'`).
    Leave human reviewer threads unresolved — let the reviewer confirm and resolve themselves.
+   @mention the comment author when replying, **except Copilot** — mentioning Copilot triggers unwanted auto-fix PRs.
 5. Update the workpad plan/checklist to include each feedback item and its resolution status.
 6. Re-run validation after feedback-driven changes and push updates.
 7. Repeat this sweep until there are no outstanding actionable comments.
