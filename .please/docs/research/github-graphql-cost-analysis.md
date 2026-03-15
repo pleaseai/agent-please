@@ -82,7 +82,8 @@ No connections (`options` is a plain list). **Cost: 1 point.**
 
 ### UPDATE_ITEM_STATUS_MUTATION
 
-Used by: `updateItemStatus()` (auto-transitions).
+Used by: `updateItemStatus()` — available on the tracker adapter for agents to call via WORKFLOW.md.
+Not used by the orchestrator directly (auto-transitions were removed in #97).
 
 No connections. **Primary: 1 point. Secondary: 5 points** (mutation).
 
