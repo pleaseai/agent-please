@@ -138,16 +138,17 @@ describe('handleWebhook', () => {
     expect(refreshed).toBe(false)
   })
 
-  test('missing event header defaults to unknown', async () => {
+  test('missing event header returns 400', async () => {
     let refreshed = false
     const req = makeRequest('{}')
     const res = await handleWebhook(req, null, null, () => {
       refreshed = true
     })
 
-    const body = await res.json() as Record<string, unknown>
-    expect(body.event).toBe('unknown')
-    expect(refreshed).toBe(true)
+    expect(res.status).toBe(400)
+    const body = await res.json() as { error: { code: string } }
+    expect(body.error.code).toBe('missing_event_header')
+    expect(refreshed).toBe(false)
   })
 
   test('non-JSON body still works', async () => {

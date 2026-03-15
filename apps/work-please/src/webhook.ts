@@ -2,6 +2,7 @@ import { Buffer } from 'node:buffer'
 import { createHmac, timingSafeEqual } from 'node:crypto'
 
 const SIGNATURE_PREFIX = 'sha256='
+const NEWLINE_RE = /[\r\n]/g
 
 export function verifyGitHubSignature(payload: string, signature: string, secret: string): boolean {
   if (!signature.startsWith(SIGNATURE_PREFIX))
@@ -40,7 +41,10 @@ export async function handleWebhook(
     }
   }
 
-  const event = req.headers.get('x-github-event') ?? 'unknown'
+  const event = req.headers.get('x-github-event')
+  if (!event) {
+    return jsonResponse({ error: { code: 'missing_event_header', message: 'X-GitHub-Event header required' } }, 400)
+  }
 
   if (!shouldProcessEvent(event, allowedEvents)) {
     return jsonResponse({ accepted: false, reason: 'event_filtered', event })
@@ -52,11 +56,13 @@ export async function handleWebhook(
     if (typeof parsed?.action === 'string')
       action = parsed.action
   }
-  catch {
-    // best effort — body may not be valid JSON
+  catch (err) {
+    console.warn(`[webhook] failed to parse body as JSON: ${err instanceof Error ? err.message : String(err)}`)
   }
 
-  console.warn(`[webhook] received event=${event} action=${action ?? 'none'}`)
+  const safeEvent = event.replace(NEWLINE_RE, '_')
+  const safeAction = (action ?? 'none').replace(NEWLINE_RE, '_')
+  console.warn(`[webhook] received event=${safeEvent} action=${safeAction}`)
   triggerRefresh()
 
   return jsonResponse({ accepted: true, event, action })
