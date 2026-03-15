@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.9](https://github.com/pleaseai/work-please/compare/work-v0.1.8...work-v0.1.9) (2026-03-15)
+
+
+### Bug Fixes
+
+* **orchestrator:** prevent duplicate dispatch for watched issues ([#102](https://github.com/pleaseai/work-please/issues/102)) ([804936c](https://github.com/pleaseai/work-please/commit/804936ccab98dd267dfa72d2abfe57e8269524ea))
+
 ## [0.1.8](https://github.com/pleaseai/work-please/compare/work-v0.1.7...work-v0.1.8) (2026-03-14)
 
 
