@@ -237,7 +237,7 @@ If neither is present, stop and ask the user to configure GitHub access.
       ```bash
       # Update an existing workpad comment (use the numeric comment id)
       # Pipe body via stdin to avoid shell quoting issues with apostrophes
-      echo '<updated workpad markdown>' | gh api repos/<owner>/<repo>/issues/comments/<comment-id> -X PATCH -F body=@-
+      printf '%s' '<updated workpad markdown>' | gh api repos/<owner>/<repo>/issues/comments/<comment-id> -X PATCH -F body=@-
       ```
     - If and only if no existing workpad comment is found, create one:
       ```bash
@@ -303,7 +303,7 @@ Use this only when completion is blocked by missing required tools or missing au
 1.  Determine current repo state (`branch`, `git status`, `HEAD`) and verify the kickoff sync result is already recorded in the workpad before implementation continues.
 2.  If current issue state is `Todo`, move it to `In Progress`; otherwise leave the current state unchanged.
 3.  Load the existing workpad comment and treat it as the active execution checklist.
-    - Edit it liberally via `echo '…' | gh api repos/<owner>/<repo>/issues/comments/<comment-id> -X PATCH -F body=@-` whenever reality changes (scope, risks, validation approach, discovered tasks).
+    - Edit it liberally via `printf '%s' '…' | gh api repos/<owner>/<repo>/issues/comments/<comment-id> -X PATCH -F body=@-` whenever reality changes (scope, risks, validation approach, discovered tasks).
     - Never post a new comment to update progress — always `PATCH` the existing workpad comment.
 4.  Implement against the hierarchical TODOs and keep the comment current:
     - Check off completed items.
