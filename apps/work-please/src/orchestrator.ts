@@ -3,10 +3,10 @@ import type { TrackerAdapter } from './tracker/types'
 import type { Issue, OrchestratorState, RetryEntry, RunningEntry, ServiceConfig, WorkflowDefinition } from './types'
 import { watch } from 'node:fs'
 import { resolveAgentEnv } from './agent-env'
-import { AppServerClient } from './agent-runner'
 import { buildConfig, getActiveStates, getTerminalStates, getWatchedStates, maxConcurrentForState, normalizeState, validateConfig } from './config'
 import { createLabelService } from './label'
 import { buildContinuationPrompt, buildPrompt, isPromptBuildError } from './prompt-builder'
+import { createRunner } from './runner'
 import { createTrackerAdapter, formatTrackerError, isTrackerError } from './tracker/index'
 import { isWorkflowError, loadWorkflow } from './workflow'
 import { createWorkspace, removeWorkspace, runAfterRunHook, runBeforeRunHook } from './workspace'
@@ -240,39 +240,47 @@ export class Orchestrator {
   }
 
   private async executeAgentRun(issue: Issue, attempt: number | null): Promise<void> {
-    // Create/reuse workspace
-    const wsResult = await createWorkspace(this.config, issue.identifier, issue)
-    if (wsResult instanceof Error) {
-      throw wsResult
-    }
+    const isCodeAction = this.config.agent.runner === 'code_action'
 
-    // Before-run hook
-    const beforeRunErr = await runBeforeRunHook(this.config, wsResult.path, issue)
-    if (beforeRunErr) {
-      await runAfterRunHook(this.config, wsResult.path, issue)
-      throw beforeRunErr
+    // Create workspace only for SDK runner
+    let wsPath: string | null = null
+    if (!isCodeAction) {
+      const wsResult = await createWorkspace(this.config, issue.identifier, issue)
+      if (wsResult instanceof Error) {
+        throw wsResult
+      }
+      wsPath = wsResult.path
+
+      // Before-run hook (SDK runner only — code_action passes hooks via client_payload)
+      const beforeRunErr = await runBeforeRunHook(this.config, wsPath, issue)
+      if (beforeRunErr) {
+        await runAfterRunHook(this.config, wsPath, issue)
+        throw beforeRunErr
+      }
     }
 
     // Resolve agent environment variables (including runtime tokens)
-    const client = new AppServerClient(this.config, wsResult.path)
+    const runner = createRunner(this.config, wsPath)
     const agentEnv = await resolveAgentEnv(this.config, this.buildTokenProvider())
-    client.setAgentEnv(agentEnv)
+    runner.setAgentEnv(agentEnv)
 
     // Start agent session
-    const session = await client.startSession()
+    const session = await runner.startSession()
     if (session instanceof Error) {
-      await runAfterRunHook(this.config, wsResult.path, issue)
+      if (wsPath)
+        await runAfterRunHook(this.config, wsPath, issue)
       throw session
     }
 
     try {
       // Resolve project status field metadata for prompt context
       await this.populateProjectContext(issue)
-      await this.runAgentTurns(client, session, issue, attempt)
+      await this.runAgentTurns(runner, session, issue, attempt)
     }
     finally {
-      client.stopSession()
-      await runAfterRunHook(this.config, wsResult.path, issue)
+      runner.stopSession()
+      if (wsPath)
+        await runAfterRunHook(this.config, wsPath, issue)
     }
   }
 
@@ -298,8 +306,8 @@ export class Orchestrator {
   }
 
   private async runAgentTurns(
-    client: AppServerClient,
-    session: import('./agent-runner').AgentSession,
+    client: import('./runner/types').AgentRunner,
+    session: import('./runner/types').AgentSession,
     issue: Issue,
     attempt: number | null,
   ): Promise<void> {
