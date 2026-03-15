@@ -50,16 +50,20 @@ function makeIssue(overrides: Partial<Issue> = {}): Issue {
 }
 
 // Helper to create a mock fetch that responds to specific API calls
-function createMockFetch(responses: Array<{ url: string | RegExp, status: number, body?: unknown }>) {
+function createMockFetch(responses: Array<{ url: string | RegExp, method?: string, status: number, body?: unknown }>) {
   const calls: Array<{ url: string, init?: RequestInit }> = []
   return {
     calls,
     fn: mock((url: string | URL, init?: RequestInit) => {
       const urlStr = String(url)
+      const method = init?.method ?? 'GET'
       calls.push({ url: urlStr, init })
-      const match = responses.find(r =>
-        typeof r.url === 'string' ? urlStr.includes(r.url) : r.url.test(urlStr),
-      )
+      const match = responses.find((r) => {
+        const urlMatch = typeof r.url === 'string' ? urlStr.includes(r.url) : r.url.test(urlStr)
+        if (!urlMatch)
+          return false
+        return !r.method || r.method === method
+      })
       if (!match) {
         return Promise.resolve(new Response(JSON.stringify({ message: 'Not Found' }), { status: 404 }))
       }
@@ -117,7 +121,7 @@ describe('CodeActionRunner', () => {
         // 1. Dispatch
         { url: '/dispatches', status: 204 },
         // 2. Find run (first poll returns empty, second finds it)
-        { url: /\/actions\/runs\?/, status: 200, body: { workflow_runs: [{ id: 12345, status: 'in_progress', conclusion: null }] } },
+        { url: /\/actions\/workflows\/.*\/runs\?/, status: 200, body: { workflow_runs: [{ id: 12345, status: 'in_progress', conclusion: null }] } },
         // 3. Poll run status - completed
         { url: '/actions/runs/12345', status: 200, body: { id: 12345, status: 'completed', conclusion: 'success' } },
       ])
@@ -145,7 +149,7 @@ describe('CodeActionRunner', () => {
     it('emits turn_failed when workflow fails', async () => {
       const mockFetch = createMockFetch([
         { url: '/dispatches', status: 204 },
-        { url: /\/actions\/runs\?/, status: 200, body: { workflow_runs: [{ id: 99, status: 'completed', conclusion: 'failure' }] } },
+        { url: /\/actions\/workflows\/.*\/runs\?/, status: 200, body: { workflow_runs: [{ id: 99, status: 'completed', conclusion: 'failure' }] } },
         { url: '/actions/runs/99', status: 200, body: { id: 99, status: 'completed', conclusion: 'failure' } },
       ])
       globalThis.fetch = mockFetch.fn as unknown as typeof fetch
@@ -183,7 +187,7 @@ describe('CodeActionRunner', () => {
 
       const mockFetch = createMockFetch([
         { url: '/dispatches', status: 204 },
-        { url: /\/actions\/runs\?/, status: 200, body: { workflow_runs: [{ id: 1, status: 'completed', conclusion: 'success' }] } },
+        { url: /\/actions\/workflows\/.*\/runs\?/, status: 200, body: { workflow_runs: [{ id: 1, status: 'completed', conclusion: 'success' }] } },
         { url: '/actions/runs/1', status: 200, body: { id: 1, status: 'completed', conclusion: 'success' } },
       ])
       globalThis.fetch = mockFetch.fn as unknown as typeof fetch
@@ -203,11 +207,11 @@ describe('CodeActionRunner', () => {
     it('cancels in-progress run', async () => {
       const mockFetch = createMockFetch([
         { url: '/dispatches', status: 204 },
-        { url: /\/actions\/runs\?/, status: 200, body: { workflow_runs: [{ id: 77, status: 'in_progress', conclusion: null }] } },
-        // Poll keeps returning in_progress
-        { url: '/actions/runs/77', status: 200, body: { id: 77, status: 'in_progress', conclusion: null } },
-        // Cancel
-        { url: '/actions/runs/77/cancel', status: 202 },
+        { url: /\/actions\/workflows\/.*\/runs\?/, status: 200, body: { workflow_runs: [{ id: 77, status: 'in_progress', conclusion: null }] } },
+        // Poll keeps returning in_progress (GET)
+        { url: '/actions/runs/77', method: 'GET', status: 200, body: { id: 77, status: 'in_progress', conclusion: null } },
+        // Cancel (POST)
+        { url: '/actions/runs/77/cancel', method: 'POST', status: 202 },
       ])
       globalThis.fetch = mockFetch.fn as unknown as typeof fetch
 

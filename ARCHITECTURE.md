@@ -10,9 +10,9 @@ see [vendor/symphony/SPEC.md](vendor/symphony/SPEC.md).
 
 Work Please is a long-running TypeScript daemon that turns issue tracker tasks into autonomous
 Claude Code agent sessions. It continuously polls an issue tracker (GitHub Projects v2 or Asana),
-creates an isolated workspace for each eligible issue, renders a Liquid prompt template, and
-launches a Claude Code agent session inside that workspace via one of two runners:
-the `@anthropic-ai/claude-agent-sdk` (local) or `claude-code-action` (GitHub Actions).
+renders a Liquid prompt template, and launches a Claude Code agent session via one of two runners:
+the `@anthropic-ai/claude-agent-sdk` (local, with an isolated workspace per issue) or
+`claude-code-action` (remote, via GitHub Actions `repository_dispatch`).
 
 The service is primarily a **scheduler/runner** — it does not perform full ticket management.
 The orchestrator writes only status labels to GitHub issues. All state transitions, PR
