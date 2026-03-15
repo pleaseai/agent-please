@@ -57,7 +57,7 @@ export function createGitHubAdapter(config: ServiceConfig): TrackerAdapter {
                     assignees(first: 10) { nodes { login } }
                     createdAt updatedAt
                     closedByPullRequestsReferences(first: 10, includeClosedPrs: true) {
-                      nodes { number title url state headRefName }
+                      nodes { number title url state headRefName reviewDecision updatedAt }
                     }
                   }
                   ... on PullRequest {
@@ -94,7 +94,7 @@ export function createGitHubAdapter(config: ServiceConfig): TrackerAdapter {
                     assignees(first: 10) { nodes { login } }
                     createdAt updatedAt
                     closedByPullRequestsReferences(first: 10, includeClosedPrs: true) {
-                      nodes { number title url state headRefName }
+                      nodes { number title url state headRefName reviewDecision updatedAt }
                     }
                   }
                   ... on PullRequest {
@@ -137,7 +137,7 @@ export function createGitHubAdapter(config: ServiceConfig): TrackerAdapter {
                   assignees(first: 10) { nodes { login } }
                   createdAt updatedAt
                   closedByPullRequestsReferences(first: 10, includeClosedPrs: true) {
-                    nodes { number title url state headRefName }
+                    nodes { number title url state headRefName reviewDecision updatedAt }
                   }
                 }
                 ... on PullRequest {
@@ -363,6 +363,8 @@ function normalizeProjectItem(node: Record<string, unknown>, status: string, pro
           url: pr.url ? String(pr.url) : null,
           state: normalizePrState(pr.state),
           branch_name: pr.headRefName ? String(pr.headRefName) : null,
+          review_decision: normalizeReviewDecision(pr.reviewDecision),
+          updated_at: pr.updatedAt ? new Date(String(pr.updatedAt)) : null,
         }))
     : []
 

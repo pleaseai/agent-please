@@ -12,6 +12,8 @@ export interface LinkedPR {
   url: string | null
   state: 'open' | 'closed' | 'merged'
   branch_name: string | null
+  review_decision: Issue['review_decision']
+  updated_at: Date | null
 }
 
 export interface ProjectItemContext {
@@ -191,6 +193,7 @@ export interface OrchestratorState {
   claimed: Set<string>
   retry_attempts: Map<string, RetryEntry>
   completed: Set<string>
+  watched_last_dispatched_at: Map<string, number>
   agent_totals: AgentTotals
   agent_rate_limits: unknown
 }
