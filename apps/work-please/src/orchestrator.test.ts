@@ -795,9 +795,43 @@ Prompt text.`)
   })
 })
 
+describe('getLinkedPrUpdateMs', () => {
+  it('returns null for empty pull_requests', () => {
+    expect(getLinkedPrUpdateMs(makeIssue({ pull_requests: [] }))).toBeNull()
+  })
+
+  it('returns max timestamp from linked PRs', () => {
+    const issue = makeIssue({
+      pull_requests: [
+        { number: 1, title: 'A', url: null, state: 'open', branch_name: null, review_decision: null, updated_at: new Date('2024-01-01') },
+        { number: 2, title: 'B', url: null, state: 'open', branch_name: null, review_decision: null, updated_at: new Date('2024-06-01') },
+      ],
+    })
+    expect(getLinkedPrUpdateMs(issue)).toBe(new Date('2024-06-01').getTime())
+  })
+
+  it('filters NaN from invalid dates', () => {
+    const issue = makeIssue({
+      pull_requests: [
+        { number: 1, title: 'A', url: null, state: 'open', branch_name: null, review_decision: null, updated_at: new Date('invalid') },
+      ],
+    })
+    expect(getLinkedPrUpdateMs(issue)).toBeNull()
+  })
+
+  it('skips PRs with null updated_at', () => {
+    const issue = makeIssue({
+      pull_requests: [
+        { number: 1, title: 'A', url: null, state: 'open', branch_name: null, review_decision: null, updated_at: null },
+        { number: 2, title: 'B', url: null, state: 'open', branch_name: null, review_decision: null, updated_at: new Date('2024-06-01') },
+      ],
+    })
+    expect(getLinkedPrUpdateMs(issue)).toBe(new Date('2024-06-01').getTime())
+  })
+})
+
 describe('processWatchedStates dispatch logic', () => {
-  // Mirror the processWatchedStates dispatch guard logic
-  // Uses exported getLinkedPrUpdateMs and isWatchedUnchanged from orchestrator.ts
+  // Uses exported isWatchedUnchanged from orchestrator.ts
   function shouldDispatchWatched(
     issue: Issue,
     running: Map<string, unknown>,
