@@ -801,12 +801,34 @@ describe('processWatchedStates dispatch logic', () => {
     issue: Issue,
     running: Map<string, unknown>,
     claimed: Set<string>,
+    watchedLastDispatchedAt: Map<string, number> = new Map(),
   ): boolean {
     if (running.has(issue.id) || claimed.has(issue.id))
       return false
     if (!issue.review_decision)
       return false
+
+    // Check if linked PRs have been updated since last dispatch
+    const lastDispatched = watchedLastDispatchedAt.get(issue.id)
+    if (lastDispatched != null) {
+      const latestPrUpdate = getLatestPrUpdateMs(issue)
+      if (latestPrUpdate != null && latestPrUpdate <= lastDispatched)
+        return false
+    }
+
     return true
+  }
+
+  function getLatestPrUpdateMs(issue: Issue): number | null {
+    let latest: number | null = null
+    for (const pr of issue.pull_requests) {
+      if (pr.updated_at) {
+        const ms = pr.updated_at.getTime()
+        if (latest == null || ms > latest)
+          latest = ms
+      }
+    }
+    return latest
   }
 
   it('dispatches issue with review_decision', () => {
@@ -828,6 +850,66 @@ describe('processWatchedStates dispatch logic', () => {
   it('skips already claimed issues', () => {
     const issue = makeIssue({ id: 'w5', review_decision: 'approved' })
     expect(shouldDispatchWatched(issue, new Map(), new Set(['w5']))).toBe(false)
+  })
+
+  it('skips when linked PR has not been updated since last dispatch', () => {
+    const prUpdatedAt = new Date('2024-06-01T12:00:00Z')
+    const issue = makeIssue({
+      id: 'w6',
+      review_decision: 'changes_requested',
+      pull_requests: [
+        { number: 10, title: 'PR', url: null, state: 'open', branch_name: null, review_decision: 'changes_requested', updated_at: prUpdatedAt },
+      ],
+    })
+    const lastDispatched = new Map([['w6', prUpdatedAt.getTime()]])
+    expect(shouldDispatchWatched(issue, new Map(), new Set(), lastDispatched)).toBe(false)
+  })
+
+  it('dispatches when linked PR has been updated after last dispatch', () => {
+    const issue = makeIssue({
+      id: 'w7',
+      review_decision: 'changes_requested',
+      pull_requests: [
+        { number: 10, title: 'PR', url: null, state: 'open', branch_name: null, review_decision: 'changes_requested', updated_at: new Date('2024-06-02T12:00:00Z') },
+      ],
+    })
+    const lastDispatched = new Map([['w7', new Date('2024-06-01T12:00:00Z').getTime()]])
+    expect(shouldDispatchWatched(issue, new Map(), new Set(), lastDispatched)).toBe(true)
+  })
+
+  it('dispatches when no previous dispatch record exists', () => {
+    const issue = makeIssue({
+      id: 'w8',
+      review_decision: 'approved',
+      pull_requests: [
+        { number: 10, title: 'PR', url: null, state: 'open', branch_name: null, review_decision: 'approved', updated_at: new Date('2024-06-01T12:00:00Z') },
+      ],
+    })
+    expect(shouldDispatchWatched(issue, new Map(), new Set(), new Map())).toBe(true)
+  })
+
+  it('dispatches when issue has no linked PRs (no updated_at to compare)', () => {
+    const issue = makeIssue({
+      id: 'w9',
+      review_decision: 'approved',
+      pull_requests: [],
+    })
+    const lastDispatched = new Map([['w9', Date.now()]])
+    expect(shouldDispatchWatched(issue, new Map(), new Set(), lastDispatched)).toBe(true)
+  })
+
+  it('uses latest PR updated_at when multiple PRs exist', () => {
+    const issue = makeIssue({
+      id: 'w10',
+      review_decision: 'changes_requested',
+      pull_requests: [
+        { number: 10, title: 'Old PR', url: null, state: 'open', branch_name: null, review_decision: null, updated_at: new Date('2024-06-01T12:00:00Z') },
+        { number: 11, title: 'New PR', url: null, state: 'open', branch_name: null, review_decision: 'changes_requested', updated_at: new Date('2024-06-03T12:00:00Z') },
+      ],
+    })
+    // Last dispatched after old PR but before new PR
+    const lastDispatched = new Map([['w10', new Date('2024-06-02T12:00:00Z').getTime()]])
+    expect(shouldDispatchWatched(issue, new Map(), new Set(), lastDispatched)).toBe(true)
   })
 })
 

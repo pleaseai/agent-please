@@ -41,6 +41,7 @@ export class Orchestrator {
       claimed: new Set(),
       retry_attempts: new Map(),
       completed: new Set(),
+      watched_last_dispatched_at: new Map(),
       agent_totals: { input_tokens: 0, output_tokens: 0, total_tokens: 0, seconds_running: 0 },
       agent_rate_limits: null,
     }
@@ -601,6 +602,14 @@ export class Orchestrator {
       if (!issue.review_decision)
         continue
 
+      // Skip if linked PRs have not been updated since last dispatch
+      const lastDispatched = this.state.watched_last_dispatched_at.get(issue.id)
+      if (lastDispatched != null) {
+        const latestPrUpdate = getLatestPrUpdateMs(issue)
+        if (latestPrUpdate != null && latestPrUpdate <= lastDispatched)
+          continue
+      }
+
       if (this.availableSlots() === 0)
         break
 
@@ -609,6 +618,11 @@ export class Orchestrator {
       const runningInState = countRunningInState(this.state.running, issue.state)
       if (runningInState >= stateLimit)
         continue
+
+      // Record the latest PR update timestamp at dispatch time
+      const latestPrMs = getLatestPrUpdateMs(issue)
+      if (latestPrMs != null)
+        this.state.watched_last_dispatched_at.set(issue.id, latestPrMs)
 
       console.warn(`[orchestrator] dispatching watched issue: ${issue.identifier} state=${issue.state} review=${issue.review_decision}`)
       this.dispatchIssue(issue, null)
@@ -706,6 +720,18 @@ function countRunningInState(running: Map<string, RunningEntry>, state: string):
       count++
   }
   return count
+}
+
+function getLatestPrUpdateMs(issue: Issue): number | null {
+  let latest: number | null = null
+  for (const pr of issue.pull_requests) {
+    if (pr.updated_at) {
+      const ms = pr.updated_at.getTime()
+      if (latest == null || ms > latest)
+        latest = ms
+    }
+  }
+  return latest
 }
 
 function hasNonTerminalBlockers(issue: Issue, terminalStates: string[]): boolean {
