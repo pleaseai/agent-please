@@ -197,7 +197,7 @@ export class CodeActionRunner implements AgentRunner {
         return new Error('timeout: run not found')
 
       const createdFilter = new Date(dispatchedAt - 5000).toISOString()
-      const workflowFile = encodeURIComponent(this.config.code_action.workflow_file)
+      const workflowFile = encodeURIComponent(this.config.code_action.workflow_file.split('/').pop() ?? this.config.code_action.workflow_file)
       const url = `https://api.github.com/repos/${repository}/actions/workflows/${workflowFile}/runs?event=repository_dispatch&per_page=5&created=>=${createdFilter}`
       try {
         const resp = await fetch(url, {
