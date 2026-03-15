@@ -94,23 +94,22 @@ Each `tick()` triggers:
 
 | Step | Method | Query | Cost |
 |------|--------|-------|------|
-| Reconcile | `fetchIssueStatesByIds(N)` | ITEMS_BY_IDS_QUERY | ceil(N x 1.02) |
-| Watched states | `fetchIssuesByStates()` | PROJECT_ITEMS/BY_ID_QUERY | ~54/page |
-| Auto-transition | `updateItemStatus()` x M | Mutation x M | M pts |
-| Candidates | `fetchCandidateIssues()` | PROJECT_ITEMS/BY_ID_QUERY | ~54/page |
-| Per agent turn | `fetchIssueStatesByIds([1])` | ITEMS_BY_IDS_QUERY | 2 |
+| Reconcile | `fetchIssueStatesByIds(N)` | ITEMS_BY_IDS_QUERY | ceil((1 + 2N) / 100) = 1 |
+| Watched states | `fetchIssuesByStates()` | PROJECT_ITEMS/BY_ID_QUERY | ~4/page |
+| Candidates | `fetchCandidateIssues()` | PROJECT_ITEMS/BY_ID_QUERY | ~4/page |
+| Per agent turn | `fetchIssueStatesByIds([1])` | ITEMS_BY_IDS_QUERY | 1 |
 
-### Typical tick (5 running, 1 page, no transitions)
+### Typical tick (5 running, 1 page)
 
 ```
-Reconcile:        6 pts  (N=5)
-Watched states:  54 pts  (1 page)
-Candidates:      54 pts  (1 page)
+Reconcile:        1 pt   (N=5, ceil((1+10)/100) = 1)
+Watched states:   4 pts  (1 page)
+Candidates:       4 pts  (1 page)
                 ────────
-Total:          114 pts/tick
+Total:            9 pts/tick
 ```
 
-At 30s polling → ~228 pts/min → **~13,680 pts/hr** (exceeds 5,000 limit by ~2.7x).
+At 30s polling → ~18 pts/min → **~1,080 pts/hr** (well within 5,000 limit).
 
 ---
 
@@ -151,7 +150,7 @@ Enables dynamic backoff and accurate cost tracking.
 
 Both call `fetchAllItems()` with different status filters.
 Could merge into a single paginated fetch with a union of statuses.
-Save ~54 pts/tick.
+Save ~4 pts/tick.
 
 ### O6. Increase polling interval (SIMPLE)
 
