@@ -597,8 +597,8 @@ export class Orchestrator {
       if (this.state.running.has(issue.id) || this.state.claimed.has(issue.id))
         continue
 
-      // Only dispatch if there's a review decision or unresolved threads
-      if (!issue.review_decision && !issue.has_unresolved_threads)
+      // Only dispatch if there's a review decision (approved, changes_requested, etc.)
+      if (!issue.review_decision)
         continue
 
       if (this.availableSlots() === 0)
