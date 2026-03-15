@@ -1,12 +1,13 @@
 import type { ServiceConfig } from '../types'
 import type { AgentRunner } from './types'
+import { CodeActionRunner } from './code-action-runner'
 import { SdkRunner } from './sdk-runner'
 
 export function createRunner(config: ServiceConfig, workspace: string | null): AgentRunner {
   const runner = config.agent.runner ?? 'sdk'
 
   if (runner === 'code_action') {
-    throw new Error('code_action runner is not yet implemented')
+    return new CodeActionRunner(config)
   }
 
   if (!workspace) {
