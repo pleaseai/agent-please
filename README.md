@@ -667,10 +667,7 @@ Start with `default` or `acceptEdits` unless you are running in a fully isolated
 
 Functional Source License 1.1, MIT Future License (FSL-1.1-MIT). See [LICENSE](LICENSE) for details.
 
-Work Please is a TypeScript implementation based on the
-[Symphony specification](vendor/symphony/SPEC.md) by OpenAI (Apache 2.0).
-
 ### Third-Party Licenses
 
-This project uses the [Claude Agent SDK](https://github.com/anthropics/claude-agent-sdk-typescript),
-which is subject to Anthropic's [Commercial Terms of Service](https://www.anthropic.com/legal/commercial-terms).
+- Work Please is a TypeScript implementation based on the [Symphony specification](vendor/symphony/SPEC.md) by OpenAI (Apache 2.0).
+- This project uses the [Claude Agent SDK](https://github.com/anthropics/claude-agent-sdk-typescript), which is subject to Anthropic's [Commercial Terms of Service](https://www.anthropic.com/legal/commercial-terms).
