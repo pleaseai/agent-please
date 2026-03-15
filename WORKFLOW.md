@@ -236,12 +236,16 @@ If neither is present, stop and ask the user to configure GitHub access.
     - If found, reuse that comment — **do not create a new workpad comment**. Use `PATCH` to update it:
       ```bash
       # Update an existing workpad comment (use the numeric comment id)
-      # Pipe body via stdin to avoid shell quoting issues with apostrophes
-      printf '%s' '<updated workpad markdown>' | gh api repos/<owner>/<repo>/issues/comments/<comment-id> -X PATCH -F body=@-
+      # Pipe body via heredoc to avoid shell quoting issues with apostrophes
+      gh api repos/<owner>/<repo>/issues/comments/<comment-id> -X PATCH -F body=@- <<'EOF'
+      <updated workpad markdown>
+      EOF
       ```
     - If and only if no existing workpad comment is found, create one:
       ```bash
-      gh issue comment <number> -b '<workpad markdown>'
+      gh api repos/<owner>/<repo>/issues/<number>/comments -X POST -F body=@- <<'EOF'
+      <workpad markdown>
+      EOF
       ```
     - Persist the workpad comment ID and only write progress updates to that ID via `PATCH`.
     - **Critical**: creating a duplicate `## Workpad` comment is a violation. Always search before creating.
@@ -303,7 +307,7 @@ Use this only when completion is blocked by missing required tools or missing au
 1.  Determine current repo state (`branch`, `git status`, `HEAD`) and verify the kickoff sync result is already recorded in the workpad before implementation continues.
 2.  If current issue state is `Todo`, move it to `In Progress`; otherwise leave the current state unchanged.
 3.  Load the existing workpad comment and treat it as the active execution checklist.
-    - Edit it liberally via `printf '%s' '…' | gh api repos/<owner>/<repo>/issues/comments/<comment-id> -X PATCH -F body=@-` whenever reality changes (scope, risks, validation approach, discovered tasks).
+    - Edit it liberally via `gh api repos/<owner>/<repo>/issues/comments/<comment-id> -X PATCH -F body=@- <<'EOF' … EOF` whenever reality changes (scope, risks, validation approach, discovered tasks).
     - Never post a new comment to update progress — always `PATCH` the existing workpad comment.
 4.  Implement against the hierarchical TODOs and keep the comment current:
     - Check off completed items.
