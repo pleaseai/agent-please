@@ -1,4 +1,4 @@
-import type { ClaudeEffort, IssueFilter, ServiceConfig, SettingSource, SystemPromptConfig, WorkflowDefinition } from './types'
+import type { ClaudeEffort, CodeActionConfig, IssueFilter, ServiceConfig, SettingSource, SystemPromptConfig, WorkflowDefinition } from './types'
 import { tmpdir } from 'node:os'
 import { join, sep } from 'node:path'
 import process from 'node:process'
@@ -31,6 +31,11 @@ const DEFAULTS = {
   GITHUB_TERMINAL_STATUSES: ['Closed', 'Cancelled', 'Canceled', 'Duplicate', 'Done'] as string[],
   GITHUB_WATCHED_STATUSES: ['Human Review'] as string[],
   ASANA_WATCHED_SECTIONS: [] as string[],
+  CODE_ACTION_WORKFLOW_FILE: '.github/workflows/claude.yml',
+  CODE_ACTION_REF: 'main',
+  CODE_ACTION_EVENT_TYPE: 'claude-code-action',
+  CODE_ACTION_POLL_INTERVAL_MS: 10_000,
+  CODE_ACTION_TIMEOUT_MS: 3_600_000,
 }
 
 export function buildConfig(workflow: WorkflowDefinition): ServiceConfig {
@@ -68,6 +73,7 @@ export function buildConfig(workflow: WorkflowDefinition): ServiceConfig {
       max_concurrent_agents_by_state: stateLimitsValue(agent.max_concurrent_agents_by_state),
     },
     claude: buildClaudeConfig(claude),
+    code_action: buildCodeActionConfig(sectionMap(raw, 'code_action')),
     env: buildEnvConfig(raw),
     server: {
       port: nonNegIntOrNull(server.port),
@@ -96,6 +102,18 @@ function buildClaudeConfig(claude: Record<string, unknown>): ServiceConfig['clau
         pr: stringValue(attributionSec.pr),
       },
     },
+  }
+}
+
+function buildCodeActionConfig(raw: Record<string, unknown>): CodeActionConfig {
+  return {
+    repository: stringValue(raw.repository),
+    workflow_file: stringValue(raw.workflow_file) ?? DEFAULTS.CODE_ACTION_WORKFLOW_FILE,
+    ref: stringValue(raw.ref) ?? DEFAULTS.CODE_ACTION_REF,
+    event_type: stringValue(raw.event_type) ?? DEFAULTS.CODE_ACTION_EVENT_TYPE,
+    poll_interval_ms: posIntValue(raw.poll_interval_ms, DEFAULTS.CODE_ACTION_POLL_INTERVAL_MS),
+    timeout_ms: posIntValue(raw.timeout_ms, DEFAULTS.CODE_ACTION_TIMEOUT_MS),
+    github_token: resolveEnvValue(stringValue(raw.github_token), process.env.GITHUB_TOKEN),
   }
 }
 
@@ -159,6 +177,8 @@ export type ValidationError
     | { code: 'incomplete_github_app_config', missing: string[] }
     | { code: 'missing_tracker_project_config', field: string }
     | { code: 'missing_claude_command' }
+    | { code: 'missing_code_action_github_token' }
+    | { code: 'missing_code_action_repository' }
 
 export function validateConfig(config: ServiceConfig): ValidationError | null {
   const { kind } = config.tracker
@@ -205,8 +225,16 @@ export function validateConfig(config: ServiceConfig): ValidationError | null {
     }
   }
 
-  if (!config.claude.command.trim())
-    return { code: 'missing_claude_command' }
+  if (config.agent.runner === 'code_action') {
+    if (!config.code_action.github_token)
+      return { code: 'missing_code_action_github_token' }
+    if (!config.code_action.repository)
+      return { code: 'missing_code_action_repository' }
+  }
+  else {
+    if (!config.claude.command.trim())
+      return { code: 'missing_claude_command' }
+  }
 
   return null
 }

@@ -122,10 +122,21 @@ export interface ServiceConfig {
       }
     }
   }
+  code_action: CodeActionConfig
   env: Record<string, string>
   server: {
     port: number | null
   }
+}
+
+export interface CodeActionConfig {
+  repository: string | null
+  workflow_file: string
+  ref: string
+  event_type: string
+  poll_interval_ms: number
+  timeout_ms: number
+  github_token: string | null
 }
 
 export interface Workspace {

@@ -792,3 +792,109 @@ describe('buildConfig - env section', () => {
     expect(Object.keys(config.env)).toHaveLength(2)
   })
 })
+
+describe('agent.runner config', () => {
+  it('defaults runner to sdk', () => {
+    const config = buildConfig(makeWorkflow({}))
+    expect(config.agent.runner).toBe('sdk')
+  })
+
+  it('parses code_action runner', () => {
+    const config = buildConfig(makeWorkflow({ agent: { runner: 'code_action' } }))
+    expect(config.agent.runner).toBe('code_action')
+  })
+
+  it('treats unknown runner value as sdk', () => {
+    const config = buildConfig(makeWorkflow({ agent: { runner: 'unknown' } }))
+    expect(config.agent.runner).toBe('sdk')
+  })
+})
+
+describe('code_action config', () => {
+  it('applies defaults when section is missing', () => {
+    const config = buildConfig(makeWorkflow({}))
+    expect(config.code_action.workflow_file).toBe('.github/workflows/claude.yml')
+    expect(config.code_action.ref).toBe('main')
+    expect(config.code_action.event_type).toBe('claude-code-action')
+    expect(config.code_action.poll_interval_ms).toBe(10_000)
+    expect(config.code_action.timeout_ms).toBe(3_600_000)
+    expect(config.code_action.repository).toBeNull()
+  })
+
+  it('parses code_action section', () => {
+    const config = buildConfig(makeWorkflow({
+      code_action: {
+        repository: 'myorg/my-repo',
+        workflow_file: '.github/workflows/custom.yml',
+        ref: 'develop',
+        event_type: 'custom-event',
+        poll_interval_ms: 15000,
+        timeout_ms: 1800000,
+        github_token: 'ghp_test',
+      },
+    }))
+    expect(config.code_action.repository).toBe('myorg/my-repo')
+    expect(config.code_action.workflow_file).toBe('.github/workflows/custom.yml')
+    expect(config.code_action.ref).toBe('develop')
+    expect(config.code_action.event_type).toBe('custom-event')
+    expect(config.code_action.poll_interval_ms).toBe(15000)
+    expect(config.code_action.timeout_ms).toBe(1800000)
+    expect(config.code_action.github_token).toBe('ghp_test')
+  })
+
+  it('resolves github_token from env var', () => {
+    const prev = process.env.CODE_ACTION_TOKEN
+    process.env.CODE_ACTION_TOKEN = 'from-env'
+    try {
+      const config = buildConfig(makeWorkflow({
+        code_action: { github_token: '$CODE_ACTION_TOKEN' },
+      }))
+      expect(config.code_action.github_token).toBe('from-env')
+    }
+    finally {
+      if (prev === undefined)
+        delete process.env.CODE_ACTION_TOKEN
+      else process.env.CODE_ACTION_TOKEN = prev
+    }
+  })
+})
+
+describe('validateConfig code_action', () => {
+  it('rejects code_action runner without github_token', () => {
+    const config = buildConfig(makeWorkflow({
+      tracker: { kind: 'github_projects', api_key: 'token', owner: 'org', project_number: 1 },
+      agent: { runner: 'code_action' },
+      code_action: { repository: 'org/repo' },
+    }))
+    config.code_action.github_token = null
+    expect(validateConfig(config)?.code).toBe('missing_code_action_github_token')
+  })
+
+  it('rejects code_action runner without repository', () => {
+    const config = buildConfig(makeWorkflow({
+      tracker: { kind: 'github_projects', api_key: 'token', owner: 'org', project_number: 1 },
+      agent: { runner: 'code_action' },
+      code_action: { github_token: 'ghp_test' },
+    }))
+    expect(validateConfig(config)?.code).toBe('missing_code_action_repository')
+  })
+
+  it('accepts valid code_action config', () => {
+    const config = buildConfig(makeWorkflow({
+      tracker: { kind: 'github_projects', api_key: 'token', owner: 'org', project_number: 1 },
+      agent: { runner: 'code_action' },
+      code_action: { repository: 'org/repo', github_token: 'ghp_test' },
+    }))
+    expect(validateConfig(config)).toBeNull()
+  })
+
+  it('skips claude command check for code_action runner', () => {
+    const config = buildConfig(makeWorkflow({
+      tracker: { kind: 'github_projects', api_key: 'token', owner: 'org', project_number: 1 },
+      agent: { runner: 'code_action' },
+      code_action: { repository: 'org/repo', github_token: 'ghp_test' },
+    }))
+    config.claude.command = ''
+    expect(validateConfig(config)).toBeNull()
+  })
+})

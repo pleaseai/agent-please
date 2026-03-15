@@ -40,6 +40,7 @@ function makeGithubConfig(labelPrefix: string | null): ServiceConfig {
     hooks: { after_create: null, before_run: null, after_run: null, before_remove: null, timeout_ms: 60000 },
     agent: { runner: 'sdk', max_concurrent_agents: 5, max_turns: 20, max_retry_backoff_ms: 300000, max_concurrent_agents_by_state: {} },
     claude: { model: null, effort: 'high' as const, command: 'claude', permission_mode: 'bypassPermissions', allowed_tools: [], setting_sources: [], turn_timeout_ms: 3600000, read_timeout_ms: 5000, stall_timeout_ms: 300000, system_prompt: { type: 'preset', preset: 'claude_code' }, settings: { attribution: { commit: null, pr: null } } },
+    code_action: { repository: null, workflow_file: '.github/workflows/claude.yml', ref: 'main', event_type: 'claude-code-action', poll_interval_ms: 10000, timeout_ms: 3600000, github_token: null },
     env: {},
     server: { port: null },
   }
@@ -60,6 +61,7 @@ function makeAsanaConfig(): ServiceConfig {
     hooks: { after_create: null, before_run: null, after_run: null, before_remove: null, timeout_ms: 60000 },
     agent: { runner: 'sdk', max_concurrent_agents: 5, max_turns: 20, max_retry_backoff_ms: 300000, max_concurrent_agents_by_state: {} },
     claude: { model: null, effort: 'high' as const, command: 'claude', permission_mode: 'bypassPermissions', allowed_tools: [], setting_sources: [], turn_timeout_ms: 3600000, read_timeout_ms: 5000, stall_timeout_ms: 300000, system_prompt: { type: 'preset', preset: 'claude_code' }, settings: { attribution: { commit: null, pr: null } } },
+    code_action: { repository: null, workflow_file: '.github/workflows/claude.yml', ref: 'main', event_type: 'claude-code-action', poll_interval_ms: 10000, timeout_ms: 3600000, github_token: null },
     env: {},
     server: { port: null },
   }
