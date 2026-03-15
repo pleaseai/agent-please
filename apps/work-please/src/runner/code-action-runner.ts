@@ -197,7 +197,8 @@ export class CodeActionRunner implements AgentRunner {
       if (Date.now() > deadline)
         return new Error('timeout: run not found')
 
-      const url = `https://api.github.com/repos/${repository}/actions/runs?event=repository_dispatch&per_page=5`
+      const createdFilter = new Date(dispatchedAt - 5000).toISOString()
+      const url = `https://api.github.com/repos/${repository}/actions/runs?event=repository_dispatch&per_page=5&created=>=${createdFilter}`
       try {
         const resp = await fetch(url, {
           headers: {
