@@ -45,7 +45,6 @@ work-please/                      # Monorepo root (Bun + Turborepo)
 │   ├── workspace.ts              # Per-issue directory management, git worktrees, lifecycle hooks
 │   ├── server.ts                 # Optional HTTP dashboard (Bun.serve) and JSON API
 │   ├── tools.ts                  # MCP tool server (asana_api, github_graphql) injected into agent
-│   ├── auto-transition.ts        # PR review → state transition rules (Human Review → Rework/Merging)
 │   ├── label.ts                  # GitHub label management (dispatched/done/failed)
 │   ├── filter.ts                 # Assignee and label filter matching
 │   ├── init.ts                   # `work-please init` — scaffolds GitHub Project + WORKFLOW.md
@@ -109,8 +108,8 @@ Each poll tick executes in order:
 2. **Validate** — Re-check config validity (supports live reload via file watcher).
 3. **Create tracker adapter** — Instantiate a `TrackerAdapter` from config. On adapter error,
    log and skip remaining steps.
-4. **Process watched states** — Evaluate auto-transition rules for issues in `Human Review`
-   (→ `Rework` on changes requested, → `Merging` on approved).
+4. **Process watched states** — Dispatch agents for watched-state issues (e.g. `Human Review`)
+   that have review activity (review decision or unresolved threads).
 5. **Fetch candidates** — Poll active issues from the tracker with optional assignee/label filters.
 6. **Sort and dispatch** — Priority ascending, then oldest first. Check global and per-state
    concurrency limits. Create workspace, run hooks, start agent session.
