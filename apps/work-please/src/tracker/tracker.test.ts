@@ -1450,7 +1450,8 @@ describe('fetchCandidateAndWatchedIssues', () => {
     try {
       const result = await adapter.fetchCandidateAndWatchedIssues(['Human Review'])
       expect('code' in result).toBe(false)
-      if ('code' in result) return
+      if ('code' in result)
+        return
       expect(result.candidates).toHaveLength(1)
       expect(result.candidates[0].id).toBe('PVTI_1')
       expect(result.watched).toHaveLength(1)
@@ -1477,7 +1478,8 @@ describe('fetchCandidateAndWatchedIssues', () => {
     try {
       const result = await adapter.fetchCandidateAndWatchedIssues(['Human Review'])
       expect('code' in result).toBe(false)
-      if ('code' in result) return
+      if ('code' in result)
+        return
       // Two parallel fetches when filter is active
       expect(fetchCount).toBe(2)
     }
@@ -1508,7 +1510,8 @@ describe('fetchCandidateAndWatchedIssues', () => {
     try {
       const result = await adapter.fetchCandidateAndWatchedIssues(['Human Review'])
       expect('code' in result).toBe(false)
-      if ('code' in result) return
+      if ('code' in result)
+        return
       // Candidates failed but watched succeeded — partial success
       expect(result.candidates).toHaveLength(0)
       expect(result.watched).toHaveLength(1)
@@ -1529,7 +1532,8 @@ describe('fetchCandidateAndWatchedIssues', () => {
     try {
       const result = await adapter.fetchCandidateAndWatchedIssues([])
       expect('code' in result).toBe(false)
-      if ('code' in result) return
+      if ('code' in result)
+        return
       expect(result.candidates).toHaveLength(1)
       expect(result.watched).toEqual([])
     }
@@ -1558,7 +1562,8 @@ describe('fetchCandidateAndWatchedIssues', () => {
     try {
       const result = await adapter.fetchCandidateAndWatchedIssues(['Review'])
       expect('code' in result).toBe(false)
-      if ('code' in result) return
+      if ('code' in result)
+        return
       expect(result.candidates).toHaveLength(1)
       expect(result.candidates[0].identifier).toBe('task1')
       expect(result.watched).toHaveLength(1)
