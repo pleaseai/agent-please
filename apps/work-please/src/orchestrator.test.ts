@@ -62,8 +62,6 @@ function makeIssue(overrides: Partial<Issue> = {}): Issue {
     blocked_by: [],
     pull_requests: [],
     review_decision: null,
-    has_unresolved_threads: false,
-    has_unresolved_human_threads: false,
     created_at: null,
     updated_at: null,
     project: null,
@@ -806,7 +804,7 @@ describe('processWatchedStates dispatch logic', () => {
   ): boolean {
     if (running.has(issue.id) || claimed.has(issue.id))
       return false
-    if (!issue.review_decision && !issue.has_unresolved_threads)
+    if (!issue.review_decision)
       return false
     return true
   }
@@ -816,13 +814,8 @@ describe('processWatchedStates dispatch logic', () => {
     expect(shouldDispatchWatched(issue, new Map(), new Set())).toBe(true)
   })
 
-  it('dispatches issue with unresolved threads', () => {
-    const issue = makeIssue({ id: 'w2', has_unresolved_threads: true })
-    expect(shouldDispatchWatched(issue, new Map(), new Set())).toBe(true)
-  })
-
-  it('skips issue with no review activity', () => {
-    const issue = makeIssue({ id: 'w3', review_decision: null, has_unresolved_threads: false })
+  it('skips issue with no review decision', () => {
+    const issue = makeIssue({ id: 'w3', review_decision: null })
     expect(shouldDispatchWatched(issue, new Map(), new Set())).toBe(false)
   })
 

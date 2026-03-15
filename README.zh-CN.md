@@ -473,8 +473,6 @@ server:
 - {{ issue.branch_name }}  —— PR 头分支名（PullRequest 项）或 null
 - {{ issue.pull_requests }} —— 关联 PR 数组（每项包含 number、title、url、state、branch_name）
 - {{ issue.review_decision }} —— PR 审查决定："approved"、"changes_requested"、"commented"、"review_required" 或 null
-- {{ issue.has_unresolved_threads }} —— PR 是否有未解决的审查线程
-- {{ issue.has_unresolved_human_threads }} —— PR 是否有未解决的非机器人审查线程
 - {{ issue.priority }}     —— 数字优先级或 null
 - {{ issue.created_at }}   —— ISO-8601 创建时间戳
 - {{ issue.updated_at }}   —— ISO-8601 最后更新时间戳

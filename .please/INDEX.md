@@ -11,7 +11,7 @@
 | `docs/plans/` | Implementation plans → [Plans Index](docs/plans/index.md) |
 | `docs/decisions/` | Architecture Decision Records → [Decisions Index](docs/decisions/index.md) |
 | `docs/investigations/` | Bug investigation reports (empty) |
-| `docs/research/` | Research documents (empty) |
+| `docs/research/` | Research documents → [Research Index](docs/research/index.md) |
 | `docs/knowledge/` | Knowledge base articles (empty) |
 | `templates/` | Workflow templates (empty) |
 | `scripts/` | Utility scripts (empty) |

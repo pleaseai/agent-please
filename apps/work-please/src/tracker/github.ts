@@ -67,17 +67,6 @@ export function createGitHubAdapter(config: ServiceConfig): TrackerAdapter {
                     createdAt updatedAt
                     headRefName
                     reviewDecision
-                    reviewThreads(first: 100) {
-                      nodes {
-                        isResolved
-                        isOutdated
-                        comments(first: 1) {
-                          nodes {
-                            author { login }
-                          }
-                        }
-                      }
-                    }
                   }
                 }
               }
@@ -115,17 +104,6 @@ export function createGitHubAdapter(config: ServiceConfig): TrackerAdapter {
                     createdAt updatedAt
                     headRefName
                     reviewDecision
-                    reviewThreads(first: 100) {
-                      nodes {
-                        isResolved
-                        isOutdated
-                        comments(first: 1) {
-                          nodes {
-                            author { login }
-                          }
-                        }
-                      }
-                    }
                   }
                 }
               }
@@ -169,17 +147,6 @@ export function createGitHubAdapter(config: ServiceConfig): TrackerAdapter {
                   createdAt updatedAt
                   headRefName
                   reviewDecision
-                  reviewThreads(first: 100) {
-                    nodes {
-                      isResolved
-                      isOutdated
-                      comments(first: 1) {
-                        nodes {
-                          author { login }
-                        }
-                      }
-                    }
-                  }
                 }
               }
             }
@@ -206,17 +173,6 @@ export function createGitHubAdapter(config: ServiceConfig): TrackerAdapter {
             ... on Issue { number title }
             ... on PullRequest {
               number title headRefName reviewDecision
-              reviewThreads(first: 100) {
-                nodes {
-                  isResolved
-                  isOutdated
-                  comments(first: 1) {
-                    nodes {
-                      author { login }
-                    }
-                  }
-                }
-              }
             }
           }
         }
@@ -364,38 +320,6 @@ function buildQueryString(filter: IssueFilter): string {
   return parts.join(' ')
 }
 
-function isBotLogin(login: string): boolean {
-  return login.endsWith('[bot]')
-}
-
-function extractReviewThreads(content: Record<string, unknown> | null): {
-  hasUnresolvedThreads: boolean
-  hasUnresolvedHumanThreads: boolean
-} {
-  const threadNodes = (content?.reviewThreads as { nodes?: Array<Record<string, unknown>> })?.nodes
-  if (!Array.isArray(threadNodes)) {
-    return { hasUnresolvedThreads: false, hasUnresolvedHumanThreads: false }
-  }
-
-  let hasUnresolvedThreads = false
-  let hasUnresolvedHumanThreads = false
-
-  for (const thread of threadNodes) {
-    if (thread.isResolved === true || thread.isOutdated === true)
-      continue
-
-    hasUnresolvedThreads = true
-
-    const commentNodes = (thread.comments as { nodes?: Array<{ author?: { login?: string } }> })?.nodes
-    const authorLogin = commentNodes?.[0]?.author?.login ?? ''
-    if (!isBotLogin(authorLogin)) {
-      hasUnresolvedHumanThreads = true
-    }
-  }
-
-  return { hasUnresolvedThreads, hasUnresolvedHumanThreads }
-}
-
 function normalizePrState(raw: unknown): LinkedPR['state'] {
   const s = String(raw ?? '').toLowerCase()
   return s === 'closed' || s === 'merged' ? s : 'open'
@@ -444,7 +368,6 @@ function normalizeProjectItem(node: Record<string, unknown>, status: string, pro
 
   const headRefName = content?.headRefName ? String(content.headRefName) : null
   const reviewDecision = normalizeReviewDecision(content?.reviewDecision)
-  const { hasUnresolvedThreads, hasUnresolvedHumanThreads } = extractReviewThreads(content)
 
   return {
     id: String(node.id ?? ''),
@@ -460,8 +383,6 @@ function normalizeProjectItem(node: Record<string, unknown>, status: string, pro
     blocked_by: [],
     pull_requests: pullRequests,
     review_decision: reviewDecision,
-    has_unresolved_threads: hasUnresolvedThreads,
-    has_unresolved_human_threads: hasUnresolvedHumanThreads,
     created_at: content?.createdAt ? new Date(String(content.createdAt)) : null,
     updated_at: content?.updatedAt ? new Date(String(content.updatedAt)) : null,
     project: (projectOwner || projectNum)

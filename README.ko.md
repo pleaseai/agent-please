@@ -473,8 +473,6 @@ server:
 - {{ issue.branch_name }}  — PR 헤드 브랜치명 (PullRequest 항목) 또는 null
 - {{ issue.pull_requests }} — 연결된 PR 배열 (각각 number, title, url, state, branch_name 포함)
 - {{ issue.review_decision }} — PR 리뷰 결정: "approved", "changes_requested", "commented", "review_required", 또는 null
-- {{ issue.has_unresolved_threads }} — PR에 미해결 리뷰 스레드가 있는지 여부
-- {{ issue.has_unresolved_human_threads }} — PR에 미해결 비봇 리뷰 스레드가 있는지 여부
 - {{ issue.priority }}     — 숫자 우선순위 또는 null
 - {{ issue.created_at }}   — ISO-8601 생성 타임스탬프
 - {{ issue.updated_at }}   — ISO-8601 최종 업데이트 타임스탬프

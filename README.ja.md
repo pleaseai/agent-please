@@ -473,8 +473,6 @@ server:
 - {{ issue.branch_name }}  — PRヘッドブランチ名（PullRequestアイテム）またはnull
 - {{ issue.pull_requests }} — リンクされたPRの配列（各要素にnumber、title、url、state、branch_nameを含む）
 - {{ issue.review_decision }} — PRレビュー決定："approved"、"changes_requested"、"commented"、"review_required"、またはnull
-- {{ issue.has_unresolved_threads }} — PRに未解決レビュースレッドがあるかどうか
-- {{ issue.has_unresolved_human_threads }} — PRに未解決の非ボットレビュースレッドがあるかどうか
 - {{ issue.priority }}     — 数値優先度またはnull
 - {{ issue.created_at }}   — ISO-8601作成タイムスタンプ
 - {{ issue.updated_at }}   — ISO-8601最終更新タイムスタンプ

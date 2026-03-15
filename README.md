@@ -492,8 +492,6 @@ Your prompt template goes here. Available variables:
 - {{ issue.branch_name }}  — PR head branch name (for PullRequest items) or null
 - {{ issue.pull_requests }} — Array of linked PRs (each has number, title, url, state, branch_name)
 - {{ issue.review_decision }} — PR review decision: "approved", "changes_requested", "commented", "review_required", or null
-- {{ issue.has_unresolved_threads }} — Whether the PR has unresolved review threads
-- {{ issue.has_unresolved_human_threads }} — Whether the PR has unresolved non-bot review threads
 - {{ issue.priority }}     — Numeric priority or null
 - {{ issue.created_at }}   — ISO-8601 creation timestamp
 - {{ issue.updated_at }}   — ISO-8601 last-updated timestamp
