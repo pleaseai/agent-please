@@ -41,7 +41,7 @@ function makeGithubConfig(labelPrefix: string | null): ServiceConfig {
     agent: { max_concurrent_agents: 5, max_turns: 20, max_retry_backoff_ms: 300000, max_concurrent_agents_by_state: {} },
     claude: { model: null, effort: 'high' as const, command: 'claude', permission_mode: 'bypassPermissions', allowed_tools: [], setting_sources: [], turn_timeout_ms: 3600000, read_timeout_ms: 5000, stall_timeout_ms: 300000, system_prompt: { type: 'preset', preset: 'claude_code' }, settings: { attribution: { commit: null, pr: null } } },
     env: {},
-    server: { port: null },
+    server: { port: null, webhook: { secret: null, events: null } },
   }
 }
 
@@ -61,7 +61,7 @@ function makeAsanaConfig(): ServiceConfig {
     agent: { max_concurrent_agents: 5, max_turns: 20, max_retry_backoff_ms: 300000, max_concurrent_agents_by_state: {} },
     claude: { model: null, effort: 'high' as const, command: 'claude', permission_mode: 'bypassPermissions', allowed_tools: [], setting_sources: [], turn_timeout_ms: 3600000, read_timeout_ms: 5000, stall_timeout_ms: 300000, system_prompt: { type: 'preset', preset: 'claude_code' }, settings: { attribution: { commit: null, pr: null } } },
     env: {},
-    server: { port: null },
+    server: { port: null, webhook: { secret: null, events: null } },
   }
 }
 

@@ -73,6 +73,7 @@ export function buildConfig(workflow: WorkflowDefinition): ServiceConfig {
     env: buildEnvConfig(raw),
     server: {
       port: nonNegIntOrNull(server.port),
+      webhook: buildWebhookConfig(sectionMap(server, 'webhook')),
     },
   }
 }
@@ -144,6 +145,13 @@ function buildTrackerConfig(kind: string | null, tracker: Record<string, unknown
     api_key: resolveEnvValue(stringValue(tracker.api_key), undefined),
     label_prefix,
     filter,
+  }
+}
+
+function buildWebhookConfig(webhook: Record<string, unknown>): ServiceConfig['server']['webhook'] {
+  return {
+    secret: resolveEnvValue(stringValue(webhook.secret), process.env.WEBHOOK_SECRET),
+    events: csvValue(webhook.events) ?? null,
   }
 }
 

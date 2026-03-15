@@ -792,3 +792,66 @@ describe('buildConfig - env section', () => {
     expect(Object.keys(config.env)).toHaveLength(2)
   })
 })
+
+describe('webhook config', () => {
+  it('defaults to null secret and null events when missing', () => {
+    const config = buildConfig(makeWorkflow({}))
+    expect(config.server.webhook.secret).toBeNull()
+    expect(config.server.webhook.events).toBeNull()
+  })
+
+  it('parses webhook secret directly', () => {
+    const config = buildConfig(makeWorkflow({
+      server: { webhook: { secret: 'my-webhook-secret' } },
+    }))
+    expect(config.server.webhook.secret).toBe('my-webhook-secret')
+  })
+
+  it('resolves webhook secret from env var', () => {
+    const prev = process.env.WEBHOOK_SECRET
+    process.env.WEBHOOK_SECRET = 'env-secret-value'
+    try {
+      const config = buildConfig(makeWorkflow({
+        server: { webhook: { secret: '$WEBHOOK_SECRET' } },
+      }))
+      expect(config.server.webhook.secret).toBe('env-secret-value')
+    }
+    finally {
+      if (prev === undefined)
+        delete process.env.WEBHOOK_SECRET
+      else
+        process.env.WEBHOOK_SECRET = prev
+    }
+  })
+
+  it('parses events as array', () => {
+    const config = buildConfig(makeWorkflow({
+      server: { webhook: { events: ['issues', 'pull_request'] } },
+    }))
+    expect(config.server.webhook.events).toEqual(['issues', 'pull_request'])
+  })
+
+  it('parses events as CSV string', () => {
+    const config = buildConfig(makeWorkflow({
+      server: { webhook: { events: 'issues, pull_request, projects_v2_item' } },
+    }))
+    expect(config.server.webhook.events).toEqual(['issues', 'pull_request', 'projects_v2_item'])
+  })
+
+  it('falls back to WEBHOOK_SECRET env when secret not set', () => {
+    const prev = process.env.WEBHOOK_SECRET
+    process.env.WEBHOOK_SECRET = 'fallback-secret'
+    try {
+      const config = buildConfig(makeWorkflow({
+        server: { webhook: {} },
+      }))
+      expect(config.server.webhook.secret).toBe('fallback-secret')
+    }
+    finally {
+      if (prev === undefined)
+        delete process.env.WEBHOOK_SECRET
+      else
+        process.env.WEBHOOK_SECRET = prev
+    }
+  })
+})

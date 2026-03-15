@@ -126,6 +126,10 @@ export interface ServiceConfig {
   env: Record<string, string>
   server: {
     port: number | null
+    webhook: {
+      secret: string | null
+      events: string[] | null
+    }
   }
 }
 
