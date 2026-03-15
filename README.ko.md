@@ -640,5 +640,7 @@ Work Please는 Claude Code를 자율적으로 실행합니다. 배포 전에 신
 
 Functional Source License 1.1, MIT Future License (FSL-1.1-MIT). 자세한 내용은 [LICENSE](LICENSE)를 참조하세요.
 
-Work Please는 OpenAI의 [Symphony 명세](vendor/symphony/SPEC.md) (Apache 2.0)를 기반으로 한
-TypeScript 구현체입니다.
+### 서드파티 라이선스
+
+- Work Please는 OpenAI의 [Symphony 명세](vendor/symphony/SPEC.md) (Apache 2.0)를 기반으로 한 TypeScript 구현체입니다.
+- 이 프로젝트는 [Claude Agent SDK](https://github.com/anthropics/claude-agent-sdk-typescript)를 사용하며, Anthropic의 [상업적 서비스 약관](https://www.anthropic.com/legal/commercial-terms)이 적용됩니다.
