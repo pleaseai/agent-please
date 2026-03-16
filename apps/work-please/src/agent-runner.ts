@@ -148,6 +148,7 @@ export class AppServerClient {
       log.debug('SDK options: %o', {
         cwd: options.cwd,
         permissionMode: options.permissionMode,
+        allowDangerouslySkipPermissions: options.allowDangerouslySkipPermissions,
         model: options.model,
         effort: options.effort,
         resume: options.resume,
@@ -155,6 +156,10 @@ export class AppServerClient {
         pathToClaudeCodeExecutable: options.pathToClaudeCodeExecutable,
         allowedTools: options.allowedTools,
         settingSources: options.settingSources,
+        systemPrompt: options.systemPrompt && typeof options.systemPrompt === 'object'
+          ? { type: (options.systemPrompt as Record<string, unknown>).type }
+          : typeof options.systemPrompt,
+        mcpServers: options.mcpServers ? Object.keys(options.mcpServers) : undefined,
         debug: options.debug,
       })
     }
