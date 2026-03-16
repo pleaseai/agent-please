@@ -4,7 +4,7 @@ import process from 'node:process'
 import { Command, CommanderError } from 'commander'
 import pkg from '../package.json' with { type: 'json' }
 import { runInit } from './init'
-import { createLogger } from './logger'
+import { createLogger, setVerbose } from './logger'
 import { Orchestrator } from './orchestrator'
 import { HttpServer } from './server'
 import { WORKFLOW_FILE_NAME } from './workflow'
@@ -15,11 +15,16 @@ export interface ParsedArgs {
   command: 'run' | 'init' | 'version'
   workflowPath: string
   portOverride: number | null
+  verbose: boolean
   initOptions: { owner: string | null, title: string | null, token: string | null } | null
 }
 
 export async function runCli(argv: string[]): Promise<void> {
   const parsed = parseArgs(argv.slice(2))
+
+  if (parsed.verbose) {
+    setVerbose(true)
+  }
 
   if (parsed.command === 'version')
     return
@@ -91,6 +96,7 @@ function registerInitCommand(program: Command, onResult: (r: ParsedArgs) => void
         command: 'init',
         workflowPath: WORKFLOW_FILE_NAME,
         portOverride: null,
+        verbose: false,
         initOptions: {
           owner: opts.owner ?? null,
           title: opts.title ?? null,
@@ -105,6 +111,7 @@ export function parseArgs(args: string[]): ParsedArgs {
     command: 'run',
     workflowPath: WORKFLOW_FILE_NAME,
     portOverride: null,
+    verbose: false,
     initOptions: null,
   }
 
@@ -113,6 +120,7 @@ export function parseArgs(args: string[]): ParsedArgs {
   program.exitOverride()
   program.allowUnknownOption()
   program.allowExcessArguments(true)
+  program.option('--verbose', 'enable verbose/debug logging')
 
   program
     .argument('[workflowPath]', 'path to workflow file')
@@ -127,6 +135,7 @@ export function parseArgs(args: string[]): ParsedArgs {
         command: 'run',
         workflowPath: workflowPath ?? WORKFLOW_FILE_NAME,
         portOverride,
+        verbose: false,
         initOptions: null,
       }
     })
@@ -150,6 +159,10 @@ export function parseArgs(args: string[]): ParsedArgs {
     }
     throw err
   }
+
+  // Read global --verbose option from program level
+  const globalOpts = program.opts<{ verbose?: boolean }>()
+  result.verbose = globalOpts.verbose === true
 
   return result
 }

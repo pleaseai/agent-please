@@ -127,6 +127,25 @@ describe('parseArgs - --port flag', () => {
   })
 })
 
+describe('parseArgs - --verbose flag', () => {
+  it('defaults verbose to false when not provided', () => {
+    const result = parseArgs([])
+    expect(result.verbose).toBe(false)
+  })
+
+  it('sets verbose to true when --verbose is passed', () => {
+    const result = parseArgs(['--verbose'])
+    expect(result.verbose).toBe(true)
+  })
+
+  it('combines --verbose with workflow path and --port', () => {
+    const result = parseArgs(['my.md', '--port', '9000', '--verbose'])
+    expect(result.verbose).toBe(true)
+    expect(result.workflowPath).toBe('my.md')
+    expect(result.portOverride).toBe(9000)
+  })
+})
+
 describe('parseArgs - --version / -V flag', () => {
   it.each([
     ['--version'],
