@@ -1,12 +1,11 @@
 import { consola } from 'consola'
 
 let verboseEnabled = false
+const DEFAULT_LOG_LEVEL = consola.level
 
 export function setVerbose(enabled: boolean): void {
   verboseEnabled = enabled
-  if (enabled) {
-    consola.level = 5 // trace level
-  }
+  consola.level = enabled ? 5 : DEFAULT_LOG_LEVEL
 }
 
 export function isVerbose(): boolean {

@@ -250,7 +250,7 @@ export class Orchestrator {
     // Before-run hook
     const beforeRunErr = await runBeforeRunHook(this.config, wsResult.path, issue)
     if (beforeRunErr) {
-      log.debug(`before_run hook failed issue_id=${issue.id}: ${beforeRunErr}`)
+      log.warn(`before_run hook failed issue_id=${issue.id}: ${beforeRunErr}`)
       await runAfterRunHook(this.config, wsResult.path, issue)
       throw beforeRunErr
     }
