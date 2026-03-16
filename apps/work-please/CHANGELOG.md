@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.10](https://github.com/pleaseai/work-please/compare/work-v0.1.9...work-v0.1.10) (2026-03-16)
+
+
+### Features
+
+* **cli:** add --verbose flag for debug logging ([#108](https://github.com/pleaseai/work-please/issues/108)) ([3fda421](https://github.com/pleaseai/work-please/commit/3fda4219f450b10206955ef797a2845fa785af3f))
+
 ## [0.1.9](https://github.com/pleaseai/work-please/compare/work-v0.1.8...work-v0.1.9) (2026-03-15)
 
 
