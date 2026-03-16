@@ -99,6 +99,7 @@ export interface ServiceConfig {
     timeout_ms: number
   }
   agent: {
+    runner: 'sdk' | 'code_action'
     max_concurrent_agents: number
     max_turns: number
     max_retry_backoff_ms: number
@@ -123,10 +124,21 @@ export interface ServiceConfig {
       }
     }
   }
+  code_action: CodeActionConfig
   env: Record<string, string>
   server: {
     port: number | null
   }
+}
+
+export interface CodeActionConfig {
+  repository: string | null
+  workflow_file: string
+  ref: string
+  event_type: string
+  poll_interval_ms: number
+  timeout_ms: number
+  github_token: string | null
 }
 
 export interface Workspace {
