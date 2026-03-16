@@ -12,7 +12,7 @@ import { WORKFLOW_FILE_NAME } from './workflow'
 const log = createLogger('work-please')
 
 export interface ParsedArgs {
-  command: 'run' | 'init' | 'version'
+  command: 'run' | 'init' | 'version' | 'help'
   workflowPath: string
   portOverride: number | null
   verbose: boolean
@@ -26,7 +26,7 @@ export async function runCli(argv: string[]): Promise<void> {
     setVerbose(true)
   }
 
-  if (parsed.command === 'version')
+  if (parsed.command === 'version' || parsed.command === 'help')
     return
 
   if (parsed.command === 'init') {
@@ -149,11 +149,15 @@ export function parseArgs(args: string[]): ParsedArgs {
   }
   catch (err) {
     if (err instanceof CommanderError) {
-      if (err.code === 'commander.version')
-        return { ...result, command: 'version' }
+      if (err.code === 'commander.version') {
+        const globalOpts = program.opts<{ verbose?: boolean }>()
+        return { ...result, command: 'version', verbose: globalOpts.verbose === true }
+      }
       const informational = new Set(['commander.help', 'commander.helpDisplayed'])
-      if (informational.has(err.code))
-        return result
+      if (informational.has(err.code)) {
+        const globalOpts = program.opts<{ verbose?: boolean }>()
+        return { ...result, command: 'help', verbose: globalOpts.verbose === true }
+      }
       log.error(err.message)
       process.exit(err.exitCode)
     }
