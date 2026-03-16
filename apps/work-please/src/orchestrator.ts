@@ -245,10 +245,12 @@ export class Orchestrator {
     if (wsResult instanceof Error) {
       throw wsResult
     }
+    log.debug(`workspace ready issue_id=${issue.id} path=${wsResult.path} created_now=${wsResult.created_now}`)
 
     // Before-run hook
     const beforeRunErr = await runBeforeRunHook(this.config, wsResult.path, issue)
     if (beforeRunErr) {
+      log.debug(`before_run hook failed issue_id=${issue.id}: ${beforeRunErr}`)
       await runAfterRunHook(this.config, wsResult.path, issue)
       throw beforeRunErr
     }
@@ -316,6 +318,7 @@ export class Orchestrator {
       if (isPromptBuildError(promptResult)) {
         throw new Error(`prompt_error: ${promptResult.code}`)
       }
+      log.debug(`prompt built issue_id=${currentIssue.id} turn=${turnNumber} length=${promptResult.length}`)
 
       // Run turn
       const running = this.state.running.get(currentIssue.id)

@@ -3,7 +3,10 @@ import type { AgentMessage, Issue, ServiceConfig } from './types'
 import { randomUUID } from 'node:crypto'
 import { resolve, sep } from 'node:path'
 import { query as sdkQuery } from '@anthropic-ai/claude-agent-sdk'
+import { createLogger, isVerbose } from './logger'
 import { createToolsMcpServer, getToolSpecs } from './tools'
+
+const log = createLogger('agent-runner')
 
 export interface SessionResult {
   turn_id: string
@@ -137,6 +140,25 @@ export class AppServerClient {
       options.env = this.agentEnv
     }
 
+    if (isVerbose()) {
+      options.debug = true
+      options.stderr = (data: string) => {
+        log.debug(`[stderr] ${data.trimEnd()}`)
+      }
+      log.debug('SDK options: %o', {
+        cwd: options.cwd,
+        permissionMode: options.permissionMode,
+        model: options.model,
+        effort: options.effort,
+        resume: options.resume,
+        sessionId: options.sessionId,
+        pathToClaudeCodeExecutable: options.pathToClaudeCodeExecutable,
+        allowedTools: options.allowedTools,
+        settingSources: options.settingSources,
+        debug: options.debug,
+      })
+    }
+
     const turnId = randomUUID()
     let sessionId: string | null = null
     let gotError = false
@@ -145,6 +167,9 @@ export class AppServerClient {
       const q = this.queryFn({ prompt, options })
 
       for await (const rawMsg of q) {
+        if (isVerbose()) {
+          log.debug('SDK message: %o', rawMsg)
+        }
         const msg = rawMsg as SdkMsg
         if (msg.type === 'system' && (msg as SdkMsgInit).subtype === 'init') {
           const initMsg = msg as SdkMsgInit
