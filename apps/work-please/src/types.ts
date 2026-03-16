@@ -85,9 +85,11 @@ export interface TrackerConfig {
 
 export type SettingSource = 'user' | 'project' | 'local'
 
+export type PollingMode = 'poll' | 'webhook'
+
 export interface ServiceConfig {
   tracker: TrackerConfig
-  polling: { interval_ms: number }
+  polling: { mode: PollingMode, interval_ms: number }
   workspace: {
     root: string
   }

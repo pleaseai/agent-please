@@ -27,7 +27,7 @@ function makeConfig(tracker: Partial<ServiceConfig['tracker']>): ServiceConfig {
       filter: { assignee: [], label: [] },
       ...tracker,
     },
-    polling: { interval_ms: 30_000 },
+    polling: { mode: 'poll' as const, interval_ms: 30_000 },
     workspace: { root: '/tmp' },
     hooks: { after_create: null, before_run: null, after_run: null, before_remove: null, timeout_ms: 60_000 },
     agent: { max_concurrent_agents: 5, max_turns: 20, max_retry_backoff_ms: 300_000, max_concurrent_agents_by_state: {} },

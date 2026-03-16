@@ -7,7 +7,7 @@ function makeConfig(overrides: Partial<ServiceConfig> = {}): ServiceConfig {
   return {
 
     tracker: { kind: 'asana', endpoint: '', api_key: null, label_prefix: null, filter: { assignee: [], label: [] } },
-    polling: { interval_ms: 30000 },
+    polling: { mode: 'poll' as const, interval_ms: 30000 },
     workspace: { root: '/tmp/test_ws' },
     hooks: { after_create: null, before_run: null, after_run: null, before_remove: null, timeout_ms: 60000 },
     agent: { max_concurrent_agents: 5, max_turns: 20, max_retry_backoff_ms: 300000, max_concurrent_agents_by_state: {} },

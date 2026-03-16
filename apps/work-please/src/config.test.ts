@@ -79,6 +79,26 @@ describe('buildConfig', () => {
     expect(config.tracker.active_sections).toEqual(['Todo', 'In Progress'])
   })
 
+  it('defaults polling.mode to "poll"', () => {
+    const config = buildConfig(makeWorkflow({}))
+    expect(config.polling.mode).toBe('poll')
+  })
+
+  it('parses polling.mode "webhook"', () => {
+    const config = buildConfig(makeWorkflow({ polling: { mode: 'webhook' } }))
+    expect(config.polling.mode).toBe('webhook')
+  })
+
+  it('falls back to "poll" for invalid polling.mode', () => {
+    const config = buildConfig(makeWorkflow({ polling: { mode: 'invalid' } }))
+    expect(config.polling.mode).toBe('poll')
+  })
+
+  it('parses polling.mode case-insensitively', () => {
+    const config = buildConfig(makeWorkflow({ polling: { mode: 'Webhook' } }))
+    expect(config.polling.mode).toBe('webhook')
+  })
+
   it('parses string integer for polling interval', () => {
     const config = buildConfig(makeWorkflow({ polling: { interval_ms: '60000' } }))
     expect(config.polling.interval_ms).toBe(60_000)
