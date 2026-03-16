@@ -113,8 +113,12 @@ Follow the project's commit convention. See `Skill("standards:commit-convention"
 - `docs`: Documentation only
 - `style`: Formatting changes
 - `refactor`: Code change without behavior change
+- `perf`: Performance improvement
 - `test`: Adding or updating tests
+- `build`: Build system changes
+- `ci`: CI/CD configuration
 - `chore`: Maintenance tasks
+- `revert`: Revert previous commit
 
 ## Definition of Done
 

@@ -21,7 +21,7 @@
 |---|---|
 | ESLint + `@antfu/eslint-config` | Linting (2-space indent, single quotes, no semicolons) |
 | Husky | Git hooks (pre-commit) |
-| commitlint (`@commitlint/config-conventional`) | Commit message validation |
+| Conventional Commits | Commit message convention documented in `CLAUDE.md` |
 
 ## Testing
 
