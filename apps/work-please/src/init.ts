@@ -206,6 +206,7 @@ tracker:
   watched_states:
     - Human Review
 polling:
+  # mode: poll                         # default: poll; set to 'webhook' when using webhook endpoint
   interval_ms: 30000
 workspace:
   root: ~/workspaces
