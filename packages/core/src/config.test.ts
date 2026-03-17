@@ -980,5 +980,67 @@ describe('webhook config', () => {
       else
         process.env.WEBHOOK_SECRET = prev
     }
+    }
+  })
+})
+
+describe('buildConfig db section', () => {
+  it('applies defaults when db section is absent', () => {
+    const config = buildConfig(makeWorkflow({}))
+    expect(config.db.path).toBe('.work-please/agent_runs.db')
+    expect(config.db.turso_url).toBeNull()
+    expect(config.db.turso_auth_token).toBeNull()
+  })
+
+  it('uses custom db path when provided', () => {
+    const config = buildConfig(makeWorkflow({ db: { path: 'data/runs.db' } }))
+    expect(config.db.path).toBe('data/runs.db')
+  })
+
+  it('resolves $VAR for turso_url', () => {
+    const orig = process.env.MY_TURSO_URL
+    try {
+      process.env.MY_TURSO_URL = 'libsql://my-db.turso.io'
+      const config = buildConfig(makeWorkflow({ db: { turso_url: '$MY_TURSO_URL' } }))
+      expect(config.db.turso_url).toBe('libsql://my-db.turso.io')
+    }
+    finally {
+      if (orig === undefined)
+        delete process.env.MY_TURSO_URL
+      else process.env.MY_TURSO_URL = orig
+    }
+  })
+
+  it('resolves $VAR for turso_auth_token', () => {
+    const orig = process.env.MY_TURSO_TOKEN
+    try {
+      process.env.MY_TURSO_TOKEN = 'secret-token'
+      const config = buildConfig(makeWorkflow({ db: { turso_auth_token: '$MY_TURSO_TOKEN' } }))
+      expect(config.db.turso_auth_token).toBe('secret-token')
+    }
+    finally {
+      if (orig === undefined)
+        delete process.env.MY_TURSO_TOKEN
+      else process.env.MY_TURSO_TOKEN = orig
+    }
+  })
+
+  it('falls back to TURSO_DATABASE_URL env var when turso_url is absent', () => {
+    const orig = process.env.TURSO_DATABASE_URL
+    try {
+      process.env.TURSO_DATABASE_URL = 'libsql://fallback.turso.io'
+      const config = buildConfig(makeWorkflow({}))
+      expect(config.db.turso_url).toBe('libsql://fallback.turso.io')
+    }
+    finally {
+      if (orig === undefined)
+        delete process.env.TURSO_DATABASE_URL
+      else process.env.TURSO_DATABASE_URL = orig
+    }
+  })
+
+  it('uses literal turso_url when no $VAR prefix', () => {
+    const config = buildConfig(makeWorkflow({ db: { turso_url: 'libsql://direct.turso.io' } }))
+    expect(config.db.turso_url).toBe('libsql://direct.turso.io')
   })
 })
