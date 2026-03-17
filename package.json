@@ -1,11 +1,16 @@
 {
   "name": "work-please",
-  "private": true,
   "version": "0.1.0",
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
+  "devDependencies": {
+    "@antfu/eslint-config": "^7.7.0",
+    "eslint": "^10.0.3",
+    "husky": "^9.1.7",
+    "jiti": "^2.6.1",
+    "turbo": "^2.8.0",
+    "typescript": "^5.7.0"
+  },
+  "packageManager": "bun@1.3.10",
+  "private": true,
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
@@ -24,13 +29,11 @@
     "lint:dashboard:fix": "turbo run lint:fix --filter=@pleaseai/dashboard",
     "prepare": "husky"
   },
-  "devDependencies": {
-    "@antfu/eslint-config": "^7.7.0",
-    "eslint": "^10.0.3",
-    "husky": "^9.1.7",
-    "jiti": "^2.6.1",
-    "turbo": "^2.8.0",
-    "typescript": "^5.7.0"
-  },
-  "packageManager": "bun@1.3.10"
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "dependencies": {
+    "lucide-vue-next": "^0.577.0"
+  }
 }
