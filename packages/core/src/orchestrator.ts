@@ -1,9 +1,11 @@
+import type { Client } from '@libsql/client'
 import type { LabelService } from './label'
 import type { Issue, OrchestratorState, RetryEntry, RunningEntry, ServiceConfig, WorkflowDefinition } from './types'
 import { watch } from 'node:fs'
 import { resolveAgentEnv } from './agent-env'
 import { AppServerClient } from './agent-runner'
 import { buildConfig, getActiveStates, getTerminalStates, getWatchedStates, maxConcurrentForState, normalizeState, validateConfig } from './config'
+import { createDbClient, insertRun, runMigrations } from './db'
 import { createLabelService } from './label'
 import { createLogger } from './logger'
 import { buildContinuationPrompt, buildPrompt, isPromptBuildError } from './prompt-builder'
@@ -24,6 +26,7 @@ export class Orchestrator {
   private pollTimer: ReturnType<typeof setTimeout> | null = null
   private fileWatcher: ReturnType<typeof watch> | null = null
   private labelService: LabelService | null = null
+  private db: Client | null = null
 
   constructor(workflowPath: string) {
     this.workflowPath = workflowPath
@@ -54,6 +57,12 @@ export class Orchestrator {
     const validationErr = validateConfig(this.config)
     if (validationErr) {
       throw new Error(`Config validation failed: ${validationErr.code}`)
+    }
+
+    // Initialize database for run history
+    this.db = createDbClient(this.config.db, this.config.workspace.root)
+    if (this.db) {
+      await runMigrations(this.db)
     }
 
     // Startup terminal workspace cleanup
@@ -88,6 +97,11 @@ export class Orchestrator {
         clearTimeout(entry.timer_handle)
     }
     this.state.retry_attempts.clear()
+    // Close database
+    if (this.db) {
+      this.db.close()
+      this.db = null
+    }
   }
 
   getState(): OrchestratorState {
@@ -96,6 +110,10 @@ export class Orchestrator {
 
   getConfig(): ServiceConfig {
     return this.config
+  }
+
+  getDb(): Client | null {
+    return this.db
   }
 
   triggerRefresh(): void {
@@ -425,6 +443,25 @@ export class Orchestrator {
     this.state.agent_totals.output_tokens += running.agent_output_tokens
     this.state.agent_totals.total_tokens += running.agent_total_tokens
 
+    // Record agent run to DB (fire-and-forget)
+    const finishedAt = new Date()
+    insertRun(this.db, {
+      issue_id: issueId,
+      identifier: running.identifier,
+      issue_state: running.issue.state,
+      session_id: running.session_id,
+      started_at: startedAt,
+      finished_at: finishedAt,
+      duration_ms: finishedAt.getTime() - startedAt.getTime(),
+      status: reason === 'normal' ? 'success' : 'failure',
+      error,
+      turn_count: running.turn_count,
+      retry_attempt: running.retry_attempt,
+      input_tokens: running.agent_input_tokens,
+      output_tokens: running.agent_output_tokens,
+      total_tokens: running.agent_total_tokens,
+    }).catch(() => {})
+
     if (reason === 'normal') {
       this.labelService?.setLabel(running.issue, 'done').catch((err) => {
         log.warn(`label service error issue_id=${issueId}: ${err}`)
@@ -596,6 +633,25 @@ export class Orchestrator {
 
     this.state.running.delete(issueId)
     this.state.claimed.delete(issueId)
+
+    // Record terminated run to DB (fire-and-forget)
+    const finishedAt = new Date()
+    insertRun(this.db, {
+      issue_id: issueId,
+      identifier: entry.identifier,
+      issue_state: entry.issue.state,
+      session_id: entry.session_id,
+      started_at: entry.started_at,
+      finished_at: finishedAt,
+      duration_ms: finishedAt.getTime() - entry.started_at.getTime(),
+      status: 'terminated',
+      error: null,
+      turn_count: entry.turn_count,
+      retry_attempt: entry.retry_attempt,
+      input_tokens: entry.agent_input_tokens,
+      output_tokens: entry.agent_output_tokens,
+      total_tokens: entry.agent_total_tokens,
+    }).catch(() => {})
 
     if (cleanupWorkspace) {
       removeWorkspace(this.config, entry.identifier, entry.issue).catch((err) => {
