@@ -9,18 +9,24 @@ export function useIssueDetail(identifier: () => string, intervalMs = 3000) {
   const error = ref<string | null>(null)
   const loading = ref(true)
 
+  let fetching = false
   async function load() {
     const id = identifier()
     if (!id)
       return
+    if (fetching)
+      return
+    fetching = true
     try {
       detail.value = await fetchIssueDetail(id)
       error.value = null
     }
     catch (e) {
+      console.error('[dashboard]', e)
       error.value = toMessage(e)
     }
     finally {
+      fetching = false
       loading.value = false
     }
   }

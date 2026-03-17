@@ -14,11 +14,15 @@
 - **TrackerError-to-null conversion**: `resolveStatusField()` in `github-status-update.ts` converts structured errors to null, losing diagnostic info. Flagged in PR #86.
 - **Supplementary data fetch killing workers**: Non-essential operations (like project context enrichment) placed inside try blocks without their own error isolation can kill the whole worker on transient failures. Flagged in PR #86.
 - **IIFE spread for adapter methods**: `github.ts` uses `...(() => { ... })()` to spread methods from a context object. Harder to debug if construction throws.
-- **RefreshButton swallows errors (PR #113)**: `finally` resets loading but catch is absent -- network/server errors on POST /api/v1/refresh are silently discarded. Flagged in PR #113.
-- **Untyped error cast pattern**: `(e as Error).message` used in composables -- if fetch throws a non-Error (e.g. a string), `.message` is undefined and the error ref shows "undefined". Flagged in PR #113.
-- **Silent fallback to inline HTML in server.ts**: When dashboard dist is missing, server silently degrades to inline HTML with no startup warning. Flagged in PR #113.
-- **res.json() never throws-checked**: In api.ts, `res.json()` can throw a SyntaxError on malformed JSON. Propagates as untyped rejection producing "undefined" in the error ref. Flagged in PR #113.
-- **Polling continues after persistent error**: `useIntervalFn` keeps firing even after repeated failures. No backoff, no cap. Flagged in PR #113.
+- **RefreshButton catch fixed (iter 2)**: iter 1 had no catch at all; iter 2 adds catch + emit. But still no `console.error` -- original error object discarded. Flagged in iter 2 review.
+- **Untyped error cast FIXED**: iter 1 used `(e as Error).message`; iter 2 replaced with `toMessage(e)` utility that handles non-Error throws gracefully.
+- **Silent fallback to inline HTML in server.ts**: When dashboard dist is missing, server silently degrades to inline HTML with no startup warning and no per-request log. Still present in iter 2. Flagged in iter 2 review.
+- **res.json() SyntaxError now wrapped**: iter 2 added `parseJson()` helper that catches SyntaxError and rethrows with better message. Original cause still discarded (not passed as `{ cause }`). Flagged in iter 2.
+- **Polling continues after persistent error**: `useIntervalFn` keeps firing even after repeated failures. No backoff, no cap, no overlap guard. Still present in iter 2. Flagged in iter 2 review.
+- **refreshError never cleared**: DashboardPage sets refreshError on failure but never clears it on success. Stale error banner persists across successful refreshes. Flagged in iter 2.
+- **loading stuck on empty identifier**: useIssueDetail early-returns without setting `loading.value = false` when identifier is empty. Skeleton shows forever. Flagged in iter 2.
+- **No Vue error boundary in App.vue**: Render-time exceptions (e.g. formatDateTime receiving null) produce blank page with no user feedback. Flagged in iter 2.
+- **No request timeout on fetch calls**: All three fetch helpers have no AbortSignal timeout, enabling infinite hangs that compound the overlap issue. Flagged in iter 2.
 
 ## Files of Interest
 

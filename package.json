@@ -32,8 +32,5 @@
   "workspaces": [
     "apps/*",
     "packages/*"
-  ],
-  "dependencies": {
-    "lucide-vue-next": "^0.577.0"
-  }
+  ]
 }

@@ -9,15 +9,21 @@ export function useOrchestratorState(intervalMs = 3000) {
   const error = ref<string | null>(null)
   const loading = ref(true)
 
+  let fetching = false
   async function load() {
+    if (fetching)
+      return
+    fetching = true
     try {
       state.value = await fetchState()
       error.value = null
     }
     catch (e) {
+      console.error('[dashboard]', e)
       error.value = toMessage(e)
     }
     finally {
+      fetching = false
       loading.value = false
     }
   }

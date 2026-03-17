@@ -19,6 +19,12 @@ const DASHBOARD_DIST = resolve(
 )
 const DASHBOARD_DIST_PREFIX = DASHBOARD_DIST + sep
 
+const SECURITY_HEADERS: Record<string, string> = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'Referrer-Policy': 'no-referrer',
+}
+
 const MIME_TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'application/javascript',
@@ -139,7 +145,7 @@ export class HttpServer {
     if (existsSync(resolved) && !Bun.file(resolved).type?.startsWith('inode')) {
       const ext = extname(resolved)
       return new Response(Bun.file(resolved), {
-        headers: { 'Content-Type': MIME_TYPES[ext] ?? 'application/octet-stream' },
+        headers: { ...SECURITY_HEADERS, 'Content-Type': MIME_TYPES[ext] ?? 'application/octet-stream' },
       })
     }
 
@@ -147,11 +153,12 @@ export class HttpServer {
     const indexPath = join(DASHBOARD_DIST, 'index.html')
     if (existsSync(indexPath)) {
       return new Response(Bun.file(indexPath), {
-        headers: { 'Content-Type': 'text/html; charset=utf-8' },
+        headers: { ...SECURITY_HEADERS, 'Content-Type': 'text/html; charset=utf-8' },
       })
     }
 
     // No dashboard build — fall back to inline HTML
+    console.warn('[server] Dashboard dist not found at %s — serving inline HTML fallback', DASHBOARD_DIST)
     return dashboardResponse(orchestrator)
   }
 }
@@ -305,7 +312,7 @@ ${retrying.length === 0
 </html>`
 
   return new Response(html, {
-    headers: { 'Content-Type': 'text/html; charset=utf-8' },
+    headers: { ...SECURITY_HEADERS, 'Content-Type': 'text/html; charset=utf-8' },
   })
 }
 
@@ -403,7 +410,7 @@ function computeLiveSecondsRunning(state: OrchestratorState): number {
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { ...SECURITY_HEADERS, 'Content-Type': 'application/json' },
   })
 }
 

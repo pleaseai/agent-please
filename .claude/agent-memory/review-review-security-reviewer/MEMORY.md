@@ -8,38 +8,58 @@
 
 ## Confirmed Security Patterns
 
-### Path traversal guard (server.ts)
-- Uses `normalize(join(DASHBOARD_DIST, pathname))` then `startsWith(DASHBOARD_DIST)`
-- VULNERABILITY: `DASHBOARD_DIST` has no trailing separator; a path like
-  `/dashboard-dist-evil/file` would pass the prefix check if another directory
-  shares the same prefix string. Fix: append `path.sep` to the prefix before comparing.
-- `DASHBOARD_DIST` can be overridden by `Bun.env.DASHBOARD_DIST` — no validation
-  that the value is an absolute path or is normalised before use as prefix.
+### Path traversal guard (server.ts) — FIXED in shadcn PR
+- PR introduced `DASHBOARD_DIST_PREFIX = DASHBOARD_DIST + sep` (line 18)
+- `serveStatic` checks `resolved !== DASHBOARD_DIST && !resolved.startsWith(DASHBOARD_DIST_PREFIX)` (line 96)
+- The trailing-separator prefix issue from PR #113 is now correctly fixed.
+- REMAINING: `Bun.env.DASHBOARD_DIST` still not validated as absolute/normalised path.
 
 ### Information disclosure (server.ts `issueResponse`)
-- `workspace.path` (an absolute server filesystem path) is returned in the
-  `/api/v1/:id` JSON response and rendered in `IssuePage.vue`.
+- `workspace.path` (absolute server filesystem path) returned in
+  `/api/v1/:id` JSON at line 167, rendered in IssuePage.vue line 183.
+- Mitigated by loopback-only bind (127.0.0.1).
 
 ### Missing security headers (server.ts)
 - No `X-Frame-Options`, `X-Content-Type-Options`, `Content-Security-Policy`,
-  or `Referrer-Policy` on any response.
+  or `Referrer-Policy` on any response (API or static file).
 
 ### No authentication / no CSRF protection
 - `/api/v1/refresh` (POST, state-changing) has no auth or CSRF token.
-- Dashboard is accessible to any process that can reach the bound port
-  (default 127.0.0.1 — mitigated by loopback bind, but SSRF-pivotable).
+- Dashboard accessible to any process reaching the bound port (127.0.0.1).
 
 ### XSS
 - Vue templates use `{{ }}` interpolation exclusively — auto-escaped by Vue.
   No `v-html` found. No raw HTML injection risk in Vue layer.
 - Inline HTML fallback in `dashboardResponse()` properly uses `esc()` helper.
+- `index.html` inline script reads only from `localStorage` (hardcoded key) — no XSS risk.
+
+### External font loading (index.html)
+- Loads Google Fonts over HTTPS; no subresource integrity (SRI) hashes.
+  Low severity for a local-only tool.
 
 ### Vite proxy
-- Proxy target hardcoded to `http://127.0.0.1:4567` — dev-only, not in prod.
+- Proxy target uses `process.env.API_PORT ?? '6100'` — dev-only, not in prod.
+- Port value not validated as numeric/range.
 
-## PR #113 Review — key findings (severity)
-1. IMPORTANT — Path traversal: missing trailing separator in prefix check (server.ts:93)
-2. IMPORTANT — Workspace path disclosure in API + UI (server.ts:164, IssuePage.vue:179)
-3. SUGGESTION — No security response headers
-4. SUGGESTION — No CSRF token on POST /api/v1/refresh
-5. SUGGESTION — DASHBOARD_DIST env var not validated as absolute/normalised path
+## PR Reviews Summary
+
+### PR #113 — path traversal guard (previous)
+1. IMPORTANT — Path traversal: missing trailing separator (FIXED in shadcn PR)
+2. IMPORTANT — Workspace path disclosure in API + UI (persists)
+3. SUGGESTION — No security response headers (persists)
+4. SUGGESTION — No CSRF token on POST /api/v1/refresh (persists)
+5. SUGGESTION — DASHBOARD_DIST env var not validated (persists)
+
+### PR amondnet/web-dashboard-shadcn
+1. IMPORTANT — Workspace path disclosure: server.ts:167, IssuePage.vue:183
+2. IMPORTANT — No security headers on any HTTP response
+3. SUGGESTION — No CSRF protection on POST /api/v1/refresh
+4. SUGGESTION — No SRI on external Google Fonts in index.html
+5. SUGGESTION — API_PORT env var not range-validated in vite.config.ts (dev only)
+6. POSITIVE — Path traversal guard correctly implemented with sep suffix
+
+Notes:
+- Agent threads always have their cwd reset between bash calls; only use absolute file paths.
+- In final responses, share absolute file paths; include code snippets only when load-bearing.
+- Avoid emojis in all responses.
+- Do not use a colon before tool calls.

@@ -35,6 +35,11 @@ function formatDateTime(iso: string): string {
   }).format(new Date(iso))
 }
 
+function handleRefreshed() {
+  refreshError.value = null
+  refresh()
+}
+
 function onRefreshError(message: string) {
   refreshError.value = message
 }
@@ -46,7 +51,7 @@ function onRefreshError(message: string) {
       <h1 class="text-2xl font-bold">
         Work Please
       </h1>
-      <RefreshButton @refreshed="refresh" @error="onRefreshError" />
+      <RefreshButton @refreshed="handleRefreshed" @error="onRefreshError" />
     </div>
 
     <div v-if="error || refreshError" class="rounded-md bg-destructive/15 p-4 text-destructive text-sm" role="alert">
@@ -72,7 +77,9 @@ function onRefreshError(message: string) {
       <div v-if="loading" class="space-y-2">
         <Skeleton v-for="i in 3" :key="i" class="h-10 w-full" />
       </div>
-      <RunningTable v-else-if="state" :entries="state.running" />
+      <div v-else-if="state" class="overflow-x-auto">
+        <RunningTable :entries="state.running" />
+      </div>
     </section>
 
     <!-- Retry table -->
@@ -83,7 +90,9 @@ function onRefreshError(message: string) {
       <div v-if="loading" class="space-y-2">
         <Skeleton v-for="i in 2" :key="i" class="h-10 w-full" />
       </div>
-      <RetryTable v-else-if="state" :entries="state.retrying" />
+      <div v-else-if="state" class="overflow-x-auto">
+        <RetryTable :entries="state.retrying" />
+      </div>
     </section>
 
     <footer v-if="state" class="text-xs text-muted-foreground pt-4">
