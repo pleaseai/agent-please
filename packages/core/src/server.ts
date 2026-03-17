@@ -1,13 +1,17 @@
 import type { Orchestrator } from './orchestrator'
+import type { ContentBlock } from './session-renderer'
 import type { OrchestratorState, RetryEntry, RunningEntry } from './types'
 import type { VerifySignature } from './webhook'
 import { existsSync } from 'node:fs'
 import { extname, join, normalize, resolve, sep } from 'node:path'
+import { buildSessionPageHtml, fetchSessionMessages, findRunningBySessionId, isValidSessionId, parsePositiveInt } from './session-renderer'
 import { createVerify, handleWebhook } from './webhook'
 import { workspacePath } from './workspace'
 
 const DEFAULT_HOST = '127.0.0.1'
 const ISSUE_PATH_RE = /^\/api\/v1\/([^/]+)$/
+const SESSION_PAGE_RE = /^\/sessions\/([^/]+)$/
+const SESSION_MESSAGES_RE = /^\/api\/v1\/sessions\/([^/]+)\/messages$/
 const ESC_AMP_RE = /&/g
 const ESC_LT_RE = /</g
 const ESC_GT_RE = />/g
@@ -120,6 +124,16 @@ export class HttpServer {
       return handleWebhook(req, verify, events, () => orchestrator.triggerRefresh())
     }
 
+    const sessionMsgMatch = pathname.match(SESSION_MESSAGES_RE)
+    if (sessionMsgMatch) {
+      if (req.method !== 'GET')
+        return methodNotAllowed()
+      const sessionId = decodeURIComponent(sessionMsgMatch[1])
+      if (!isValidSessionId(sessionId))
+        return errorResponse(400, 'invalid_session_id', 'Invalid session ID')
+      return sessionMessagesResponse(orchestrator, sessionId, url)
+    }
+
     const issueMatch = pathname.match(ISSUE_PATH_RE)
     if (issueMatch) {
       if (req.method !== 'GET')
@@ -132,12 +146,22 @@ export class HttpServer {
     if (pathname.startsWith('/api/'))
       return notFound()
 
+    // Session page (non-API HTML route)
+    const sessionPageMatch = pathname.match(SESSION_PAGE_RE)
+    if (sessionPageMatch) {
+      if (req.method !== 'GET')
+        return methodNotAllowed()
+      const sessionId = decodeURIComponent(sessionPageMatch[1])
+      if (!isValidSessionId(sessionId))
+        return errorResponse(400, 'invalid_session_id', 'Invalid session ID')
+      return sessionPageResponse(orchestrator, sessionId)
+    }
+
     // Static file serving from dashboard dist
     return this.serveStatic(pathname, orchestrator)
   }
 
   private serveStatic(pathname: string, orchestrator: Orchestrator): Response {
-    // Try exact file match from dashboard dist
     const resolved = normalize(join(DASHBOARD_DIST, pathname))
     if (resolved !== DASHBOARD_DIST && !resolved.startsWith(DASHBOARD_DIST_PREFIX))
       return notFound()
@@ -238,6 +262,45 @@ function refreshResponse(orchestrator: Orchestrator): Response {
   return jsonResponse(body, 202)
 }
 
+async function sessionMessagesResponse(orchestrator: Orchestrator, sessionId: string, url: URL): Promise<Response> {
+  const config = orchestrator.getConfig()
+  const limit = parsePositiveInt(url.searchParams.get('limit'))
+  const offset = parsePositiveInt(url.searchParams.get('offset'), Number.MAX_SAFE_INTEGER)
+
+  try {
+    const messages = await fetchSessionMessages(sessionId, config.workspace.root, { limit, offset })
+    return jsonResponse(messages)
+  }
+  catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    if (msg.includes('ENOENT') || msg.toLowerCase().includes('not found'))
+      return jsonResponse([])
+    console.error('[server] sessionMessagesResponse error:', err)
+    return errorResponse(500, 'session_load_error', 'Failed to load session messages')
+  }
+}
+
+async function sessionPageResponse(orchestrator: Orchestrator, sessionId: string): Promise<Response> {
+  const state = orchestrator.getState()
+  const config = orchestrator.getConfig()
+  const running = findRunningBySessionId(state, sessionId)
+
+  let messages: Array<{ type: string, uuid: string, content: ContentBlock[] }> = []
+  try {
+    messages = await fetchSessionMessages(sessionId, config.workspace.root)
+  }
+  catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    if (!msg.includes('ENOENT') && !msg.toLowerCase().includes('not found'))
+      console.error('[server] sessionPageResponse error:', err)
+  }
+
+  const html = buildSessionPageHtml(sessionId, running, messages)
+  return new Response(html, {
+    headers: { ...SECURITY_HEADERS, 'Content-Type': 'text/html; charset=utf-8' },
+  })
+}
+
 function dashboardResponse(orchestrator: Orchestrator): Response {
   const state = orchestrator.getState()
   const running = [...state.running.values()]
@@ -248,7 +311,7 @@ function dashboardResponse(orchestrator: Orchestrator): Response {
       <td>${esc(r.identifier)}</td>
       <td>${esc(r.issue.state)}</td>
       <td>${r.turn_count}</td>
-      <td>${esc(r.session_id ?? '')}</td>
+      <td>${r.session_id ? `<a href="/sessions/${esc(r.session_id)}" style="color:#89b4fa">${esc(r.session_id)}</a>` : ''}</td>
       <td>${esc(r.started_at.toISOString())}</td>
       <td>${esc(r.last_agent_event ?? '')}</td>
       <td>${r.agent_total_tokens}</td>

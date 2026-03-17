@@ -287,4 +287,71 @@ describe('HttpServer', () => {
     const res = await fetch(`${baseUrl}/api/v1/webhook`, { method: 'GET' })
     expect(res.status).toBe(405)
   })
+
+  test('GET / dashboard links session IDs to session page', async () => {
+    const running = new Map([['issue-1', makeRunningEntry({ session_id: 'abc-123' })]])
+    const orchestrator = makeOrchestratorStub({ running })
+    server.stop()
+    server = new HttpServer(orchestrator as never, 0)
+    const port = server.start()
+    baseUrl = `http://127.0.0.1:${port}`
+
+    const res = await fetch(`${baseUrl}/`)
+    const body = await res.text()
+    expect(body).toContain('href="/sessions/abc-123"')
+    expect(body).toContain('>abc-123</a>')
+  })
+
+  test('GET / dashboard shows empty cell when session_id is null', async () => {
+    const running = new Map([['issue-1', makeRunningEntry({ session_id: null })]])
+    const orchestrator = makeOrchestratorStub({ running })
+    server.stop()
+    server = new HttpServer(orchestrator as never, 0)
+    const port = server.start()
+    baseUrl = `http://127.0.0.1:${port}`
+
+    const res = await fetch(`${baseUrl}/`)
+    const body = await res.text()
+    expect(body).not.toContain('href="/sessions/')
+  })
+
+  test('GET /sessions/<id> returns HTML session page', async () => {
+    const running = new Map([['issue-1', makeRunningEntry({ session_id: 'sess-1' })]])
+    const orchestrator = makeOrchestratorStub({ running })
+    server.stop()
+    server = new HttpServer(orchestrator as never, 0)
+    const port = server.start()
+    baseUrl = `http://127.0.0.1:${port}`
+
+    const res = await fetch(`${baseUrl}/sessions/sess-1`)
+    expect(res.status).toBe(200)
+    expect(res.headers.get('content-type')).toContain('text/html')
+    const body = await res.text()
+    expect(body).toContain('Session sess-1')
+    expect(body).toContain('Dashboard')
+  })
+
+  test('GET /sessions/<id> returns HTML even with unknown session', async () => {
+    const res = await fetch(`${baseUrl}/sessions/unknown-session`)
+    expect(res.status).toBe(200)
+    const body = await res.text()
+    expect(body).toContain('No messages found.')
+  })
+
+  test('POST /sessions/<id> returns 405', async () => {
+    const res = await fetch(`${baseUrl}/sessions/sess-1`, { method: 'POST' })
+    expect(res.status).toBe(405)
+  })
+
+  test('GET /api/v1/sessions/<id>/messages returns empty array for unknown session', async () => {
+    const res = await fetch(`${baseUrl}/api/v1/sessions/unknown-session/messages`)
+    expect(res.status).toBe(200)
+    const body = await res.json() as unknown[]
+    expect(body).toEqual([])
+  })
+
+  test('POST /api/v1/sessions/<id>/messages returns 405', async () => {
+    const res = await fetch(`${baseUrl}/api/v1/sessions/sess-1/messages`, { method: 'POST' })
+    expect(res.status).toBe(405)
+  })
 })
