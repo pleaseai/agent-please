@@ -42,6 +42,7 @@ export function useIssueDetail(identifier: () => string, intervalMs = 3000) {
   }
 
   watch(identifier, () => {
+    fetchId++
     loading.value = true
     detail.value = null
     load()
