@@ -1,14 +1,10 @@
 import { Webhooks } from '@octokit/webhooks'
 
-export function createWebhooks(
-  secret: string,
-  triggerRefresh: () => void,
-): Webhooks {
+export type VerifySignature = (payload: string, signature: string) => Promise<boolean>
+
+export function createVerify(secret: string): VerifySignature {
   const webhooks = new Webhooks({ secret })
-  webhooks.onAny(() => {
-    triggerRefresh()
-  })
-  return webhooks
+  return (payload, signature) => webhooks.verify(payload, signature)
 }
 
 export function shouldProcessEvent(event: string, allowedEvents: string[] | null): boolean {
@@ -22,7 +18,7 @@ const MAX_BODY_BYTES = 25 * 1024 * 1024
 
 export async function handleWebhook(
   req: Request,
-  secret: string | null,
+  verify: VerifySignature | null,
   allowedEvents: string[] | null,
   triggerRefresh: () => void,
 ): Promise<Response> {
@@ -43,7 +39,7 @@ export async function handleWebhook(
   }
 
   // Verify signature before event filtering to avoid leaking config to unauthenticated callers
-  if (secret) {
+  if (verify) {
     const signature = req.headers.get('x-hub-signature-256')
     if (!signature) {
       return jsonResponse({ error: { code: 'missing_signature', message: 'X-Hub-Signature-256 header required' } }, 401)
@@ -51,8 +47,7 @@ export async function handleWebhook(
 
     let valid: boolean
     try {
-      const webhooks = new Webhooks({ secret })
-      valid = await webhooks.verify(body, signature)
+      valid = await verify(body, signature)
     }
     catch (err) {
       console.error(`[webhook] signature verification error: ${err instanceof Error ? err.message : String(err)}`)

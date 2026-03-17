@@ -1,6 +1,6 @@
 import { createHmac } from 'node:crypto'
 import { describe, expect, test } from 'bun:test'
-import { createWebhooks, handleWebhook, shouldProcessEvent } from './webhook'
+import { createVerify, handleWebhook, shouldProcessEvent } from './webhook'
 
 function sign(payload: string, secret: string): string {
   return `sha256=${createHmac('sha256', secret).update(payload).digest('hex')}`
@@ -14,30 +14,28 @@ function makeRequest(body: string, headers: Record<string, string> = {}): Reques
   })
 }
 
-describe('createWebhooks', () => {
-  test('calls triggerRefresh on any event', async () => {
-    let refreshed = false
-    const webhooks = createWebhooks('secret', () => {
-      refreshed = true
-    })
-
+describe('createVerify', () => {
+  test('returns true for valid signature', async () => {
+    const verify = createVerify('secret')
     const payload = '{"action":"opened"}'
-    await webhooks.verifyAndReceive({
-      id: 'delivery-1',
-      name: 'issues',
-      payload,
-      signature: sign(payload, 'secret'),
-    })
-    expect(refreshed).toBe(true)
+    const valid = await verify(payload, sign(payload, 'secret'))
+    expect(valid).toBe(true)
   })
 
-  test('verify returns false for invalid signature', async () => {
-    const webhooks = createWebhooks('secret', () => {})
+  test('returns false for invalid signature', async () => {
+    const verify = createVerify('secret')
     const payload = '{"action":"opened"}'
-    const wrongSig = sign(payload, 'wrong-secret')
-
-    const valid = await webhooks.verify(payload, wrongSig)
+    const valid = await verify(payload, sign(payload, 'wrong-secret'))
     expect(valid).toBe(false)
+  })
+
+  test('reuses the same Webhooks instance across calls', async () => {
+    const verify = createVerify('secret')
+    const p1 = '{"a":1}'
+    const p2 = '{"b":2}'
+    expect(await verify(p1, sign(p1, 'secret'))).toBe(true)
+    expect(await verify(p2, sign(p2, 'secret'))).toBe(true)
+    expect(await verify(p1, sign(p1, 'wrong'))).toBe(false)
   })
 })
 
@@ -61,7 +59,7 @@ describe('shouldProcessEvent', () => {
 })
 
 describe('handleWebhook', () => {
-  test('no secret configured triggers refresh and returns accepted', async () => {
+  test('no verify configured triggers refresh and returns accepted', async () => {
     let refreshed = false
     const req = makeRequest('{"action":"opened"}', { 'x-github-event': 'issues' })
     const res = await handleWebhook(req, null, null, () => {
@@ -77,14 +75,14 @@ describe('handleWebhook', () => {
   })
 
   test('valid signature triggers refresh', async () => {
-    const secret = 'my-secret'
+    const verify = createVerify('my-secret')
     const payload = '{"action":"synchronize"}'
     let refreshed = false
     const req = makeRequest(payload, {
       'x-github-event': 'pull_request',
-      'x-hub-signature-256': sign(payload, secret),
+      'x-hub-signature-256': sign(payload, 'my-secret'),
     })
-    const res = await handleWebhook(req, secret, null, () => {
+    const res = await handleWebhook(req, verify, null, () => {
       refreshed = true
     })
 
@@ -95,13 +93,13 @@ describe('handleWebhook', () => {
   })
 
   test('invalid signature returns 401 and does not trigger refresh', async () => {
-    const secret = 'my-secret'
+    const verify = createVerify('my-secret')
     let refreshed = false
     const req = makeRequest('{"action":"opened"}', {
       'x-github-event': 'issues',
       'x-hub-signature-256': sign('{"action":"opened"}', 'wrong-secret'),
     })
-    const res = await handleWebhook(req, secret, null, () => {
+    const res = await handleWebhook(req, verify, null, () => {
       refreshed = true
     })
 
@@ -112,9 +110,10 @@ describe('handleWebhook', () => {
   })
 
   test('missing signature header returns 401', async () => {
+    const verify = createVerify('my-secret')
     let refreshed = false
     const req = makeRequest('{"action":"opened"}', { 'x-github-event': 'issues' })
-    const res = await handleWebhook(req, 'my-secret', null, () => {
+    const res = await handleWebhook(req, verify, null, () => {
       refreshed = true
     })
 
@@ -139,13 +138,13 @@ describe('handleWebhook', () => {
   })
 
   test('signature verification runs before event filtering', async () => {
-    // An unauthenticated caller should get 401, not event_filtered
+    const verify = createVerify('my-secret')
     let refreshed = false
     const req = makeRequest('{}', {
       'x-github-event': 'push',
       'x-hub-signature-256': 'sha256=invalid',
     })
-    const res = await handleWebhook(req, 'my-secret', ['issues'], () => {
+    const res = await handleWebhook(req, verify, ['issues'], () => {
       refreshed = true
     })
 

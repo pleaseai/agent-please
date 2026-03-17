@@ -1,6 +1,7 @@
 import type { Orchestrator } from './orchestrator'
 import type { OrchestratorState, RetryEntry, RunningEntry } from './types'
-import { handleWebhook } from './webhook'
+import type { VerifySignature } from './webhook'
+import { createVerify, handleWebhook } from './webhook'
 import { workspacePath } from './workspace'
 
 const DEFAULT_HOST = '127.0.0.1'
@@ -12,6 +13,8 @@ const ESC_QUOT_RE = /"/g
 
 export class HttpServer {
   private server: ReturnType<typeof Bun.serve> | null = null
+  private cachedVerify: VerifySignature | null = null
+  private cachedSecret: string | null = null
 
   constructor(
     private orchestrator: Orchestrator,
@@ -35,6 +38,16 @@ export class HttpServer {
 
   get boundPort(): number | null {
     return this.server?.port ?? null
+  }
+
+  private getVerify(secret: string | null): VerifySignature | null {
+    if (!secret)
+      return null
+    if (secret !== this.cachedSecret) {
+      this.cachedVerify = createVerify(secret)
+      this.cachedSecret = secret
+    }
+    return this.cachedVerify
   }
 
   private handleRequest(req: Request): Response | Promise<Response> {
@@ -80,7 +93,8 @@ export class HttpServer {
         return methodNotAllowed()
       const config = orchestrator.getConfig()
       const { secret, events } = config.server.webhook
-      return handleWebhook(req, secret, events, () => orchestrator.triggerRefresh())
+      const verify = this.getVerify(secret)
+      return handleWebhook(req, verify, events, () => orchestrator.triggerRefresh())
     }
 
     const issueMatch = pathname.match(ISSUE_PATH_RE)

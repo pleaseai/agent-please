@@ -478,6 +478,24 @@ describe('validateConfig', () => {
     expect(err?.code).toBe('missing_tracker_project_config')
   })
 
+  it('returns webhook_mode_requires_port when webhook mode has no server.port', () => {
+    const config = buildConfig(makeWorkflow({
+      tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
+      polling: { mode: 'webhook' },
+    }))
+    const err = validateConfig(config)
+    expect(err?.code).toBe('webhook_mode_requires_port')
+  })
+
+  it('returns null for webhook mode when server.port is configured', () => {
+    const config = buildConfig(makeWorkflow({
+      tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
+      polling: { mode: 'webhook' },
+      server: { port: 3000 },
+    }))
+    expect(validateConfig(config)).toBeNull()
+  })
+
   it('returns missing_claude_command when claude.command is blank (Section 17.1)', () => {
     // buildConfig always applies default when command is empty, so we test validateConfig
     // directly with a ServiceConfig that has a blank command
@@ -815,9 +833,19 @@ describe('buildConfig - env section', () => {
 
 describe('webhook config', () => {
   it('defaults to null secret and null events when missing', () => {
-    const config = buildConfig(makeWorkflow({}))
-    expect(config.server.webhook.secret).toBeNull()
-    expect(config.server.webhook.events).toBeNull()
+    const prev = process.env.WEBHOOK_SECRET
+    delete process.env.WEBHOOK_SECRET
+    try {
+      const config = buildConfig(makeWorkflow({}))
+      expect(config.server.webhook.secret).toBeNull()
+      expect(config.server.webhook.events).toBeNull()
+    }
+    finally {
+      if (prev === undefined)
+        delete process.env.WEBHOOK_SECRET
+      else
+        process.env.WEBHOOK_SECRET = prev
+    }
   })
 
   it('parses webhook secret directly', () => {
