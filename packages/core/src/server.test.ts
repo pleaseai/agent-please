@@ -70,6 +70,7 @@ function makeOrchestratorStub(state: Partial<OrchestratorState> = {}) {
   return {
     getState: () => fullState,
     getConfig: () => makeConfig(),
+    getDb: () => null,
     triggerRefresh: () => {},
   }
 }
@@ -351,8 +352,20 @@ describe('HttpServer', () => {
     expect(body).toEqual([])
   })
 
+  test('GET /api/v1/runs returns empty array when DB is null', async () => {
+    const res = await fetch(`${baseUrl}/api/v1/runs`)
+    expect(res.status).toBe(200)
+    const body = await res.json() as unknown[]
+    expect(body).toEqual([])
+  })
+
   test('POST /api/v1/sessions/<id>/messages returns 405', async () => {
     const res = await fetch(`${baseUrl}/api/v1/sessions/sess-1/messages`, { method: 'POST' })
+    expect(res.status).toBe(405)
+  })
+
+  test('POST /api/v1/runs returns 405', async () => {
+    const res = await fetch(`${baseUrl}/api/v1/runs`, { method: 'POST' })
     expect(res.status).toBe(405)
   })
 })
