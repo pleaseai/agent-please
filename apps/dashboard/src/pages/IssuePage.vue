@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, watchEffect } from 'vue'
 import { useRoute } from 'vue-router'
 import StateBadge from '@/components/StateBadge.vue'
 import { Badge } from '@/components/ui/badge'
@@ -12,6 +12,10 @@ import { useIssueDetail } from '@/composables/useIssueDetail'
 const route = useRoute()
 const identifier = () => route.params.identifier as string
 const { detail, loading, error } = useIssueDetail(identifier)
+
+watchEffect(() => {
+  document.title = `${route.params.identifier} \u2014 Work Please`
+})
 
 const tokens = computed(() => {
   if (!detail.value?.running)

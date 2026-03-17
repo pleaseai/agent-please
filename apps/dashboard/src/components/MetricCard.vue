@@ -16,7 +16,7 @@ defineProps<{
       </CardTitle>
     </CardHeader>
     <CardContent>
-      <div class="text-2xl font-bold font-variant-numeric-tabular">
+      <div class="text-2xl font-bold tabular-nums">
         {{ value }}
       </div>
       <p v-if="description" class="text-xs text-muted-foreground mt-1">

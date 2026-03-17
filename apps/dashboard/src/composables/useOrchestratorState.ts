@@ -2,6 +2,7 @@ import type { StateResponse } from '@/lib/api'
 import { useIntervalFn } from '@vueuse/core'
 import { ref } from 'vue'
 import { fetchState } from '@/lib/api'
+import { toMessage } from '@/lib/utils'
 
 export function useOrchestratorState(intervalMs = 3000) {
   const state = ref<StateResponse | null>(null)
@@ -14,7 +15,7 @@ export function useOrchestratorState(intervalMs = 3000) {
       error.value = null
     }
     catch (e) {
-      error.value = (e as Error).message
+      error.value = toMessage(e)
     }
     finally {
       loading.value = false

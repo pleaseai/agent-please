@@ -2,7 +2,7 @@ import type { Orchestrator } from './orchestrator'
 import type { OrchestratorState, RetryEntry, RunningEntry } from './types'
 import type { VerifySignature } from './webhook'
 import { existsSync } from 'node:fs'
-import { extname, join, normalize } from 'node:path'
+import { extname, join, normalize, resolve, sep } from 'node:path'
 import { createVerify, handleWebhook } from './webhook'
 import { workspacePath } from './workspace'
 
@@ -13,8 +13,11 @@ const ESC_LT_RE = /</g
 const ESC_GT_RE = />/g
 const ESC_QUOT_RE = /"/g
 
-const DASHBOARD_DIST = Bun.env.DASHBOARD_DIST
-  ?? join(import.meta.dir, '..', '..', '..', 'dashboard', 'dist')
+const DASHBOARD_DIST = resolve(
+  Bun.env.DASHBOARD_DIST
+  ?? join(import.meta.dir, '..', '..', '..', 'dashboard', 'dist'),
+)
+const DASHBOARD_DIST_PREFIX = DASHBOARD_DIST + sep
 
 const MIME_TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -130,7 +133,7 @@ export class HttpServer {
   private serveStatic(pathname: string, orchestrator: Orchestrator): Response {
     // Try exact file match from dashboard dist
     const resolved = normalize(join(DASHBOARD_DIST, pathname))
-    if (!resolved.startsWith(DASHBOARD_DIST))
+    if (resolved !== DASHBOARD_DIST && !resolved.startsWith(DASHBOARD_DIST_PREFIX))
       return notFound()
 
     if (existsSync(resolved) && !Bun.file(resolved).type?.startsWith('inode')) {

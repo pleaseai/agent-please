@@ -73,18 +73,27 @@ export interface IssueDetailResponse {
   last_error: string | null
 }
 
+async function parseJson<T>(res: Response, endpoint: string): Promise<T> {
+  try {
+    return await res.json() as T
+  }
+  catch {
+    throw new Error(`Failed to parse ${endpoint} response (status ${res.status}): server returned non-JSON body`)
+  }
+}
+
 export async function fetchState(): Promise<StateResponse> {
   const res = await fetch('/api/v1/state')
   if (!res.ok)
     throw new Error(`Failed to fetch state: ${res.status}`)
-  return res.json()
+  return parseJson<StateResponse>(res, 'state')
 }
 
 export async function fetchIssueDetail(identifier: string): Promise<IssueDetailResponse> {
   const res = await fetch(`/api/v1/${encodeURIComponent(identifier)}`)
   if (!res.ok)
     throw new Error(`Failed to fetch issue: ${res.status}`)
-  return res.json()
+  return parseJson<IssueDetailResponse>(res, 'issue')
 }
 
 export async function triggerRefresh(): Promise<void> {

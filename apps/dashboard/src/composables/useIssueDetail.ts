@@ -2,6 +2,7 @@ import type { IssueDetailResponse } from '@/lib/api'
 import { useIntervalFn } from '@vueuse/core'
 import { ref, watch } from 'vue'
 import { fetchIssueDetail } from '@/lib/api'
+import { toMessage } from '@/lib/utils'
 
 export function useIssueDetail(identifier: () => string, intervalMs = 3000) {
   const detail = ref<IssueDetailResponse | null>(null)
@@ -17,7 +18,7 @@ export function useIssueDetail(identifier: () => string, intervalMs = 3000) {
       error.value = null
     }
     catch (e) {
-      error.value = (e as Error).message
+      error.value = toMessage(e)
     }
     finally {
       loading.value = false

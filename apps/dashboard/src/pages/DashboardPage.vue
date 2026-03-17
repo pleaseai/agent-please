@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import MetricCard from '@/components/MetricCard.vue'
 import RefreshButton from '@/components/RefreshButton.vue'
 import RetryTable from '@/components/RetryTable.vue'
@@ -7,7 +7,12 @@ import RunningTable from '@/components/RunningTable.vue'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useOrchestratorState } from '@/composables/useOrchestratorState'
 
+onMounted(() => {
+  document.title = 'Work Please \u2014 Dashboard'
+})
+
 const { state, loading, error, refresh } = useOrchestratorState()
+const refreshError = ref<string | null>(null)
 
 const secondsRunning = computed(() => {
   if (!state.value)
@@ -22,6 +27,17 @@ const secondsRunning = computed(() => {
 function formatTokens(n: number): string {
   return new Intl.NumberFormat().format(n)
 }
+
+function formatDateTime(iso: string): string {
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'medium',
+  }).format(new Date(iso))
+}
+
+function onRefreshError(message: string) {
+  refreshError.value = message
+}
 </script>
 
 <template>
@@ -30,11 +46,11 @@ function formatTokens(n: number): string {
       <h1 class="text-2xl font-bold">
         Work Please
       </h1>
-      <RefreshButton @refreshed="refresh" />
+      <RefreshButton @refreshed="refresh" @error="onRefreshError" />
     </div>
 
-    <div v-if="error" class="rounded-md bg-destructive/15 p-4 text-destructive text-sm" role="alert">
-      {{ error }}
+    <div v-if="error || refreshError" class="rounded-md bg-destructive/15 p-4 text-destructive text-sm" role="alert">
+      {{ error || refreshError }}
     </div>
 
     <!-- Metrics -->
@@ -71,7 +87,7 @@ function formatTokens(n: number): string {
     </section>
 
     <footer v-if="state" class="text-xs text-muted-foreground pt-4">
-      Generated {{ state.generated_at }}
+      Generated {{ formatDateTime(state.generated_at) }}
     </footer>
   </div>
 </template>
