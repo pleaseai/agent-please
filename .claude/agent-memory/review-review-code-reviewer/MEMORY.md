@@ -14,7 +14,7 @@
 - Composables: useOrchestratorState, useIssueDetail — polling via useIntervalFn
 - server.ts serves static dashboard dist with path traversal guard using normalize+startsWith
 
-## Known issues found in PR review (resolved)
+## Known issues found in PR review
 - FIXED: package.json root lucide-vue-next dep removed
 - FIXED: useIssueDetail/useOrchestratorState cleanup via onScopeDispose(pause)
 - FIXED: refreshError cleared on successful refresh

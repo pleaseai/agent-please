@@ -10,12 +10,16 @@ export function useIssueDetail(identifier: () => string, intervalMs = 3000) {
   const loading = ref(true)
 
   let fetchId = 0
+  let fetching = false
   async function load() {
     const id = identifier()
     if (!id) {
       loading.value = false
       return
     }
+    if (fetching)
+      return
+    fetching = true
     const thisId = ++fetchId
     try {
       const result = await fetchIssueDetail(id)
@@ -31,6 +35,7 @@ export function useIssueDetail(identifier: () => string, intervalMs = 3000) {
       error.value = toMessage(e)
     }
     finally {
+      fetching = false
       if (thisId === fetchId)
         loading.value = false
     }
@@ -43,7 +48,7 @@ export function useIssueDetail(identifier: () => string, intervalMs = 3000) {
   })
 
   load()
-  const { pause } = useIntervalFn(load, intervalMs, { immediate: false })
+  const { pause } = useIntervalFn(load, intervalMs)
   onScopeDispose(pause)
 
   return { detail, error, loading, refresh: load }
