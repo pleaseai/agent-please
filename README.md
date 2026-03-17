@@ -24,6 +24,10 @@ instead of supervising coding agents.
 - [WORKFLOW.md Configuration](#workflowmd-configuration)
   - [Full Front Matter Schema](#full-front-matter-schema)
   - [Template Variables](#template-variables)
+- [Per-Repository Workflow Override](#per-repository-workflow-override)
+  - [How It Works](#how-it-works)
+  - [Override Rules](#override-rules)
+  - [Example](#example)
 - [CLI Usage](#cli-usage)
 - [GitHub App Authentication](#github-app-authentication)
   - [Setting up GitHub App credentials](#setting-up-github-app-credentials)
@@ -79,6 +83,9 @@ For full technical details, see [SPEC.md](SPEC.md).
 - **Dynamic config reload** — Edit `WORKFLOW.md` and changes apply without restarting the service.
 - **Workspace hooks** — Shell scripts run at `after_create`, `before_run`, `after_run`, and
   `before_remove` lifecycle events.
+- **Per-repository workflow override** — Target repositories can provide their own `WORKFLOW.md`
+  to customize agent config and prompt template. Opt-in via `repo_overrides: true` in the global
+  workflow. Service-level settings (tracker, polling, workspace) are never overridden.
 - **Structured logging** — Operator-visible logs with stable `key=value` format.
 - **Optional HTTP dashboard** — Enable with `--port` for runtime status and JSON API.
 
@@ -473,6 +480,12 @@ claude:
 #   refresh_ms: 1000                   # Dashboard data refresh interval, default 1000
 #   render_interval_ms: 16             # TUI render interval, default 16
 
+repo_overrides: true                  # Optional: allow target repos to override workflow via their own WORKFLOW.md.
+                                      # Default: false (repo WORKFLOW.md files are ignored).
+                                      # Can also be an object for granular control:
+                                      # repo_overrides:
+                                      #   allow: [agent, claude, env, hooks]  # restrict which sections repos can override
+
 server:
   port: 3000                          # Optional: enable HTTP dashboard on this port
   host: "127.0.0.1"                   # Optional: bind address, default "127.0.0.1"
@@ -535,6 +548,97 @@ Linked pull requests:
 Retry attempt: {{ attempt }}
 {% endif %}
 ```
+
+## Per-Repository Workflow Override
+
+When managing a GitHub Projects v2 project that spans multiple repositories, each target repository
+can provide its own `WORKFLOW.md` to customize agent behavior — without changing the global
+configuration.
+
+### How It Works
+
+1. The operator's global `WORKFLOW.md` starts the service and defines service-level settings
+   (tracker, polling, workspace). It must include `repo_overrides: true` to enable this feature.
+2. When an issue is dispatched, Work Please creates a workspace (clone/worktree) using the global
+   config.
+3. After the workspace is ready, Work Please checks for a `WORKFLOW.md` in the repository root.
+4. If found, the repo's config sections are deep-merged over the global config (allowed sections
+   only), and the repo's prompt template replaces the global one (if non-empty).
+5. The effective (merged) workflow is used for the agent session.
+
+### Override Rules
+
+| Section | Overridable | Reason |
+|---------|-------------|--------|
+| `tracker` | No | Service credentials — security boundary |
+| `polling` | No | Service-level concern |
+| `workspace` | No | Security boundary (path traversal) |
+| `server` | No | Service-level concern |
+| `agent` | **Yes** | `max_turns`, retry, concurrency |
+| `claude` | **Yes** | `model`, `effort`, `allowed_tools`, `system_prompt`, `permission_mode` |
+| `hooks.before_run` | **Yes** | Per-repo pre-agent setup |
+| `hooks.after_run` | **Yes** | Per-repo post-agent cleanup |
+| `hooks.after_create` | No | Runs before repo WORKFLOW.md is available |
+| `hooks.before_remove` | No | Workspace lifecycle, not agent concern |
+| `env` | **Yes** | Additional env vars for agent |
+| Prompt template | **Yes** | Per-repo prompt customization |
+
+Use the granular form to restrict which sections repos can override:
+
+```yaml
+repo_overrides:
+  allow: [agent, claude, env]         # hooks excluded
+```
+
+### Example
+
+**Global WORKFLOW.md (operator):**
+
+```yaml
+---
+tracker:
+  kind: github_projects
+  api_key: $GITHUB_TOKEN
+  owner: myorg
+  project_number: 5
+repo_overrides: true
+agent:
+  max_turns: 20
+claude:
+  effort: high
+---
+Default prompt for all repos...
+{{ issue.title }}
+```
+
+**Target repo's WORKFLOW.md (repo team):**
+
+```yaml
+---
+agent:
+  max_turns: 40
+claude:
+  model: claude-sonnet-4-20250514
+  effort: max
+env:
+  DATABASE_URL: $DATABASE_URL
+---
+You are a backend specialist working on {{ issue.identifier }}.
+
+Focus on:
+- Database migrations
+- API endpoint implementation
+{{ issue.description }}
+```
+
+**Effective result for issues from that repo:**
+
+- `tracker` — from global (not overridable)
+- `agent.max_turns` — 40 (from repo)
+- `claude.model` — `claude-sonnet-4-20250514` (from repo)
+- `claude.effort` — `max` (from repo)
+- `env.DATABASE_URL` — resolved from `$DATABASE_URL` (from repo)
+- Prompt template — repo's custom template
 
 ## CLI Usage
 

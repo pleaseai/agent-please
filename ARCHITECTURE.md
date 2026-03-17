@@ -38,7 +38,7 @@ work-please/                      # Monorepo root (Bun + Turborepo)
 │   ├── cli.ts                    # CLI parsing and startup (Commander)
 │   ├── orchestrator.ts           # Core loop: poll → reconcile → dispatch → retry
 │   ├── config.ts                 # YAML front matter → typed ServiceConfig with env-var resolution
-│   ├── workflow.ts               # WORKFLOW.md parser (YAML front matter + Liquid body)
+│   ├── workflow.ts               # WORKFLOW.md parser + repo override merge (YAML front matter + Liquid body)
 │   ├── prompt-builder.ts         # Liquid template rendering (issue → prompt string)
 │   ├── agent-runner.ts           # Claude Code agent session via @anthropic-ai/claude-agent-sdk
 │   ├── workspace.ts              # Per-issue directory management, git worktrees, lifecycle hooks
@@ -195,13 +195,19 @@ simple for daemon operation.
 
 ### Configuration
 
-Single-file configuration via `WORKFLOW.md` in the target repository:
+Two-layer configuration via `WORKFLOW.md`:
 
-- **YAML front matter** — Tracker connection, polling interval, workspace root, hooks, agent
-  limits, Claude CLI settings
-- **Liquid template body** — Prompt template rendered with issue context variables
-- **Live reload** — File watcher triggers re-parse; invalid configs are rejected with the last
-  known-good config retained
+- **Global WORKFLOW.md** (operator) — Defines service-level settings (tracker, polling, workspace)
+  and default agent config. Read at startup and watched for live reload.
+- **Repo WORKFLOW.md** (target repository, optional) — Overrides agent-level settings (`agent`,
+  `claude`, `hooks.before_run`, `hooks.after_run`, `env`) and prompt template for issues from that
+  repo. Only read when `repo_overrides: true` is set in the global workflow. Service-level sections
+  are never overridable (security boundary).
+- **Merge semantics** — Allowed config sections are deep-merged (repo values win); prompt template
+  is replaced if repo provides a non-empty one. Merge happens per-issue at dispatch time via
+  `resolveEffectiveWorkflow()` in the orchestrator.
+- **Live reload** — File watcher triggers re-parse of the global workflow; invalid configs are
+  rejected with the last known-good config retained.
 
 ### Authentication
 

@@ -129,6 +129,11 @@ export interface ServiceConfig {
   }
 }
 
+export interface RepoOverridesConfig {
+  enabled: boolean
+  allowed_sections: string[]
+}
+
 export interface Workspace {
   path: string
   workspace_key: string

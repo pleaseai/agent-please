@@ -1,14 +1,14 @@
 import type { LabelService } from './label'
-import type { Issue, OrchestratorState, RetryEntry, RunningEntry, ServiceConfig, WorkflowDefinition } from './types'
+import type { Issue, OrchestratorState, RepoOverridesConfig, RetryEntry, RunningEntry, ServiceConfig, WorkflowDefinition } from './types'
 import { watch } from 'node:fs'
 import { resolveAgentEnv } from './agent-env'
 import { AppServerClient } from './agent-runner'
-import { buildConfig, getActiveStates, getTerminalStates, getWatchedStates, maxConcurrentForState, normalizeState, validateConfig } from './config'
+import { buildConfig, getActiveStates, getTerminalStates, getWatchedStates, maxConcurrentForState, normalizeState, parseRepoOverridesSetting, validateConfig } from './config'
 import { createLabelService } from './label'
 import { createLogger } from './logger'
 import { buildContinuationPrompt, buildPrompt, isPromptBuildError } from './prompt-builder'
 import { createTrackerAdapter, formatTrackerError, isTrackerError } from './tracker/index'
-import { isWorkflowError, loadWorkflow } from './workflow'
+import { isWorkflowError, loadRepoWorkflow, loadWorkflow, mergeWorkflows } from './workflow'
 import { createWorkspace, removeWorkspace, runAfterRunHook, runBeforeRunHook } from './workspace'
 
 const log = createLogger('orchestrator')
@@ -21,6 +21,7 @@ export class Orchestrator {
   private config: ServiceConfig
   private workflow: WorkflowDefinition
   private workflowPath: string
+  private repoOverridesConfig: RepoOverridesConfig
   private pollTimer: ReturnType<typeof setTimeout> | null = null
   private fileWatcher: ReturnType<typeof watch> | null = null
   private labelService: LabelService | null = null
@@ -34,6 +35,7 @@ export class Orchestrator {
     }
     this.workflow = wf
     this.config = buildConfig(wf)
+    this.repoOverridesConfig = parseRepoOverridesSetting(wf.config)
     this.labelService = createLabelService(this.config)
 
     this.state = {
@@ -240,41 +242,45 @@ export class Orchestrator {
   }
 
   private async executeAgentRun(issue: Issue, attempt: number | null): Promise<void> {
-    // Create/reuse workspace
+    // Create/reuse workspace with global config
     const wsResult = await createWorkspace(this.config, issue.identifier, issue)
     if (wsResult instanceof Error) {
       throw wsResult
     }
     log.debug(`workspace ready issue_id=${issue.id} path=${wsResult.path} created_now=${wsResult.created_now}`)
 
-    // Before-run hook
-    const beforeRunErr = await runBeforeRunHook(this.config, wsResult.path, issue)
+    // Resolve effective workflow (may include repo-level overrides)
+    const effectiveWorkflow = this.resolveEffectiveWorkflow(wsResult.path)
+    const effectiveConfig = this.resolveEffectiveConfig(effectiveWorkflow)
+
+    // Before-run hook (may be overridden by repo workflow)
+    const beforeRunErr = await runBeforeRunHook(effectiveConfig, wsResult.path, issue)
     if (beforeRunErr) {
       log.warn(`before_run hook failed issue_id=${issue.id}: ${beforeRunErr}`)
-      await runAfterRunHook(this.config, wsResult.path, issue)
+      await runAfterRunHook(effectiveConfig, wsResult.path, issue)
       throw beforeRunErr
     }
 
     // Resolve agent environment variables (including runtime tokens)
-    const client = new AppServerClient(this.config, wsResult.path)
-    const agentEnv = await resolveAgentEnv(this.config, this.buildTokenProvider())
+    const client = new AppServerClient(effectiveConfig, wsResult.path)
+    const agentEnv = await resolveAgentEnv(effectiveConfig, this.buildTokenProvider())
     client.setAgentEnv(agentEnv)
 
     // Start agent session
     const session = await client.startSession()
     if (session instanceof Error) {
-      await runAfterRunHook(this.config, wsResult.path, issue)
+      await runAfterRunHook(effectiveConfig, wsResult.path, issue)
       throw session
     }
 
     try {
       // Resolve project status field metadata for prompt context
       await this.populateProjectContext(issue)
-      await this.runAgentTurns(client, session, issue, attempt)
+      await this.runAgentTurns(client, session, issue, attempt, effectiveWorkflow, effectiveConfig)
     }
     finally {
       client.stopSession()
-      await runAfterRunHook(this.config, wsResult.path, issue)
+      await runAfterRunHook(effectiveConfig, wsResult.path, issue)
     }
   }
 
@@ -304,15 +310,19 @@ export class Orchestrator {
     session: import('./agent-runner').AgentSession,
     issue: Issue,
     attempt: number | null,
+    effectiveWorkflow?: WorkflowDefinition,
+    effectiveConfig?: ServiceConfig,
   ): Promise<void> {
-    const maxTurns = this.config.agent.max_turns
+    const workflow = effectiveWorkflow ?? this.workflow
+    const config = effectiveConfig ?? this.config
+    const maxTurns = config.agent.max_turns
     let currentIssue = issue
     let turnNumber = 1
 
     while (true) {
       // Build prompt
       const promptResult = turnNumber === 1
-        ? await buildPrompt(this.workflow, currentIssue, attempt)
+        ? await buildPrompt(workflow, currentIssue, attempt)
         : buildContinuationPrompt(turnNumber, maxTurns)
 
       if (isPromptBuildError(promptResult)) {
@@ -667,6 +677,33 @@ export class Orchestrator {
     return buildTokenProvider(this.config.tracker)
   }
 
+  private resolveEffectiveWorkflow(workspacePath: string): WorkflowDefinition {
+    if (!this.repoOverridesConfig.enabled)
+      return this.workflow
+
+    const repoWorkflow = loadRepoWorkflow(workspacePath)
+    if (!repoWorkflow)
+      return this.workflow
+
+    log.info(`repo workflow override detected at ${workspacePath}`)
+    return mergeWorkflows(this.workflow, repoWorkflow, this.repoOverridesConfig.allowed_sections)
+  }
+
+  private resolveEffectiveConfig(effectiveWorkflow: WorkflowDefinition): ServiceConfig {
+    if (effectiveWorkflow === this.workflow)
+      return this.config
+
+    const merged = buildConfig(effectiveWorkflow)
+    // Preserve service-level sections from global config (security boundary)
+    return {
+      ...merged,
+      tracker: this.config.tracker,
+      polling: this.config.polling,
+      workspace: this.config.workspace,
+      server: this.config.server,
+    }
+  }
+
   private reloadWorkflow(): void {
     const wf = loadWorkflow(this.workflowPath)
     if (isWorkflowError(wf)) {
@@ -683,6 +720,7 @@ export class Orchestrator {
 
     this.workflow = wf
     this.config = newConfig
+    this.repoOverridesConfig = parseRepoOverridesSetting(wf.config)
     this.labelService = createLabelService(newConfig)
     this.state.poll_interval_ms = newConfig.polling.interval_ms
     this.state.max_concurrent_agents = newConfig.agent.max_concurrent_agents
