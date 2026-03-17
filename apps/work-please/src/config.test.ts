@@ -478,20 +478,10 @@ describe('validateConfig', () => {
     expect(err?.code).toBe('missing_tracker_project_config')
   })
 
-  it('returns webhook_mode_requires_port when webhook mode has no server.port', () => {
+  it('returns null for webhook mode (port validation deferred to CLI)', () => {
     const config = buildConfig(makeWorkflow({
       tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
       polling: { mode: 'webhook' },
-    }))
-    const err = validateConfig(config)
-    expect(err?.code).toBe('webhook_mode_requires_port')
-  })
-
-  it('returns null for webhook mode when server.port is configured', () => {
-    const config = buildConfig(makeWorkflow({
-      tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
-      polling: { mode: 'webhook' },
-      server: { port: 3000 },
     }))
     expect(validateConfig(config)).toBeNull()
   })

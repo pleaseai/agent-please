@@ -81,6 +81,9 @@ export async function runCli(argv: string[]): Promise<void> {
     const boundPort = httpServer.start()
     log.info(`http server listening on 127.0.0.1:${boundPort}`)
   }
+  else if (config.polling.mode === 'webhook') {
+    log.warn('webhook mode is active but no HTTP server port configured — use --port or server.port in WORKFLOW.md')
+  }
 }
 
 function registerInitCommand(program: Command, onResult: (r: ParsedArgs) => void): void {

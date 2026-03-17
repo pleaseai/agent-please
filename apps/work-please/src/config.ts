@@ -170,7 +170,6 @@ export type ValidationError
     | { code: 'incomplete_github_app_config', missing: string[] }
     | { code: 'missing_tracker_project_config', field: string }
     | { code: 'missing_claude_command' }
-    | { code: 'webhook_mode_requires_port' }
 
 export function validateConfig(config: ServiceConfig): ValidationError | null {
   const { kind } = config.tracker
@@ -219,9 +218,6 @@ export function validateConfig(config: ServiceConfig): ValidationError | null {
 
   if (!config.claude.command.trim())
     return { code: 'missing_claude_command' }
-
-  if (config.polling.mode === 'webhook' && config.server.port == null)
-    return { code: 'webhook_mode_requires_port' }
 
   return null
 }
