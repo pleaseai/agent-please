@@ -39,27 +39,54 @@ export function resolveDbPath(dbPath: string, workspaceRoot: string): string | n
 }
 
 export function createDbClient(config: DbConfig, workspaceRoot: string): Client | null {
-  try {
-    if (config.turso_url) {
+  if (config.turso_url) {
+    const allowedSchemes = ['libsql:', 'libsqls:', 'http:', 'https:']
+    let scheme: string
+    try {
+      scheme = new URL(config.turso_url).protocol
+    }
+    catch {
+      log.error(`db connection failed: invalid turso_url`)
+      return null
+    }
+    if (!allowedSchemes.includes(scheme)) {
+      log.error(`db connection failed: unsupported turso_url scheme "${scheme}"`)
+      return null
+    }
+    try {
       const client = createClient({
         url: config.turso_url,
         authToken: config.turso_auth_token ?? undefined,
       })
-      log.info(`db connected to turso: ${config.turso_url}`)
+      const hostname = new URL(config.turso_url).hostname
+      log.info(`db connected to turso: ${hostname}`)
       return client
     }
-
-    const dbFilePath = resolveDbPath(config.path, workspaceRoot)
-    if (!dbFilePath)
+    catch (err) {
+      log.error(`db connection failed: ${err}`)
       return null
+    }
+  }
 
+  const dbFilePath = resolveDbPath(config.path, workspaceRoot)
+  if (!dbFilePath)
+    return null
+
+  try {
     mkdirSync(dirname(dbFilePath), { recursive: true })
+  }
+  catch (err) {
+    log.error(`db directory creation failed: ${err}`)
+    return null
+  }
+
+  try {
     const client = createClient({ url: `file:${dbFilePath}` })
     log.info(`db opened: ${dbFilePath}`)
     return client
   }
   catch (err) {
-    log.warn(`db connection failed: ${err}`)
+    log.error(`db connection failed: ${err}`)
     return null
   }
 }
@@ -119,7 +146,7 @@ export async function insertRun(client: Client | null, params: InsertRunParams):
     })
   }
   catch (err) {
-    log.warn(`db insert failed: ${err}`)
+    log.error(`db insert failed: ${err}`, err)
   }
 }
 
@@ -175,7 +202,7 @@ export async function queryRuns(client: Client | null, options: QueryRunsOptions
     }))
   }
   catch (err) {
-    log.warn(`db query failed: ${err}`)
+    log.error(`db query failed: ${err}`, err)
     return []
   }
 }
