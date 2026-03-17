@@ -1,6 +1,6 @@
 import type { StateResponse } from '@/lib/api'
 import { useIntervalFn } from '@vueuse/core'
-import { ref } from 'vue'
+import { onScopeDispose, ref } from 'vue'
 import { fetchState } from '@/lib/api'
 import { toMessage } from '@/lib/utils'
 
@@ -29,7 +29,8 @@ export function useOrchestratorState(intervalMs = 3000) {
   }
 
   load()
-  useIntervalFn(load, intervalMs)
+  const { pause } = useIntervalFn(load, intervalMs)
+  onScopeDispose(pause)
 
   return { state, error, loading, refresh: load }
 }

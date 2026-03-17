@@ -1,6 +1,6 @@
 import type { IssueDetailResponse } from '@/lib/api'
 import { useIntervalFn } from '@vueuse/core'
-import { ref, watch } from 'vue'
+import { onScopeDispose, ref, watch } from 'vue'
 import { fetchIssueDetail } from '@/lib/api'
 import { toMessage } from '@/lib/utils'
 
@@ -12,8 +12,10 @@ export function useIssueDetail(identifier: () => string, intervalMs = 3000) {
   let fetching = false
   async function load() {
     const id = identifier()
-    if (!id)
+    if (!id) {
+      loading.value = false
       return
+    }
     if (fetching)
       return
     fetching = true
@@ -38,7 +40,8 @@ export function useIssueDetail(identifier: () => string, intervalMs = 3000) {
   })
 
   load()
-  useIntervalFn(load, intervalMs)
+  const { pause } = useIntervalFn(load, intervalMs)
+  onScopeDispose(pause)
 
   return { detail, error, loading, refresh: load }
 }
