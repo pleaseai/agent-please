@@ -7,6 +7,7 @@
 | Track | Feature | Type | Issue | Started | Status |
 |-------|---------|------|-------|---------|--------|
 | [nuxt-chat-sdk-migration-20260319](active/nuxt-chat-sdk-migration-20260319/plan.md) | Nuxt + Chat SDK Migration | refactor | TBD | 2026-03-19 | in_progress |
+| [libsql-turso-20260317](active/libsql-turso-20260317/plan.md) | libsql/Turso Agent Run History | feature | #115 | 2026-03-17 | planned |
 
 ## Recently Completed
 
