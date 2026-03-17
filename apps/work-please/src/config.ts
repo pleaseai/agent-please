@@ -1,4 +1,4 @@
-import type { ClaudeEffort, IssueFilter, ServiceConfig, SettingSource, SystemPromptConfig, WorkflowDefinition } from './types'
+import type { ClaudeEffort, IssueFilter, RepoOverridesConfig, ServiceConfig, SettingSource, SystemPromptConfig, WorkflowDefinition } from './types'
 import { tmpdir } from 'node:os'
 import { join, sep } from 'node:path'
 import process from 'node:process'
@@ -463,6 +463,29 @@ function buildEnvConfig(raw: Record<string, unknown>): Record<string, string> {
     result[key] = str
   }
   return result
+}
+
+const OVERRIDABLE_SECTIONS = new Set(['agent', 'claude', 'env', 'hooks', 'prompt_template'])
+const DEFAULT_ALLOWED_SECTIONS = ['agent', 'claude', 'env', 'hooks']
+
+export function parseRepoOverridesSetting(config: Record<string, unknown>): RepoOverridesConfig {
+  const val = config.repo_overrides
+
+  if (val === true) {
+    return { enabled: true, allowed_sections: [...DEFAULT_ALLOWED_SECTIONS] }
+  }
+
+  if (val && typeof val === 'object' && !Array.isArray(val)) {
+    const obj = val as Record<string, unknown>
+    const allow = Array.isArray(obj.allow)
+      ? obj.allow.filter((s): s is string => typeof s === 'string' && OVERRIDABLE_SECTIONS.has(s))
+      : []
+    return allow.length > 0
+      ? { enabled: true, allowed_sections: allow }
+      : { enabled: false, allowed_sections: [] }
+  }
+
+  return { enabled: false, allowed_sections: [] }
 }
 
 function normalizeTrackerKind(kind: string | null): string | null {

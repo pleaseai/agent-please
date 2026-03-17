@@ -23,6 +23,10 @@ Work Pleaseはイシュートラッカーのタスクを隔離された自律的
 - [WORKFLOW.md設定](#workflowmd設定)
   - [完全なFront Matterスキーマ](#完全なfront-matterスキーマ)
   - [テンプレート変数](#テンプレート変数)
+- [リポジトリごとのワークフローオーバーライド](#リポジトリごとのワークフローオーバーライド)
+  - [仕組み](#仕組み)
+  - [オーバーライドルール](#オーバーライドルール)
+  - [例](#例)
 - [CLI使用方法](#cli使用方法)
 - [GitHub App認証](#github-app認証)
   - [GitHub App資格情報の設定](#github-app資格情報の設定)
@@ -75,6 +79,10 @@ GitHub Projects v2 / AsanaおよびClaude Codeに適応されています（Line
 - **動的設定リロード** — `WORKFLOW.md`を編集すると、サービス再起動なしで変更が適用されます。
 - **ワークスペースフック** — `after_create`、`before_run`、`after_run`、`before_remove`ライフサイクル
   イベントでシェルスクリプトを実行します。
+- **リポジトリごとのワークフローオーバーライド** — ターゲットリポジトリが独自の`WORKFLOW.md`を
+  提供して、エージェント設定とプロンプトテンプレートをカスタマイズできます。グローバルワークフローで
+  `repo_overrides: true`で有効化します。サービスレベルの設定（tracker、polling、workspace）は
+  オーバーライドされません。
 - **構造化ロギング** — 安定した`key=value`形式のオペレーター可視ログを提供します。
 - **オプションHTTPダッシュボード** — `--port`で有効化して、ランタイム状態とJSON APIを確認できます。
 
@@ -455,6 +463,12 @@ claude:
       commit: "🙏 Generated with [Work Please](https://github.com/pleaseai/work-please)"  # 任意: gitコミットメッセージに追加。デフォルトはWork Pleaseリンク。
       pr: "🙏 Generated with [Work Please](https://github.com/pleaseai/work-please)"      # 任意: PR説明に追加。デフォルトはWork Pleaseリンク。
 
+repo_overrides: true                  # 任意: ターゲットリポジトリが独自のWORKFLOW.mdでワークフローをオーバーライドできるようにする。
+                                      # デフォルト: false（リポジトリのWORKFLOW.mdファイルは無視される）。
+                                      # きめ細かい制御のためにオブジェクトも使用可能:
+                                      # repo_overrides:
+                                      #   allow: [agent, claude, env, hooks]  # リポジトリがオーバーライドできるセクションを制限
+
 server:
   port: 3000                          # 任意: このポートでHTTPダッシュボードを有効化
 ---
@@ -509,6 +523,96 @@ server:
 リトライ回数: {{ attempt }}
 {% endif %}
 ```
+
+## リポジトリごとのワークフローオーバーライド
+
+複数のリポジトリにまたがるGitHub Projects v2プロジェクトを管理する場合、各ターゲットリポジトリが
+独自の`WORKFLOW.md`を提供して、グローバル設定を変更せずにエージェントの動作をカスタマイズできます。
+
+### 仕組み
+
+1. オペレーターのグローバル`WORKFLOW.md`がサービスを起動し、サービスレベルの設定（tracker、polling、
+   workspace）を定義します。この機能を有効にするには`repo_overrides: true`を含める必要があります。
+2. イシューがディスパッチされると、Work Pleaseはグローバル設定を使用してワークスペース
+   （クローン/ワークツリー）を作成します。
+3. ワークスペースの準備が完了すると、Work Pleaseはリポジトリルートの`WORKFLOW.md`を確認します。
+4. 見つかった場合、リポジトリの設定セクションがグローバル設定にディープマージされ（許可されたセクション
+   のみ）、リポジトリのプロンプトテンプレートがグローバルのものを置き換えます（空でない場合）。
+5. 有効な（マージされた）ワークフローがエージェントセッションに使用されます。
+
+### オーバーライドルール
+
+| セクション | オーバーライド可能 | 理由 |
+|-----------|-------------------|------|
+| `tracker` | 不可 | サービス資格情報 — セキュリティ境界 |
+| `polling` | 不可 | サービスレベルの関心事 |
+| `workspace` | 不可 | セキュリティ境界（パストラバーサル） |
+| `server` | 不可 | サービスレベルの関心事 |
+| `agent` | **可能** | `max_turns`、リトライ、同時実行数 |
+| `claude` | **可能** | `model`、`effort`、`allowed_tools`、`system_prompt`、`permission_mode` |
+| `hooks.before_run` | **可能** | リポジトリごとのエージェント前セットアップ |
+| `hooks.after_run` | **可能** | リポジトリごとのエージェント後クリーンアップ |
+| `hooks.after_create` | 不可 | リポジトリWORKFLOW.mdが利用可能になる前に実行される |
+| `hooks.before_remove` | 不可 | ワークスペースライフサイクル、エージェントの関心事ではない |
+| `env` | **可能** | エージェント用の追加環境変数 |
+| プロンプトテンプレート | **可能** | リポジトリごとのプロンプトカスタマイズ |
+
+きめ細かい形式でリポジトリがオーバーライドできるセクションを制限できます:
+
+```yaml
+repo_overrides:
+  allow: [agent, claude, env]         # hooks除外
+```
+
+### 例
+
+**グローバルWORKFLOW.md（オペレーター）:**
+
+```yaml
+---
+tracker:
+  kind: github_projects
+  api_key: $GITHUB_TOKEN
+  owner: myorg
+  project_number: 5
+repo_overrides: true
+agent:
+  max_turns: 20
+claude:
+  effort: high
+---
+全リポジトリのデフォルトプロンプト...
+{{ issue.title }}
+```
+
+**ターゲットリポジトリのWORKFLOW.md（リポジトリチーム）:**
+
+```yaml
+---
+agent:
+  max_turns: 40
+claude:
+  model: claude-sonnet-4-20250514
+  effort: max
+env:
+  DATABASE_URL: $DATABASE_URL
+---
+{{ issue.identifier }}に取り組むバックエンドスペシャリストです。
+
+注力事項:
+- データベースマイグレーション
+- APIエンドポイントの実装
+{{ issue.description }}
+```
+
+**そのリポジトリのイシューに対する有効な結果:**
+
+- `tracker` — グローバルから（オーバーライド不可）
+- `agent.max_turns` — 40（リポジトリから）
+- `claude.model` — `claude-sonnet-4-20250514`（リポジトリから）
+- `claude.effort` — `max`（リポジトリから）
+- `env.DATABASE_URL` — `$DATABASE_URL`から解決（リポジトリから）
+- プロンプトテンプレート — リポジトリのカスタムテンプレート
 
 ## CLI使用方法
 

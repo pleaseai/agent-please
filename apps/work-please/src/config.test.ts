@@ -2,7 +2,7 @@
 import type { WorkflowDefinition } from './types'
 import process from 'node:process'
 import { describe, expect, it } from 'bun:test'
-import { buildConfig, getActiveStates, getTerminalStates, getWatchedStates, maxConcurrentForState, normalizeState, validateConfig } from './config'
+import { buildConfig, getActiveStates, getTerminalStates, getWatchedStates, maxConcurrentForState, normalizeState, parseRepoOverridesSetting, validateConfig } from './config'
 
 function makeWorkflow(config: Record<string, unknown>): WorkflowDefinition {
   return { config, prompt_template: '' }
@@ -790,5 +790,53 @@ describe('buildConfig - env section', () => {
     expect(config.env.VALID_KEY).toBe('ok')
     expect(config.env.ALSO_VALID).toBe('ok')
     expect(Object.keys(config.env)).toHaveLength(2)
+  })
+})
+
+describe('parseRepoOverridesSetting', () => {
+  it('returns disabled when repo_overrides is absent', () => {
+    const result = parseRepoOverridesSetting({})
+    expect(result.enabled).toBe(false)
+  })
+
+  it('returns disabled when repo_overrides is false', () => {
+    const result = parseRepoOverridesSetting({ repo_overrides: false })
+    expect(result.enabled).toBe(false)
+  })
+
+  it('returns enabled with default sections when repo_overrides is true', () => {
+    const result = parseRepoOverridesSetting({ repo_overrides: true })
+    expect(result.enabled).toBe(true)
+    expect(result.allowed_sections).toEqual(['agent', 'claude', 'env', 'hooks'])
+  })
+
+  it('returns enabled with custom allow list', () => {
+    const result = parseRepoOverridesSetting({
+      repo_overrides: { allow: ['agent', 'claude'] },
+    })
+    expect(result.enabled).toBe(true)
+    expect(result.allowed_sections).toEqual(['agent', 'claude'])
+  })
+
+  it('filters out disallowed sections from allow list', () => {
+    const result = parseRepoOverridesSetting({
+      repo_overrides: { allow: ['agent', 'tracker', 'polling', 'workspace', 'server'] },
+    })
+    expect(result.enabled).toBe(true)
+    expect(result.allowed_sections).toEqual(['agent'])
+  })
+
+  it('returns disabled when allow list results in empty array', () => {
+    const result = parseRepoOverridesSetting({
+      repo_overrides: { allow: ['tracker', 'polling'] },
+    })
+    expect(result.enabled).toBe(false)
+  })
+
+  it('handles repo_overrides as object with empty allow', () => {
+    const result = parseRepoOverridesSetting({
+      repo_overrides: { allow: [] },
+    })
+    expect(result.enabled).toBe(false)
   })
 })

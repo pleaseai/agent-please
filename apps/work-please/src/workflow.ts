@@ -3,6 +3,9 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import process from 'node:process'
 import { load as parseYaml } from 'js-yaml'
+import { createLogger } from './logger'
+
+const log = createLogger('workflow')
 
 const NEWLINE_RE = /\r?\n/
 
@@ -86,4 +89,93 @@ function parseFrontMatter(lines: string[]): { config: Record<string, unknown> } 
 
 export function isWorkflowError(result: WorkflowDefinition | WorkflowError): result is WorkflowError {
   return 'code' in result
+}
+
+const HOOK_OVERRIDABLE_KEYS = new Set(['before_run', 'after_run'])
+
+export function loadRepoWorkflow(workspacePath: string): WorkflowDefinition | null {
+  const filePath = join(workspacePath, WORKFLOW_FILE_NAME)
+
+  let content: string
+  try {
+    content = readFileSync(filePath, 'utf-8')
+  }
+  catch {
+    return null
+  }
+
+  const result = parseWorkflow(content)
+  if (isWorkflowError(result)) {
+    log.warn(`repo WORKFLOW.md parse error at ${filePath}: ${result.code} — using global workflow`)
+    return null
+  }
+
+  return result
+}
+
+export function mergeWorkflows(
+  base: WorkflowDefinition,
+  repoOverride: WorkflowDefinition | null,
+  allowedSections: string[],
+): WorkflowDefinition {
+  if (!repoOverride)
+    return base
+
+  const allowed = new Set(allowedSections)
+  const merged: Record<string, unknown> = {}
+
+  // Copy all base config sections
+  for (const [key, value] of Object.entries(base.config)) {
+    merged[key] = deepClone(value)
+  }
+
+  // Override allowed sections from repo workflow
+  for (const [key, value] of Object.entries(repoOverride.config)) {
+    if (key === 'repo_overrides')
+      continue
+
+    if (!allowed.has(key))
+      continue
+
+    // Special handling for hooks: only allow before_run and after_run
+    if (key === 'hooks') {
+      const baseHooks = (merged.hooks ?? {}) as Record<string, unknown>
+      const overrideHooks = value as Record<string, unknown>
+      for (const [hookKey, hookVal] of Object.entries(overrideHooks)) {
+        if (HOOK_OVERRIDABLE_KEYS.has(hookKey)) {
+          baseHooks[hookKey] = hookVal
+        }
+        // lifecycle hooks (after_create, before_remove) are silently ignored
+      }
+      merged.hooks = baseHooks
+      continue
+    }
+
+    // Deep-merge for object sections (agent, claude, env)
+    if (isPlainObject(merged[key]) && isPlainObject(value)) {
+      merged[key] = { ...(merged[key] as Record<string, unknown>), ...(value as Record<string, unknown>) }
+    }
+    else {
+      merged[key] = deepClone(value)
+    }
+  }
+
+  // Strip repo_overrides from merged result
+  delete merged.repo_overrides
+
+  const prompt_template = repoOverride.prompt_template
+    ? repoOverride.prompt_template
+    : base.prompt_template
+
+  return { config: merged, prompt_template }
+}
+
+function isPlainObject(val: unknown): val is Record<string, unknown> {
+  return val !== null && typeof val === 'object' && !Array.isArray(val)
+}
+
+function deepClone<T>(val: T): T {
+  if (val === null || typeof val !== 'object')
+    return val
+  return JSON.parse(JSON.stringify(val))
 }
