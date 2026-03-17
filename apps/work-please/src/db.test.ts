@@ -1,4 +1,4 @@
-import type { InsertRunParams, QueryRunsOptions } from './db'
+import type { InsertRunParams } from './db'
 import type { DbConfig } from './types'
 import { existsSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'

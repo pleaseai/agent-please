@@ -31,7 +31,7 @@ const CREATE_AGENT_RUNS_IDX = `CREATE INDEX IF NOT EXISTS idx_agent_runs_identif
 export function resolveDbPath(dbPath: string, workspaceRoot: string): string | null {
   const resolved = resolve(workspaceRoot, dbPath)
   const normalizedRoot = resolve(workspaceRoot)
-  if (!resolved.startsWith(normalizedRoot + '/') && resolved !== normalizedRoot) {
+  if (!resolved.startsWith(`${normalizedRoot}/`) && resolved !== normalizedRoot) {
     log.warn(`db path traversal blocked: ${dbPath} resolves outside workspace root`)
     return null
   }
