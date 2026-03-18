@@ -857,7 +857,7 @@ describe('processWatchedStates dispatch logic', () => {
     expect(shouldDispatchWatched(issue, new Map(), new Set())).toBe(false)
   })
 
-  it('dispatches Issue-type item with review_decision promoted from linked PR', () => {
+  it('dispatches Issue-type item that has review_decision set (e.g. promoted from linked PR by normalizeProjectItem)', () => {
     const issue = makeIssue({
       id: 'w-issue',
       review_decision: 'approved',
