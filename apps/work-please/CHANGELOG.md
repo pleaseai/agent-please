@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.12](https://github.com/pleaseai/work-please/compare/work-v0.1.11...work-v0.1.12) (2026-03-18)
+
+
+### Features
+
+* **dashboard:** add Vue.js SPA with shadcn-vue ([#113](https://github.com/pleaseai/work-please/issues/113)) ([6a55106](https://github.com/pleaseai/work-please/commit/6a55106a1a58495f468af76e7f063cdf118440ca))
+
+
+### Bug Fixes
+
+* **tracker:** promote linked PR review_decision for Issue-type items ([#126](https://github.com/pleaseai/work-please/issues/126)) ([667300c](https://github.com/pleaseai/work-please/commit/667300ca51d9c44161146bfaa9493b1cbbb30e9c))
+
 ## [0.1.11](https://github.com/pleaseai/work-please/compare/work-v0.1.10...work-v0.1.11) (2026-03-17)
 
 
