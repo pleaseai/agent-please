@@ -1227,8 +1227,9 @@ describe('AppServerClient - runTurn with SDK mock (Section 17.5)', () => {
     })
 
     const session = await client.startSession()
+    expect(session instanceof Error).toBe(false)
     if (session instanceof Error)
-      return
+      throw session
 
     await client.runTurn(session, 'hello', makeIssue(), () => {})
     expect(capturedSandbox).toEqual({ enabled: true, autoAllowBashIfSandboxed: true })
@@ -1248,8 +1249,9 @@ describe('AppServerClient - runTurn with SDK mock (Section 17.5)', () => {
     })
 
     const session = await client.startSession()
+    expect(session instanceof Error).toBe(false)
     if (session instanceof Error)
-      return
+      throw session
 
     await client.runTurn(session, 'hello', makeIssue(), () => {})
     expect(capturedSandbox).toBeUndefined()
