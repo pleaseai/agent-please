@@ -1537,6 +1537,54 @@ describe('github_projects review_decision normalization', () => {
     }
     finally { globalThis.fetch = origFetch }
   })
+
+  test('promotes from second open PR when first has null reviewDecision', async () => {
+    const config = makeGitHubConfig()
+    const adapter = createGitHubAdapter(config)
+    const origFetch = globalThis.fetch
+    globalThis.fetch = mock(async () => new Response(JSON.stringify({
+      data: {
+        repositoryOwner: {
+          projectV2: {
+            items: {
+              nodes: [
+                {
+                  id: 'PVTI_MULTI',
+                  fieldValues: { nodes: [{ name: 'Human Review', field: { name: 'Status' } }] },
+                  content: {
+                    number: 103,
+                    title: 'Issue with multiple open PRs',
+                    body: null,
+                    url: 'https://github.com/org/repo/issues/103',
+                    labels: { nodes: [] },
+                    assignees: { nodes: [] },
+                    createdAt: null,
+                    updatedAt: null,
+                    closedByPullRequestsReferences: {
+                      nodes: [
+                        { number: 300, title: 'PR no review', url: null, state: 'OPEN', headRefName: 'fix/a', reviewDecision: null, updatedAt: '2024-06-01T12:00:00Z' },
+                        { number: 301, title: 'PR with review', url: null, state: 'OPEN', headRefName: 'fix/b', reviewDecision: 'APPROVED', updatedAt: '2024-06-01T12:00:00Z' },
+                      ],
+                    },
+                  },
+                },
+              ],
+              pageInfo: { hasNextPage: false, endCursor: null },
+            },
+          },
+        },
+      },
+    }), { status: 200, headers: { 'content-type': 'application/json' } })) as unknown as typeof fetch
+    try {
+      const result = await adapter.fetchIssuesByStates(['Human Review'])
+      expect(Array.isArray(result)).toBe(true)
+      if (!Array.isArray(result))
+        return
+      expect(result[0].review_decision).toBe('approved')
+    }
+    finally { globalThis.fetch = origFetch }
+  })
+
   test('PR-type content retains direct reviewDecision unchanged', async () => {
     const config = makeGitHubConfig()
     const adapter = createGitHubAdapter(config)
