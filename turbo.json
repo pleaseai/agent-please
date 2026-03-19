@@ -13,7 +13,8 @@
     "lint:fix": {},
     "dev": {
       "cache": false,
-      "persistent": true
+      "persistent": true,
+      "passThroughEnv": ["NUXT_*", "WORKFLOW_PATH"]
     },
     "test": {
       "dependsOn": ["build"]
