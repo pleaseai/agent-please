@@ -9,8 +9,15 @@
     "check": {
       "dependsOn": ["^build"]
     },
-    "lint": {},
-    "lint:fix": {},
+    "prepare": {
+      "outputs": [".nuxt/**"]
+    },
+    "lint": {
+      "dependsOn": ["prepare"]
+    },
+    "lint:fix": {
+      "dependsOn": ["prepare"]
+    },
     "dev": {
       "cache": false,
       "persistent": true,

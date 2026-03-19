@@ -22,6 +22,7 @@
     "postpublish": "rm -f LICENSE README.md",
     "build": "nuxt build && bun build ./src/index.ts --outdir ./dist --target bun && bun run scripts/add-shebang.ts",
     "dev": "nuxt dev --dotenv .env.local",
+    "prepare": "nuxt prepare",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "check": "tsc --noEmit",
