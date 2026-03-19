@@ -28,7 +28,7 @@ export default defineNuxtConfig({
       allowedHosts: (() => {
         const hosts = process.env.NUXT_VITE_ALLOWED_HOSTS
         if (!hosts)
-          return true
+          return []
         return hosts.split(',').map(h => h.trim()).filter(Boolean)
       })(),
     },
