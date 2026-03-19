@@ -5,10 +5,6 @@ const items = computed<NavigationMenuItem[]>(() => [{
   label: 'Dashboard',
   icon: 'i-lucide-layout-dashboard',
   to: '/',
-}, {
-  label: 'Issues',
-  icon: 'i-lucide-list-todo',
-  to: '/issues',
 }])
 </script>
 

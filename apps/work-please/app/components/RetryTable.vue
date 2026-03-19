@@ -7,10 +7,10 @@ defineProps<{
 }>()
 
 const columns = [
-  { key: 'issue_identifier', label: 'Identifier' },
-  { key: 'attempt', label: 'Attempt' },
-  { key: 'due_at', label: 'Due At' },
-  { key: 'error', label: 'Error' },
+  { accessorKey: 'issue_identifier', header: 'Identifier' },
+  { accessorKey: 'attempt', header: 'Attempt' },
+  { accessorKey: 'due_at', header: 'Due At' },
+  { accessorKey: 'error', header: 'Error' },
 ]
 </script>
 

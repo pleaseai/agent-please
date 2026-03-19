@@ -7,13 +7,13 @@ defineProps<{
 }>()
 
 const columns = [
-  { key: 'issue_identifier', label: 'Identifier' },
-  { key: 'state', label: 'State' },
-  { key: 'turn_count', label: 'Turn' },
-  { key: 'session_id', label: 'Session' },
-  { key: 'started_at', label: 'Started' },
-  { key: 'last_event', label: 'Last Event' },
-  { key: 'tokens', label: 'Tokens' },
+  { accessorKey: 'issue_identifier', header: 'Identifier' },
+  { accessorKey: 'state', header: 'State' },
+  { accessorKey: 'turn_count', header: 'Turn' },
+  { accessorKey: 'session_id', header: 'Session' },
+  { accessorKey: 'started_at', header: 'Started' },
+  { accessorKey: 'last_event', header: 'Last Event' },
+  { accessorKey: 'tokens', header: 'Tokens' },
 ]
 </script>
 
