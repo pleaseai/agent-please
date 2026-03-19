@@ -1,0 +1,47 @@
+apps/work-please/app/pages/index.vue
+  eea92607f83fda9b 1-10
+apps/work-please/.gitignore
+  eea92607f83fda9b 1-2
+apps/work-please/server/plugins/orchestrator.ts
+  eea92607f83fda9b 1-25
+apps/work-please/server/api/v1/state.get.ts
+  eea92607f83fda9b 1-65
+packages/core/src/index.ts
+  eea92607f83fda9b 70
+apps/work-please/server/utils/orchestrator.ts
+  eea92607f83fda9b 1-14
+apps/work-please/app.config.ts
+  eea92607f83fda9b 1-8
+apps/work-please/app/assets/css/main.css
+  eea92607f83fda9b 1-2
+apps/work-please/server/api/v1/[identifier].get.ts
+  eea92607f83fda9b 1-93
+apps/work-please/server/api/webhooks/github.post.ts
+  eea92607f83fda9b 1-25
+apps/work-please/nuxt.config.ts
+  eea92607f83fda9b 1-19
+apps/work-please/app/app.vue
+  eea92607f83fda9b 1-5
+apps/work-please/server/api/v1/refresh.post.ts
+  eea92607f83fda9b 1-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.15",
+  "base_commit_sha": "ddaf661f77899f8f4510f114ea7ee4db9b8f669c",
+  "prompts": {
+    "eea92607f83fda9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a1a7ec1b-1175-4faa-a64f-194dc6285a84",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Minsu Lee <amond@amond.net>",
+      "messages": [],
+      "total_additions": 281,
+      "total_deletions": 0,
+      "accepted_lines": 281,
+      "overriden_lines": 0
+    }
+  }
+}
