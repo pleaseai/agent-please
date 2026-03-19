@@ -21,7 +21,7 @@ The existing in-memory OrchestratorState remains unchanged. Run records are writ
   - Result status (status: 'success' | 'failure', error message)
 - [ ] FR-4: Auto-migrate DB schema on startup (create tables if not present)
 - [ ] FR-5: Add DB configuration to ServiceConfig (db.path, db.turso_url, db.turso_auth_token)
-- [ ] FR-6: Read DB settings from the `db` section in WORKFLOW.md config
+- [ ] FR-6: Read DB settings from the `db` section in `.please/config.yml`
 
 ### Non-functional Requirements
 

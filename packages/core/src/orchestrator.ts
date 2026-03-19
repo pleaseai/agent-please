@@ -27,6 +27,7 @@ export class Orchestrator {
   private fileWatcher: ReturnType<typeof watch> | null = null
   private labelService: LabelService | null = null
   private db: Client | null = null
+  private pendingDbWrites: Promise<void>[] = []
 
   constructor(workflowPath: string) {
     this.workflowPath = workflowPath
@@ -83,7 +84,7 @@ export class Orchestrator {
     this.scheduleTick(0)
   }
 
-  stop(): void {
+  async stop(): Promise<void> {
     if (this.pollTimer) {
       clearTimeout(this.pollTimer)
       this.pollTimer = null
@@ -102,6 +103,11 @@ export class Orchestrator {
         clearTimeout(entry.timer_handle)
     }
     this.state.retry_attempts.clear()
+    // Flush pending DB writes before closing
+    if (this.pendingDbWrites.length > 0) {
+      await Promise.allSettled(this.pendingDbWrites)
+      this.pendingDbWrites = []
+    }
     // Close database
     if (this.db) {
       this.db.close()
@@ -448,9 +454,9 @@ export class Orchestrator {
     this.state.agent_totals.output_tokens += running.agent_output_tokens
     this.state.agent_totals.total_tokens += running.agent_total_tokens
 
-    // Record agent run to DB (fire-and-forget)
+    // Record agent run to DB (tracked for graceful shutdown flush)
     const finishedAt = new Date()
-    void insertRun(this.db, {
+    const insertPromise = insertRun(this.db, {
       issue_id: issueId,
       identifier: running.identifier,
       issue_state: running.issue.state,
@@ -465,6 +471,12 @@ export class Orchestrator {
       input_tokens: running.agent_input_tokens,
       output_tokens: running.agent_output_tokens,
       total_tokens: running.agent_total_tokens,
+    })
+    this.pendingDbWrites.push(insertPromise)
+    void insertPromise.finally(() => {
+      const idx = this.pendingDbWrites.indexOf(insertPromise)
+      if (idx !== -1)
+        this.pendingDbWrites.splice(idx, 1)
     })
 
     if (reason === 'normal') {
@@ -639,9 +651,9 @@ export class Orchestrator {
     this.state.running.delete(issueId)
     this.state.claimed.delete(issueId)
 
-    // Record terminated run to DB (fire-and-forget)
+    // Record terminated run to DB (tracked for graceful shutdown flush)
     const finishedAt = new Date()
-    void insertRun(this.db, {
+    const insertPromise = insertRun(this.db, {
       issue_id: issueId,
       identifier: entry.identifier,
       issue_state: entry.issue.state,
@@ -656,6 +668,12 @@ export class Orchestrator {
       input_tokens: entry.agent_input_tokens,
       output_tokens: entry.agent_output_tokens,
       total_tokens: entry.agent_total_tokens,
+    })
+    this.pendingDbWrites.push(insertPromise)
+    void insertPromise.finally(() => {
+      const idx = this.pendingDbWrites.indexOf(insertPromise)
+      if (idx !== -1)
+        this.pendingDbWrites.splice(idx, 1)
     })
 
     if (cleanupWorkspace) {

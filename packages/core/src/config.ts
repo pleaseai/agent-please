@@ -85,7 +85,7 @@ const DEFAULT_DB_PATH = '.work-please/agent_runs.db'
 
 function buildDbConfig(db: Record<string, unknown>): DbConfig {
   return {
-    path: stringValue(db.path) ?? DEFAULT_DB_PATH,
+    path: resolvePathValue(stringValue(db.path), DEFAULT_DB_PATH),
     turso_url: resolveEnvValue(stringValue(db.turso_url), process.env.TURSO_DATABASE_URL),
     turso_auth_token: resolveEnvValue(stringValue(db.turso_auth_token), process.env.TURSO_AUTH_TOKEN),
   }

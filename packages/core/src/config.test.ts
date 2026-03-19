@@ -985,10 +985,26 @@ describe('webhook config', () => {
 
 describe('buildConfig db section', () => {
   it('applies defaults when db section is absent', () => {
-    const config = buildConfig(makeWorkflow({}))
-    expect(config.db.path).toBe('.work-please/agent_runs.db')
-    expect(config.db.turso_url).toBeNull()
-    expect(config.db.turso_auth_token).toBeNull()
+    const prevUrl = process.env.TURSO_DATABASE_URL
+    const prevToken = process.env.TURSO_AUTH_TOKEN
+    try {
+      delete process.env.TURSO_DATABASE_URL
+      delete process.env.TURSO_AUTH_TOKEN
+      const config = buildConfig(makeWorkflow({}))
+      expect(config.db.path).toBe('.work-please/agent_runs.db')
+      expect(config.db.turso_url).toBeNull()
+      expect(config.db.turso_auth_token).toBeNull()
+    }
+    finally {
+      if (prevUrl === undefined)
+        delete process.env.TURSO_DATABASE_URL
+      else
+        process.env.TURSO_DATABASE_URL = prevUrl
+      if (prevToken === undefined)
+        delete process.env.TURSO_AUTH_TOKEN
+      else
+        process.env.TURSO_AUTH_TOKEN = prevToken
+    }
   })
 
   it('uses custom db path when provided', () => {

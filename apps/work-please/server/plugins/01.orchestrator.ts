@@ -25,9 +25,9 @@ export default defineNitroPlugin(async (nitroApp) => {
     process.exit(1)
   }
 
-  nitroApp.hooks.hook('close', () => {
+  nitroApp.hooks.hook('close', async () => {
     try {
-      orchestrator.stop()
+      await orchestrator.stop()
     }
     catch (err) {
       log.error('error during shutdown:', err)
