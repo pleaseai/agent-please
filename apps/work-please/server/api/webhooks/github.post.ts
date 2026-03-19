@@ -19,7 +19,7 @@ export default defineEventHandler(async (event) => {
         const handler = chatBot.webhooks.github
         if (handler) {
           const chatResponse = await handler(request.clone(), {
-            waitUntil: (task: Promise<unknown>) => event.waitUntil(task),
+            waitUntil: () => { /* no-op: Nitro does not support waitUntil on H3Event */ },
           })
 
           // If Chat SDK handled it (200), also trigger orchestrator refresh
@@ -31,8 +31,8 @@ export default defineEventHandler(async (event) => {
           }
         }
       }
-      catch {
-        // Chat SDK didn't handle it — fall through to orchestrator webhook
+      catch (err) {
+        console.warn('[webhook] chat SDK error — falling through to orchestrator:', err)
       }
     }
   }

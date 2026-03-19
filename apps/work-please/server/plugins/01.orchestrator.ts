@@ -20,6 +20,11 @@ export default defineNitroPlugin((nitroApp) => {
   })
 
   nitroApp.hooks.hook('close', () => {
-    orchestrator.stop()
+    try {
+      orchestrator.stop()
+    }
+    catch (err) {
+      console.error('[orchestrator] error during shutdown:', err)
+    }
   })
 })

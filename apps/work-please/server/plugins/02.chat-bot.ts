@@ -48,37 +48,46 @@ export default defineNitroPlugin((nitroApp) => {
   })
 
   // Handle @mentions: respond with issue status from orchestrator
-  bot.onNewMention(async (thread, message) => {
-    const state = orchestrator.getState()
-    const text = message.text?.trim() ?? ''
+  bot.onNewMention(async (thread) => {
+    try {
+      const state = orchestrator.getState()
 
-    // Try to find a running/retrying issue matching the context
-    const statusLines: string[] = []
-    const runningCount = state.running.size
-    const retryCount = state.retry_attempts.size
+      const statusLines: string[] = []
+      const runningCount = state.running.size
+      const retryCount = state.retry_attempts.size
 
-    statusLines.push(`**Work Please Status**`)
-    statusLines.push(`- Running: ${runningCount}`)
-    statusLines.push(`- Retrying: ${retryCount}`)
-    statusLines.push(`- Total tokens: ${state.agent_totals.total_tokens.toLocaleString()}`)
+      statusLines.push(`**Work Please Status**`)
+      statusLines.push(`- Running: ${runningCount}`)
+      statusLines.push(`- Retrying: ${retryCount}`)
+      statusLines.push(`- Total tokens: ${state.agent_totals.total_tokens.toLocaleString()}`)
 
-    if (runningCount > 0) {
-      statusLines.push('')
-      statusLines.push('**Running Issues:**')
-      for (const entry of state.running.values()) {
-        statusLines.push(`- \`${entry.identifier}\` — ${entry.issue.state} (turn ${entry.turn_count})`)
+      if (runningCount > 0) {
+        statusLines.push('')
+        statusLines.push('**Running Issues:**')
+        for (const entry of state.running.values()) {
+          statusLines.push(`- \`${entry.identifier}\` — ${entry.issue.state} (turn ${entry.turn_count})`)
+        }
+      }
+
+      if (retryCount > 0) {
+        statusLines.push('')
+        statusLines.push('**Retry Queue:**')
+        for (const entry of state.retry_attempts.values()) {
+          statusLines.push(`- \`${entry.identifier}\` — attempt ${entry.attempt}${entry.error ? ` (${entry.error})` : ''}`)
+        }
+      }
+
+      await thread.post(statusLines.join('\n'))
+    }
+    catch (err) {
+      console.error('[chat-bot] failed to handle mention:', err)
+      try {
+        await thread.post('Sorry, I encountered an error retrieving status. Please try again.')
+      }
+      catch (replyErr) {
+        console.error('[chat-bot] failed to post error reply:', replyErr)
       }
     }
-
-    if (retryCount > 0) {
-      statusLines.push('')
-      statusLines.push('**Retry Queue:**')
-      for (const entry of state.retry_attempts.values()) {
-        statusLines.push(`- \`${entry.identifier}\` — attempt ${entry.attempt}${entry.error ? ` (${entry.error})` : ''}`)
-      }
-    }
-
-    await thread.post(statusLines.join('\n'))
   })
 
   // Store bot on nitroApp for webhook handler access

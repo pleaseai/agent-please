@@ -49,7 +49,7 @@ export async function runCli(argv: string[]): Promise<void> {
     await import('../.output/server/index.mjs')
   }
   catch (err) {
-    console.error(`[work-please] failed to start server: ${err}`)
+    console.error('[work-please] failed to start server:', err)
     process.exit(1)
   }
 }
