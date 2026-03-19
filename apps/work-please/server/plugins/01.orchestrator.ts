@@ -1,12 +1,14 @@
 import process from 'node:process'
-import { Orchestrator } from '@pleaseai/core'
+import { createLogger, Orchestrator } from '@pleaseai/core'
+
+const log = createLogger('orchestrator')
 
 export default defineNitroPlugin((nitroApp) => {
   const config = useRuntimeConfig()
   const workflowPath = config.workflowPath
 
   if (!workflowPath) {
-    console.warn('[orchestrator] no WORKFLOW_PATH configured — orchestrator not started')
+    log.warn('no WORKFLOW_PATH configured — orchestrator not started')
     return
   }
 
@@ -16,7 +18,7 @@ export default defineNitroPlugin((nitroApp) => {
   ;(nitroApp as any).orchestrator = orchestrator
 
   orchestrator.start().catch((err) => {
-    console.error('[orchestrator] startup failed:', err)
+    log.error('startup failed:', err)
     process.exit(1)
   })
 
@@ -25,7 +27,7 @@ export default defineNitroPlugin((nitroApp) => {
       orchestrator.stop()
     }
     catch (err) {
-      console.error('[orchestrator] error during shutdown:', err)
+      log.error('error during shutdown:', err)
     }
   })
 })

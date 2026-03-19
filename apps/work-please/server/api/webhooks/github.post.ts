@@ -1,6 +1,8 @@
 import type { VerifySignature } from '@pleaseai/core'
 import type { Chat } from 'chat'
-import { createVerify, handleWebhook } from '@pleaseai/core'
+import { createLogger, createVerify, handleWebhook } from '@pleaseai/core'
+
+const log = createLogger('webhook')
 
 // Cache the verifier per secret to avoid recreating it on every request
 const verifierCache = new Map<string, VerifySignature>()
@@ -34,7 +36,7 @@ export default defineEventHandler(async (event) => {
           // handler is fully awaited so work completes before 2xx response;
           // waitUntil is not needed here but satisfies the SDK interface
           const chatResponse = await handler(request.clone(), {
-            waitUntil: (promise: Promise<unknown>) => { promise.catch(console.error) },
+            waitUntil: (promise: Promise<unknown>) => { promise.catch(err => log.error('waitUntil rejected:', err)) },
           })
 
           // If Chat SDK handled it (200), also trigger orchestrator refresh
@@ -47,7 +49,7 @@ export default defineEventHandler(async (event) => {
         }
       }
       catch (err) {
-        console.warn('[webhook] chat SDK error — falling through to orchestrator:', err)
+        log.warn('chat SDK error — falling through to orchestrator:', err)
       }
     }
   }

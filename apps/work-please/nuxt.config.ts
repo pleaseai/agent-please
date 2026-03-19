@@ -1,7 +1,13 @@
 import process from 'node:process'
 
 export default defineNuxtConfig({
-  modules: ['@nuxt/ui'],
+  modules: ['@nuxt/ui', '@nuxt/eslint'],
+
+  eslint: {
+    config: {
+      standalone: false,
+    },
+  },
 
   future: {
     compatibilityVersion: 4,

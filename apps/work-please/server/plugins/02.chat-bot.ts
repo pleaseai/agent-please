@@ -2,12 +2,15 @@ import type { Orchestrator } from '@pleaseai/core'
 import process from 'node:process'
 import { createGitHubAdapter } from '@chat-adapter/github'
 import { createMemoryState } from '@chat-adapter/state-memory'
+import { createLogger } from '@pleaseai/core'
 import { Chat } from 'chat'
+
+const log = createLogger('chat-bot')
 
 export default defineNitroPlugin((nitroApp) => {
   const orchestrator = (nitroApp as any).orchestrator as Orchestrator | undefined
   if (!orchestrator) {
-    console.warn('[chat-bot] orchestrator not available — chat bot not started')
+    log.warn('orchestrator not available — chat bot not started')
     return
   }
 
@@ -16,7 +19,7 @@ export default defineNitroPlugin((nitroApp) => {
 
   // Only initialize if GitHub tracker is configured
   if (tracker.kind !== 'github_projects') {
-    console.warn('[chat-bot] tracker is not github_projects — chat bot not started')
+    log.warn('tracker is not github_projects — chat bot not started')
     return
   }
 
@@ -81,12 +84,12 @@ export default defineNitroPlugin((nitroApp) => {
       await thread.post(statusLines.join('\n'))
     }
     catch (err) {
-      console.error('[chat-bot] failed to handle mention:', err)
+      log.error('failed to handle mention:', err)
       try {
         await thread.post('Sorry, I encountered an error retrieving status. Please try again.')
       }
       catch (replyErr) {
-        console.error('[chat-bot] failed to post error reply:', replyErr)
+        log.error('failed to post error reply:', replyErr)
       }
     }
   })
@@ -99,9 +102,9 @@ export default defineNitroPlugin((nitroApp) => {
       await bot.shutdown()
     }
     catch (err) {
-      console.error('[chat-bot] error during shutdown:', err)
+      log.error('error during shutdown:', err)
     }
   })
 
-  console.warn('[chat-bot] GitHub adapter initialized')
+  log.info('GitHub adapter initialized')
 })
