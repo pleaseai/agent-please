@@ -64,7 +64,12 @@ jobs:
       - name: Copy root files into package directory
         run: cp LICENSE README.md apps/work-please/
 
-      - run: npm publish --provenance --access public
+      - name: Pack with bun (resolves workspace: protocol)
+        run: bun pm pack
+        working-directory: apps/work-please
+
+      - name: Publish tarball with npm (supports --provenance)
+        run: npm publish pleaseai-work-*.tgz --provenance --access public
         working-directory: apps/work-please
 
   publish-core:
@@ -100,5 +105,10 @@ jobs:
       - name: Copy root files into package directory
         run: cp LICENSE README.md packages/core/
 
-      - run: npm publish --provenance --access public
+      - name: Pack with bun (resolves workspace: protocol)
+        run: bun pm pack
+        working-directory: packages/core
+
+      - name: Publish tarball with npm (supports --provenance)
+        run: npm publish pleaseai-work-core-*.tgz --provenance --access public
         working-directory: packages/core
