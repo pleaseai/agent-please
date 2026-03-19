@@ -271,7 +271,7 @@ function refreshResponse(orchestrator: Orchestrator): Response {
 async function sessionMessagesResponse(orchestrator: Orchestrator, sessionId: string, url: URL): Promise<Response> {
   const config = orchestrator.getConfig()
   const limit = parsePositiveInt(url.searchParams.get('limit'))
-  const offset = parsePositiveInt(url.searchParams.get('offset'), Number.MAX_SAFE_INTEGER)
+  const offset = parsePositiveInt(url.searchParams.get('offset'))
 
   try {
     const messages = await fetchSessionMessages(sessionId, config.workspace.root, { limit, offset })
