@@ -1,0 +1,33 @@
+apps/work-please/src/cli.ts
+  eea92607f83fda9b 4,44
+apps/work-please/server/api/v1/[identifier].get.ts
+  eea92607f83fda9b 6-13
+ARCHITECTURE.md
+  eea92607f83fda9b 27-33
+apps/work-please/server/plugins/02.chat-bot.ts
+  eea92607f83fda9b 96-104
+apps/work-please/server/api/webhooks/github.post.ts
+  eea92607f83fda9b 5-16,34-35,37,56
+apps/work-please/app/layouts/dashboard.vue
+  eea92607f83fda9b 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.15",
+  "base_commit_sha": "6c16bb7f708e31fb0a14893813ef72080c70ab68",
+  "prompts": {
+    "eea92607f83fda9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a1a7ec1b-1175-4faa-a64f-194dc6285a84",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Minsu Lee <amond@amond.net>",
+      "messages": [],
+      "total_additions": 44,
+      "total_deletions": 7,
+      "accepted_lines": 43,
+      "overriden_lines": 0
+    }
+  }
+}
