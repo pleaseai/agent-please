@@ -24,9 +24,13 @@ runtime environment.
 | File | Purpose |
 |------|---------|
 | `apps/work-please/src/index.ts` | Binary entry point — calls `runCli()` |
-| `apps/work-please/src/cli.ts` | CLI argument parsing (`run`, `init`, `--port`) and startup sequence |
-| `apps/work-please/src/orchestrator.ts` | Core poll/dispatch/retry loop — start reading here for runtime behavior |
-| `apps/work-please/src/server.ts` | Optional HTTP dashboard (`/`) and JSON API (`/api/v1/state`, `/api/v1/refresh`, `/api/v1/<identifier>`) |
+| `apps/work-please/src/cli.ts` | CLI argument parsing (`run`, `init`, `--port`) and Nuxt server startup |
+| `packages/core/src/orchestrator.ts` | Core poll/dispatch/retry loop — start reading here for runtime behavior |
+| `apps/work-please/server/plugins/01.orchestrator.ts` | Nitro plugin: creates & starts the Orchestrator on server boot |
+| `apps/work-please/server/api/v1/state.get.ts` | GET `/api/v1/state` — orchestrator state snapshot |
+| `apps/work-please/server/api/v1/refresh.post.ts` | POST `/api/v1/refresh` — trigger immediate poll |
+| `apps/work-please/server/api/v1/[identifier].get.ts` | GET `/api/v1/:identifier` — per-issue detail |
+| `apps/work-please/server/api/webhooks/github.post.ts` | POST `/api/webhooks/github` — GitHub webhook handler |
 | `WORKFLOW.md` | User-authored config file in the **target repository** (not this repo) — defines tracker settings, hooks, agent limits, and the Liquid prompt template |
 
 ## Module Structure

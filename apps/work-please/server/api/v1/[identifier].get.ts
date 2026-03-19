@@ -1,9 +1,16 @@
-import type { OrchestratorState, RunningEntry, RetryEntry } from '@pleaseai/core'
+import type { OrchestratorState, RetryEntry, RunningEntry } from '@pleaseai/core'
 import { workspacePath } from '@pleaseai/core'
 
 export default defineEventHandler((event) => {
   const orchestrator = useOrchestrator(event)
-  const identifier = decodeURIComponent(getRouterParam(event, 'identifier') ?? '')
+  const raw = getRouterParam(event, 'identifier') ?? ''
+  let identifier: string
+  try {
+    identifier = decodeURIComponent(raw)
+  }
+  catch {
+    throw createError({ statusCode: 400, statusMessage: 'Invalid identifier encoding' })
+  }
 
   if (!identifier) {
     throw createError({ statusCode: 400, statusMessage: 'Missing identifier' })

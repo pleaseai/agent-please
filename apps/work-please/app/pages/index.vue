@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { formatTokens, formatSecondsRunning, formatDateTime } from '~/utils/format'
+import { formatDateTime, formatSecondsRunning, formatTokens } from '~/utils/format'
 
 definePageMeta({ layout: 'dashboard' })
 useHead({ title: 'Work Please — Dashboard' })

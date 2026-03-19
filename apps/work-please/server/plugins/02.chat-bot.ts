@@ -1,7 +1,7 @@
-import { Chat } from 'chat'
+import type { Orchestrator } from '@pleaseai/core'
 import { createGitHubAdapter } from '@chat-adapter/github'
 import { createMemoryState } from '@chat-adapter/state-memory'
-import type { Orchestrator } from '@pleaseai/core'
+import { Chat } from 'chat'
 
 export default defineNitroPlugin((nitroApp) => {
   const orchestrator = (nitroApp as any).orchestrator as Orchestrator | undefined
@@ -92,6 +92,15 @@ export default defineNitroPlugin((nitroApp) => {
 
   // Store bot on nitroApp for webhook handler access
   ;(nitroApp as any).chatBot = bot
+
+  nitroApp.hooks.hook('close', async () => {
+    try {
+      await bot.shutdown()
+    }
+    catch (err) {
+      console.error('[chat-bot] error during shutdown:', err)
+    }
+  })
 
   console.log('[chat-bot] GitHub adapter initialized')
 })

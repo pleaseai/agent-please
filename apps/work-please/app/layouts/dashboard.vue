@@ -8,7 +8,7 @@ const items = computed<NavigationMenuItem[]>(() => [{
 }, {
   label: 'Issues',
   icon: 'i-lucide-list-todo',
-  to: '/',
+  to: '/issues',
 }])
 </script>
 
