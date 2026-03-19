@@ -1,0 +1,33 @@
+.claude/agent-memory/review-review-security-reviewer/MEMORY.md
+  9aaecf5aecd5dbb7 61-70
+.claude/agent-memory/review-review-silent-failure-hunter/MEMORY.md
+  9aaecf5aecd5dbb7 27-33
+apps/work-please/app/composables/useSessionMessages.ts
+  9aaecf5aecd5dbb7 8
+packages/core/src/session-renderer.ts
+  9aaecf5aecd5dbb7 109,121,128-130,149,151
+packages/core/src/server.ts
+  9aaecf5aecd5dbb7 7,123-125,139-141,143-147,151-155,167,289-290,295,298,304-307,309-312,317,395
+.claude/agent-memory/review-review-issue-fixer/MEMORY.md
+  9aaecf5aecd5dbb7 7-8,21-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.15",
+  "base_commit_sha": "c33145b4c5e2bfba61b1fd9b5db55faa4c0228da",
+  "prompts": {
+    "9aaecf5aecd5dbb7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c2a5f502-03b4-4779-b70d-798ed36583f8",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Minsu Lee <amond@amond.net>",
+      "messages": [],
+      "total_additions": 69,
+      "total_deletions": 33,
+      "accepted_lines": 65,
+      "overriden_lines": 0
+    }
+  }
+}
