@@ -9,7 +9,7 @@ export function useIssueDetail(identifier: Ref<string> | (() => string), interva
   )
 
   const error = computed(() => fetchError.value?.message ?? null)
-  const loading = computed(() => status.value === 'pending')
+  const loading = computed(() => status.value === 'pending' && !detail.value)
 
   const { pause } = useIntervalFn(refresh, intervalMs)
   onScopeDispose(pause)

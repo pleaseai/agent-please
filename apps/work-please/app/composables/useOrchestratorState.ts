@@ -6,7 +6,7 @@ export function useOrchestratorState(intervalMs = 3000) {
   })
 
   const error = computed(() => fetchError.value?.message ?? null)
-  const loading = computed(() => status.value === 'pending')
+  const loading = computed(() => status.value === 'pending' && !state.value)
 
   const { pause } = useIntervalFn(refresh, intervalMs)
   onScopeDispose(pause)
