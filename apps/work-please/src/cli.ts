@@ -47,8 +47,9 @@ export async function runCli(argv: string[]): Promise<void> {
   // Start the Nuxt server
   console.log(`[work-please] starting with workflow: ${resolvedPath}`)
   try {
-    // Dynamic import of the Nuxt server output
-    await import('../.output/server/index.mjs')
+    // Compute path at runtime to prevent bun build from bundling Nuxt output
+    const serverEntry = resolve(import.meta.dir, '..', '.output', 'server', 'index.mjs')
+    await import(serverEntry)
   }
   catch (err) {
     console.error('[work-please] failed to start server:', err)
