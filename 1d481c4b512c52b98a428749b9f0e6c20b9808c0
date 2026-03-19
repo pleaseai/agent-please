@@ -1,0 +1,27 @@
+turbo.json
+  eea92607f83fda9b 6
+apps/work-please/src/cli.ts
+  eea92607f83fda9b 16,32,36-39,41-42,45-46,48-49,52,132
+apps/work-please/package.json
+  eea92607f83fda9b 23-24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.15",
+  "base_commit_sha": "1d481c4b512c52b98a428749b9f0e6c20b9808c0",
+  "prompts": {
+    "eea92607f83fda9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a1a7ec1b-1175-4faa-a64f-194dc6285a84",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Minsu Lee <amond@amond.net>",
+      "messages": [],
+      "total_additions": 18,
+      "total_deletions": 49,
+      "accepted_lines": 18,
+      "overriden_lines": 0
+    }
+  }
+}
