@@ -5,7 +5,7 @@ export function useSessionMessages(sessionId: Ref<string> | (() => string), inte
 
   const { data: messages, error: fetchError, status, refresh } = useFetch<SessionMessage[]>(
     () => `/api/v1/sessions/${encodeURIComponent(id.value)}/messages`,
-    { lazy: true, watch: [id], default: () => [] },
+    { watch: [id], default: () => [] },
   )
 
   const error = computed(() => fetchError.value?.message ?? null)

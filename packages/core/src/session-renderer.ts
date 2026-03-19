@@ -106,7 +106,7 @@ const ESC_LT_RE = /</g
 const ESC_GT_RE = />/g
 const ESC_QUOT_RE = /"/g
 
-function esc(s: string): string {
+export function esc(s: string): string {
   return s
     .replace(ESC_AMP_RE, '&amp;')
     .replace(ESC_LT_RE, '&lt;')
@@ -118,11 +118,15 @@ export function buildSessionPageHtml(
   sessionId: string,
   running: RunningEntry | undefined,
   messages: Array<{ type: string, uuid: string, content: ContentBlock[] }>,
+  loadError?: string,
 ): string {
   const messageRows = messages.map(m => renderMessageRow(m, esc)).join('')
   const title = running ? esc(running.identifier) : esc(sessionId.slice(0, 8))
   const meta = running
     ? `<p>Issue: <strong>${esc(running.identifier)}</strong> — ${esc(running.issue.title)}<br>Turn: ${running.turn_count} | Tokens: ${running.agent_total_tokens}</p>`
+    : ''
+  const errorBanner = loadError
+    ? `<p style="color:#f38ba8;background:#3e1212;padding:0.6rem 1rem;border-radius:4px;border-left:3px solid #f38ba8"><strong>Error:</strong> ${esc(loadError)}</p>`
     : ''
 
   return `<!DOCTYPE html>
@@ -142,8 +146,9 @@ export function buildSessionPageHtml(
 <p><a href="/">&larr; Dashboard</a></p>
 <h1>Session ${esc(sessionId.slice(0, 8))}…</h1>
 ${meta}
+${errorBanner}
 <h2>Conversation</h2>
-${messages.length === 0 ? '<p>No messages found.</p>' : messageRows}
+${messages.length === 0 && !loadError ? '<p>No messages found.</p>' : messageRows}
 <p style="color:#585b70;font-size:0.85rem">Generated ${new Date().toISOString()}</p>
 </body>
 </html>`

@@ -4,8 +4,8 @@
 
 ### Package Manager
 - Always use `bun` / `bunx` (not npm/pnpm)
-- Type check commands: `bun run check --filter=@pleaseai/dashboard` and `bun run check:app`
-- Lint command (non-blocking): `bun run lint --filter=@pleaseai/dashboard`
+- Type check commands: `bun run check` (all workspaces) or `bun run check:app`
+- Lint command (non-blocking): `bun run lint`
 
 ### Known Pre-existing Lint Issues
 - `apps/dashboard/vite.config.ts:6` — `node/prefer-global/process` error (pre-existing, not introduced by fixes)
@@ -17,6 +17,11 @@
 - Overlap guard pattern: `let fetching = false` outside `load()`, guard at top of `load()`, reset in `finally`
 - Security headers: defined as `SECURITY_HEADERS` const, spread into response headers
 - Server file: `apps/work-please/src/server.ts` — handles API routes and static file serving
+
+### ESLint Style Notes
+- CSP strings with single quotes inside must use template literals, not double-quoted strings (ESLint `style/quotes` rule)
+- Removing code blocks may leave trailing blank lines — check file end for `style/no-multiple-empty-lines` violations
+- `@antfu/eslint-config` enforces single quotes / template literals; no double quotes allowed
 
 ### JSON Editing Notes
 - When removing a trailing block from package.json, check for trailing comma on previous property

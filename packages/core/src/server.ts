@@ -4,7 +4,7 @@ import type { OrchestratorState, RetryEntry, RunningEntry } from './types'
 import type { VerifySignature } from './webhook'
 import { existsSync } from 'node:fs'
 import { extname, join, normalize, resolve, sep } from 'node:path'
-import { buildSessionPageHtml, fetchSessionMessages, findRunningBySessionId, isValidSessionId, parsePositiveInt } from './session-renderer'
+import { buildSessionPageHtml, esc, fetchSessionMessages, findRunningBySessionId, isValidSessionId, parsePositiveInt } from './session-renderer'
 import { createVerify, handleWebhook } from './webhook'
 import { workspacePath } from './workspace'
 
@@ -12,10 +12,6 @@ const DEFAULT_HOST = '127.0.0.1'
 const ISSUE_PATH_RE = /^\/api\/v1\/([^/]+)$/
 const SESSION_PAGE_RE = /^\/sessions\/([^/]+)$/
 const SESSION_MESSAGES_RE = /^\/api\/v1\/sessions\/([^/]+)\/messages$/
-const ESC_AMP_RE = /&/g
-const ESC_LT_RE = /</g
-const ESC_GT_RE = />/g
-const ESC_QUOT_RE = /"/g
 
 const DASHBOARD_DIST = resolve(
   Bun.env.DASHBOARD_DIST
@@ -124,15 +120,9 @@ export class HttpServer {
       return handleWebhook(req, verify, events, () => orchestrator.triggerRefresh())
     }
 
-    const sessionMsgMatch = pathname.match(SESSION_MESSAGES_RE)
-    if (sessionMsgMatch) {
-      if (req.method !== 'GET')
-        return methodNotAllowed()
-      const sessionId = decodeURIComponent(sessionMsgMatch[1])
-      if (!isValidSessionId(sessionId))
-        return errorResponse(400, 'invalid_session_id', 'Invalid session ID')
-      return sessionMessagesResponse(orchestrator, sessionId, url)
-    }
+    const sessionResult = this.routeSessionRequest(req, pathname, url)
+    if (sessionResult !== null)
+      return sessionResult
 
     const issueMatch = pathname.match(ISSUE_PATH_RE)
     if (issueMatch) {
@@ -146,6 +136,23 @@ export class HttpServer {
     if (pathname.startsWith('/api/'))
       return notFound()
 
+    // Static file serving from dashboard dist
+    return this.serveStatic(pathname, orchestrator)
+  }
+
+  private routeSessionRequest(req: Request, pathname: string, url: URL): Response | Promise<Response> | null {
+    const orchestrator = this.orchestrator
+
+    const sessionMsgMatch = pathname.match(SESSION_MESSAGES_RE)
+    if (sessionMsgMatch) {
+      if (req.method !== 'GET')
+        return methodNotAllowed()
+      const sessionId = decodeURIComponent(sessionMsgMatch[1])
+      if (!isValidSessionId(sessionId))
+        return errorResponse(400, 'invalid_session_id', 'Invalid session ID')
+      return sessionMessagesResponse(orchestrator, sessionId, url)
+    }
+
     // Session page (non-API HTML route)
     const sessionPageMatch = pathname.match(SESSION_PAGE_RE)
     if (sessionPageMatch) {
@@ -157,8 +164,7 @@ export class HttpServer {
       return sessionPageResponse(orchestrator, sessionId)
     }
 
-    // Static file serving from dashboard dist
-    return this.serveStatic(pathname, orchestrator)
+    return null
   }
 
   private serveStatic(pathname: string, orchestrator: Orchestrator): Response {
@@ -280,24 +286,35 @@ async function sessionMessagesResponse(orchestrator: Orchestrator, sessionId: st
   }
 }
 
+const SESSION_PAGE_CSP = `default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'`
+
 async function sessionPageResponse(orchestrator: Orchestrator, sessionId: string): Promise<Response> {
   const state = orchestrator.getState()
   const config = orchestrator.getConfig()
   const running = findRunningBySessionId(state, sessionId)
+  const sessionHeaders = { ...SECURITY_HEADERS, 'Content-Type': 'text/html; charset=utf-8', 'Content-Security-Policy': SESSION_PAGE_CSP }
 
   let messages: Array<{ type: string, uuid: string, content: ContentBlock[] }> = []
+  let loadError: string | undefined
   try {
     messages = await fetchSessionMessages(sessionId, config.workspace.root)
   }
   catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
-    if (!msg.includes('ENOENT') && !msg.toLowerCase().includes('not found'))
+    if (msg.includes('ENOENT') || msg.toLowerCase().includes('not found')) {
+      // session not found — render empty page normally
+    }
+    else {
       console.error('[server] sessionPageResponse error:', err)
+      loadError = msg
+      const html = buildSessionPageHtml(sessionId, running, [], loadError)
+      return new Response(html, { status: 500, headers: sessionHeaders })
+    }
   }
 
   const html = buildSessionPageHtml(sessionId, running, messages)
   return new Response(html, {
-    headers: { ...SECURITY_HEADERS, 'Content-Type': 'text/html; charset=utf-8' },
+    headers: sessionHeaders,
   })
 }
 
@@ -375,7 +392,7 @@ ${retrying.length === 0
 </html>`
 
   return new Response(html, {
-    headers: { ...SECURITY_HEADERS, 'Content-Type': 'text/html; charset=utf-8' },
+    headers: { ...SECURITY_HEADERS, 'Content-Type': 'text/html; charset=utf-8', 'Content-Security-Policy': SESSION_PAGE_CSP },
   })
 }
 
@@ -487,12 +504,4 @@ function methodNotAllowed(): Response {
 
 function notFound(): Response {
   return errorResponse(404, 'not_found', 'Route not found')
-}
-
-function esc(s: string): string {
-  return s
-    .replace(ESC_AMP_RE, '&amp;')
-    .replace(ESC_LT_RE, '&lt;')
-    .replace(ESC_GT_RE, '&gt;')
-    .replace(ESC_QUOT_RE, '&quot;')
 }

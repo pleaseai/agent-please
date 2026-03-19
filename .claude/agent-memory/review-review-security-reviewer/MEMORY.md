@@ -58,6 +58,16 @@
 5. SUGGESTION — API_PORT env var not range-validated in vite.config.ts (dev only)
 6. POSITIVE — Path traversal guard correctly implemented with sep suffix
 
+### PR amondnet/session-chat-view
+1. IMPORTANT — Unbounded offset cap: `parsePositiveInt(url.searchParams.get('offset'), Number.MAX_SAFE_INTEGER)` in server.ts:268 — offset should be capped at a reasonable value (e.g. 10,000) not MAX_SAFE_INTEGER
+2. IMPORTANT — No Content-Security-Policy on session page HTML response (server.ts ~line 300); SECURITY_HEADERS lacks CSP; easy fix: `"default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'"`
+3. POSITIVE — Session ID validated with allowlist regex `/^[\w-]{1,128}$/` before SDK call
+4. POSITIVE — All server-side HTML uses esc() throughout session-renderer.ts
+5. POSITIVE — Vue layer uses mustache-only interpolation; no v-html; encodeURIComponent on link construction
+6. POSITIVE — decodeURIComponent applied before isValidSessionId (correct order)
+7. NOTE — esc() helper duplicated in server.ts and session-renderer.ts (code quality, not security issue)
+8. NOTE — SECURITY_HEADERS now includes X-Content-Type-Options, X-Frame-Options, Referrer-Policy (previously flagged as missing — partially resolved)
+
 Notes:
 - Agent threads always have their cwd reset between bash calls; only use absolute file paths.
 - In final responses, share absolute file paths; include code snippets only when load-bearing.
