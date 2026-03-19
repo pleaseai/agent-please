@@ -35,7 +35,11 @@
     "tsdown@pleaseai": true,
     "typescript-lsp@code-intelligence": true,
     "vitest@pleaseai": true,
-    "worktree@passionfactory": true
+    "worktree@passionfactory": true,
+    "nuxt@pleaseai": true,
+    "nuxt-ui@pleaseai": true,
+    "chat-sdk@pleaseai": true,
+    "ai-sdk@pleaseai": true
   },
   "extraKnownMarketplaces": {
     "passionfactory": {
