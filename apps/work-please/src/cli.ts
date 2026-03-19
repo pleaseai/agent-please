@@ -3,11 +3,8 @@ import { resolve } from 'node:path'
 import process from 'node:process'
 import { Command, CommanderError } from 'commander'
 import pkg from '../package.json' with { type: 'json' }
+import { createLogger, HttpServer, Orchestrator, setVerbose, WORKFLOW_FILE_NAME } from '@pleaseai/core'
 import { runInit } from './init'
-import { createLogger, setVerbose } from './logger'
-import { Orchestrator } from './orchestrator'
-import { HttpServer } from './server'
-import { WORKFLOW_FILE_NAME } from './workflow'
 
 const log = createLogger('work-please')
 
