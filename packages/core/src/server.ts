@@ -306,7 +306,7 @@ async function sessionPageResponse(orchestrator: Orchestrator, sessionId: string
     }
     else {
       console.error('[server] sessionPageResponse error:', err)
-      loadError = msg
+      loadError = 'Failed to load session messages'
       const html = buildSessionPageHtml(sessionId, running, [], loadError)
       return new Response(html, { status: 500, headers: sessionHeaders })
     }
