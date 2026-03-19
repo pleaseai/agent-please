@@ -37,9 +37,11 @@ export default defineNitroPlugin((nitroApp) => {
   }
 
   const webhookSecret = config.server.webhook.secret
-  if (webhookSecret) {
-    adapterOpts.webhookSecret = webhookSecret
+  if (!webhookSecret) {
+    log.warn('no webhook secret configured — chat bot requires webhook mode')
+    return
   }
+  adapterOpts.webhookSecret = webhookSecret
 
   const botUsername = process.env.GITHUB_BOT_USERNAME || 'work-please'
 
