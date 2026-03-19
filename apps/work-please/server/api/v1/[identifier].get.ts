@@ -1,5 +1,5 @@
-import type { OrchestratorState, RetryEntry, RunningEntry } from '@pleaseai/core'
-import { workspacePath } from '@pleaseai/core'
+import type { OrchestratorState, RetryEntry, RunningEntry } from '@pleaseai/work-core'
+import { workspacePath } from '@pleaseai/work-core'
 
 export default defineEventHandler((event) => {
   const orchestrator = useOrchestrator(event)

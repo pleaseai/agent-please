@@ -62,7 +62,7 @@ work-please/                      # Monorepo root (Bun + Turborepo)
 │   │   │   └── webhooks/github.post.ts # POST /api/webhooks/github
 │   │   └── utils/orchestrator.ts # useOrchestrator() helper
 │   └── nuxt.config.ts            # Nuxt config (Bun preset, Nuxt UI)
-├── packages/core/                # @pleaseai/core — orchestrator business logic
+├── packages/core/                # @pleaseai/work-core — orchestrator business logic
 │   └── src/
 │       ├── orchestrator.ts       # Core loop: poll → reconcile → dispatch → retry
 │       ├── config.ts             # YAML front matter → typed ServiceConfig

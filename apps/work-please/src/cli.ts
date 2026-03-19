@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import process from 'node:process'
-import { setVerbose } from '@pleaseai/core'
+import { setVerbose } from '@pleaseai/work-core'
 import { Command, CommanderError } from 'commander'
 import pkg from '../package.json' with { type: 'json' }
 import { runInit } from './init'
