@@ -1,7 +1,7 @@
 import type { Orchestrator } from '@pleaseai/core'
 import type { H3Event } from 'h3'
 
-export function useOrchestrator(event: H3Event): Orchestrator {
+export function useOrchestrator(_event: H3Event): Orchestrator {
   const nitroApp = useNitroApp()
   const orchestrator = (nitroApp as any).orchestrator as Orchestrator | undefined
   if (!orchestrator) {

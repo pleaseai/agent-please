@@ -1,4 +1,5 @@
 import type { Orchestrator } from '@pleaseai/core'
+import process from 'node:process'
 import { createGitHubAdapter } from '@chat-adapter/github'
 import { createMemoryState } from '@chat-adapter/state-memory'
 import { Chat } from 'chat'
@@ -102,5 +103,5 @@ export default defineNitroPlugin((nitroApp) => {
     }
   })
 
-  console.log('[chat-bot] GitHub adapter initialized')
+  console.warn('[chat-bot] GitHub adapter initialized')
 })

@@ -1,3 +1,4 @@
+import process from 'node:process'
 import { Orchestrator } from '@pleaseai/core'
 
 export default defineNitroPlugin((nitroApp) => {

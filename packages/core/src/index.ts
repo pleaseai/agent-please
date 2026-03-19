@@ -1,3 +1,51 @@
+// Agent Environment
+export { resolveAgentEnv } from './agent-env'
+
+export type { TokenProvider } from './agent-env'
+
+// Agent Runner
+export { AppServerClient, extractRateLimits, extractUsage, isInputRequired } from './agent-runner'
+export type { AgentSession, SessionResult } from './agent-runner'
+
+// Config
+export {
+  buildConfig,
+  getActiveStates,
+  getTerminalStates,
+  getWatchedStates,
+  maxConcurrentForState,
+  normalizeState,
+  validateConfig,
+} from './config'
+
+export type { ValidationError } from './config'
+// Filter
+export { deduplicateByNormalized, hasFilter, matchesFilter, splitCandidatesAndWatched } from './filter'
+
+// Label
+export { createLabelService, formatLabelName, parseGitHubIssueUrl } from './label'
+export type { LabelService, LabelState } from './label'
+
+// Logger
+export { createLogger, isVerbose, setVerbose } from './logger'
+// Orchestrator
+export { buildTokenProvider, getLinkedPrUpdateMs, isWatchedUnchanged, Orchestrator } from './orchestrator'
+
+// Prompt Builder
+export { buildContinuationPrompt, buildPrompt, isPromptBuildError } from './prompt-builder'
+
+export type { PromptBuildError } from './prompt-builder'
+// Server
+export { HttpServer } from './server'
+
+// Tools
+export { createToolsMcpServer, executeTool, getToolSpecs } from './tools'
+export type { ToolResult, ToolSpec } from './tools'
+
+// Tracker
+export { createTrackerAdapter, formatTrackerError, isTrackerError } from './tracker'
+
+export type { TrackerAdapter, TrackerError } from './tracker'
 // Types
 export type {
   AgentEvent,
@@ -5,8 +53,8 @@ export type {
   AgentTotals,
   BlockerRef,
   ClaudeEffort,
-  IssueFilter,
   Issue,
+  IssueFilter,
   LinkedPR,
   LiveSession,
   OrchestratorState,
@@ -25,72 +73,24 @@ export type {
   Workspace,
 } from './types'
 
-// Orchestrator
-export { Orchestrator, getLinkedPrUpdateMs, isWatchedUnchanged, buildTokenProvider } from './orchestrator'
+// Webhook
+export { createVerify, handleWebhook, shouldProcessEvent } from './webhook'
 
-// Config
-export {
-  buildConfig,
-  validateConfig,
-  getActiveStates,
-  getTerminalStates,
-  getWatchedStates,
-  normalizeState,
-  maxConcurrentForState,
-} from './config'
-export type { ValidationError } from './config'
+export type { VerifySignature } from './webhook'
 
 // Workflow
-export { WORKFLOW_FILE_NAME, defaultWorkflowPath, loadWorkflow, parseWorkflow, isWorkflowError } from './workflow'
-
-// Prompt Builder
-export { buildPrompt, buildContinuationPrompt, isPromptBuildError } from './prompt-builder'
-export type { PromptBuildError } from './prompt-builder'
-
-// Agent Runner
-export { AppServerClient, extractRateLimits, extractUsage, isInputRequired } from './agent-runner'
-export type { SessionResult, AgentSession } from './agent-runner'
-
-// Agent Environment
-export { resolveAgentEnv } from './agent-env'
-export type { TokenProvider } from './agent-env'
-
+export { defaultWorkflowPath, isWorkflowError, loadWorkflow, parseWorkflow, WORKFLOW_FILE_NAME } from './workflow'
 // Workspace
 export {
-  generateClaudeSettings,
-  ensureClaudeSettings,
   _git,
-  extractRepoUrl,
-  resolveRepoDir,
-  ensureSharedClone,
-  createWorktree,
-  checkoutExistingBranch,
   buildHookEnv,
+  checkoutExistingBranch,
+  createWorktree,
+  ensureClaudeSettings,
+  ensureSharedClone,
+  extractRepoUrl,
+  generateClaudeSettings,
+  resolveRepoDir,
   sanitizeIdentifier,
   workspacePath,
 } from './workspace'
-
-// Tools
-export { getToolSpecs, executeTool, createToolsMcpServer } from './tools'
-export type { ToolSpec, ToolResult } from './tools'
-
-// Label
-export { parseGitHubIssueUrl, formatLabelName, createLabelService } from './label'
-export type { LabelState, LabelService } from './label'
-
-// Filter
-export { matchesFilter, hasFilter, deduplicateByNormalized, splitCandidatesAndWatched } from './filter'
-
-// Webhook
-export { createVerify, shouldProcessEvent, handleWebhook } from './webhook'
-export type { VerifySignature } from './webhook'
-
-// Logger
-export { createLogger, setVerbose, isVerbose } from './logger'
-
-// Server
-export { HttpServer } from './server'
-
-// Tracker
-export { createTrackerAdapter, formatTrackerError, isTrackerError } from './tracker'
-export type { TrackerAdapter, TrackerError } from './tracker'
