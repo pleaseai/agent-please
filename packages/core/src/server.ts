@@ -1,11 +1,12 @@
 import type { Orchestrator } from './orchestrator'
 import type { ContentBlock } from './session-renderer'
-import type { OrchestratorState, RetryEntry, RunningEntry } from './types'
+import type { AgentRunStatus, OrchestratorState, RetryEntry, RunningEntry } from './types'
 import type { VerifySignature } from './webhook'
 import { existsSync, readFileSync, statSync } from 'node:fs'
 import { extname, join, normalize, resolve, sep } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
+import { queryRuns } from './db'
 import { buildSessionPageHtml, esc, fetchSessionMessages, findRunningBySessionId, isValidSessionId, parsePositiveInt } from './session-renderer'
 import { createVerify, handleWebhook } from './webhook'
 import { workspacePath } from './workspace'
@@ -110,6 +111,12 @@ export class HttpServer {
       if (req.method !== 'GET')
         return methodNotAllowed()
       return stateResponse(orchestrator)
+    }
+
+    if (pathname === '/api/v1/runs') {
+      if (req.method !== 'GET')
+        return methodNotAllowed()
+      return runsResponse(orchestrator, url.searchParams)
     }
 
     if (pathname === '/api/v1/refresh') {
@@ -336,6 +343,25 @@ async function sessionPageResponse(orchestrator: Orchestrator, sessionId: string
   return new Response(html, {
     headers: sessionHeaders,
   })
+}
+
+const VALID_RUN_STATUSES = new Set<AgentRunStatus>(['success', 'failure', 'terminated'])
+
+async function runsResponse(orchestrator: Orchestrator, params: URLSearchParams): Promise<Response> {
+  const db = orchestrator.getDb()
+  const rawIdentifier = params.get('identifier') ?? undefined
+  if (rawIdentifier && rawIdentifier.length > 256)
+    return errorResponse(400, 'invalid_identifier', 'identifier must be 256 characters or fewer')
+  const identifier = rawIdentifier
+  const statusParam = params.get('status') ?? undefined
+  const status = statusParam && VALID_RUN_STATUSES.has(statusParam as AgentRunStatus)
+    ? statusParam as AgentRunStatus
+    : undefined
+  const limit = Math.min(Math.max(Number.parseInt(params.get('limit') ?? '50', 10) || 50, 1), 200)
+  const offset = Math.min(Math.max(Number.parseInt(params.get('offset') ?? '0', 10) || 0, 0), 100_000)
+
+  const runs = await queryRuns(db, { identifier, status, limit, offset })
+  return jsonResponse(runs)
 }
 
 function dashboardResponse(orchestrator: Orchestrator): Response {

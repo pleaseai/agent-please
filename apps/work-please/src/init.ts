@@ -250,6 +250,10 @@ claude:
 #   dashboard_enabled: true          # default: true; enable TUI dashboard
 #   refresh_ms: 1000                 # default: 1s; dashboard data refresh interval
 #   render_interval_ms: 16           # default: 16ms; TUI render interval
+# db:
+#   path: ".work-please/agent_runs.db"  # default: relative to workspace root
+#   turso_url: "$TURSO_DATABASE_URL"    # optional: Turso cloud URL
+#   turso_auth_token: "$TURSO_AUTH_TOKEN" # optional: Turso auth token
 # server:
 #   port: 3000                      # optional HTTP dashboard
 #   host: "127.0.0.1"               # default: localhost only

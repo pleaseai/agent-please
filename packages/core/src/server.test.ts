@@ -13,6 +13,7 @@ function makeConfig(overrides: Partial<ServiceConfig> = {}): ServiceConfig {
     agent: { max_concurrent_agents: 5, max_turns: 20, max_retry_backoff_ms: 300000, max_concurrent_agents_by_state: {} },
     claude: { model: null, effort: 'high' as const, command: 'claude', permission_mode: 'bypassPermissions', allowed_tools: [], setting_sources: [], turn_timeout_ms: 3600000, read_timeout_ms: 5000, stall_timeout_ms: 300000, sandbox: null, system_prompt: { type: 'preset', preset: 'claude_code' }, settings: { attribution: { commit: null, pr: null } } },
     env: {},
+    db: { path: '.work-please/agent_runs.db', turso_url: null, turso_auth_token: null },
     server: { port: null, webhook: { secret: null, events: null } },
     ...overrides,
   }
@@ -69,6 +70,7 @@ function makeOrchestratorStub(state: Partial<OrchestratorState> = {}) {
   return {
     getState: () => fullState,
     getConfig: () => makeConfig(),
+    getDb: () => null,
     triggerRefresh: () => {},
   }
 }
@@ -350,8 +352,27 @@ describe('HttpServer', () => {
     expect(body).toEqual([])
   })
 
+  test('GET /api/v1/runs returns empty array when DB is null', async () => {
+    const res = await fetch(`${baseUrl}/api/v1/runs`)
+    expect(res.status).toBe(200)
+    const body = await res.json() as unknown[]
+    expect(body).toEqual([])
+  })
+
+  test('GET /api/v1/runs ignores invalid status param', async () => {
+    const res = await fetch(`${baseUrl}/api/v1/runs?status=bogus`)
+    expect(res.status).toBe(200)
+    const body = await res.json() as unknown[]
+    expect(body).toEqual([])
+  })
+
   test('POST /api/v1/sessions/<id>/messages returns 405', async () => {
     const res = await fetch(`${baseUrl}/api/v1/sessions/sess-1/messages`, { method: 'POST' })
+    expect(res.status).toBe(405)
+  })
+
+  test('POST /api/v1/runs returns 405', async () => {
+    const res = await fetch(`${baseUrl}/api/v1/runs`, { method: 'POST' })
     expect(res.status).toBe(405)
   })
 })

@@ -29,6 +29,7 @@
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.72",
+    "@libsql/client": "^0.17.0",
     "@octokit/auth-app": "^8.2.0",
     "@octokit/graphql": "^9.0.3",
     "@octokit/webhooks": "^14.2.0",
