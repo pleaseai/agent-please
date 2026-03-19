@@ -1,5 +1,5 @@
 import process from 'node:process'
-import { createLogger, Orchestrator } from '@pleaseai/core'
+import { createLogger, Orchestrator } from '@pleaseai/work-core'
 
 const log = createLogger('orchestrator')
 

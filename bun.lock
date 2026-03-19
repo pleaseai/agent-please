@@ -15,7 +15,7 @@
     },
     "apps/work-please": {
       "name": "@pleaseai/work",
-      "version": "0.1.12",
+      "version": "0.1.13",
       "bin": {
         "work-please": "./dist/index.js",
       },
@@ -24,7 +24,7 @@
         "@chat-adapter/state-memory": "^4.20.2",
         "@nuxt/ui": "^4.5.1",
         "@octokit/graphql": "^9.0.3",
-        "@pleaseai/core": "workspace:*",
+        "@pleaseai/work-core": "workspace:*",
         "@vueuse/nuxt": "^14.2.1",
         "chat": "^4.20.2",
         "commander": "^14.0.3",
@@ -43,7 +43,7 @@
       },
     },
     "packages/core": {
-      "name": "@pleaseai/core",
+      "name": "@pleaseai/work-core",
       "version": "0.1.0",
       "dependencies": {
         "@anthropic-ai/claude-agent-sdk": "^0.2.72",
@@ -566,9 +566,9 @@
 
     "@pkgr/core": ["@pkgr/core@0.2.9", "", {}, "sha512-QNqXyfVS2wm9hweSYD2O7F0G06uurj9kZ96TRQE5Y9hU7+tgdZwIkbAKc5Ocy1HxEY2kuDQa6cQ1WRs/O5LFKA=="],
 
-    "@pleaseai/core": ["@pleaseai/core@workspace:packages/core"],
-
     "@pleaseai/work": ["@pleaseai/work@workspace:apps/work-please"],
+
+    "@pleaseai/work-core": ["@pleaseai/work-core@workspace:packages/core"],
 
     "@polka/url": ["@polka/url@1.0.0-next.29", "", {}, "sha512-wwQAWhWSuHaag8c4q/KN/vCoeOJYshAIvMQwD4GpSb3OiZklFfvAgmj0VCBBImRpuF/aFgIRzllXlVX93Jevww=="],
 

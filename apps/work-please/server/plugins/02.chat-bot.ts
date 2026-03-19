@@ -1,8 +1,8 @@
-import type { Orchestrator } from '@pleaseai/core'
+import type { Orchestrator } from '@pleaseai/work-core'
 import process from 'node:process'
 import { createGitHubAdapter } from '@chat-adapter/github'
 import { createMemoryState } from '@chat-adapter/state-memory'
-import { createLogger } from '@pleaseai/core'
+import { createLogger } from '@pleaseai/work-core'
 import { Chat } from 'chat'
 
 const log = createLogger('chat-bot')

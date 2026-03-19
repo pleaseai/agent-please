@@ -1,6 +1,6 @@
-import type { VerifySignature } from '@pleaseai/core'
+import type { VerifySignature } from '@pleaseai/work-core'
 import type { Chat } from 'chat'
-import { createLogger, createVerify, handleWebhook } from '@pleaseai/core'
+import { createLogger, createVerify, handleWebhook } from '@pleaseai/work-core'
 
 const log = createLogger('webhook')
 

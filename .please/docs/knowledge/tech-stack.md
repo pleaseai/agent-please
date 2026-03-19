@@ -68,7 +68,7 @@ work-please/                      # Monorepo root
 │   ├── app/                      # Client-side (pages, components, composables)
 │   ├── server/                   # Server-side (Nitro routes, plugins)
 │   └── src/                      # CLI entry point (Commander.js)
-├── packages/core/                # @pleaseai/core (orchestrator business logic)
+├── packages/core/                # @pleaseai/work-core (orchestrator business logic)
 └── vendor/symphony/              # Upstream reference spec (read-only)
 ```
 

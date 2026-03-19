@@ -9,6 +9,12 @@
       "package-name": "@pleaseai/work",
       "changelog-path": "CHANGELOG.md",
       "initial-version": "0.1.0"
+    },
+    "packages/core": {
+      "release-type": "node",
+      "package-name": "@pleaseai/work-core",
+      "changelog-path": "CHANGELOG.md",
+      "initial-version": "0.1.0"
     }
   }
 }
