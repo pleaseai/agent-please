@@ -24,6 +24,13 @@
 - **No Vue error boundary in App.vue**: Render-time exceptions (e.g. formatDateTime receiving null) produce blank page with no user feedback. Flagged in iter 2.
 - **No request timeout on fetch calls**: All three fetch helpers have no AbortSignal timeout, enabling infinite hangs that compound the overlap issue. Flagged in iter 2.
 
+## Patterns from amondnet/session-chat-view
+
+- **sessionPageResponse: non-ENOENT errors silently produce 200 + empty page**: catch at server.ts:292-296 logs but still returns HTML with zero messages and HTTP 200. Callers (browser user) get a blank "No messages found" page with no indication of the real failure. Confidence 82.
+- **useSessionMessages: no AbortSignal/timeout**: same pattern as prior composables -- fetch can hang indefinitely, compounding polling overlap. Confidence 80.
+- **useSessionMessages: polling continues unconditionally on repeated fetch errors**: `useIntervalFn` keeps firing on every error; no backoff, no cap, no user-visible indication after the first poll fails. Same pattern flagged in iter 2. Confidence 80.
+- **sessionMessagesResponse ENOENT -> 200+[]**: silently returns 200 empty array for a session file that does not exist; caller cannot distinguish "exists, 0 messages" from "not found". Borderline intentional (confidence ~75, not flagged).
+
 ## Files of Interest
 
 - `apps/work-please/src/orchestrator.ts` -- main dispatch/worker loop, many error handling paths

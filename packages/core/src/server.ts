@@ -1,17 +1,17 @@
 import type { Orchestrator } from './orchestrator'
+import type { ContentBlock } from './session-renderer'
 import type { OrchestratorState, RetryEntry, RunningEntry } from './types'
 import type { VerifySignature } from './webhook'
 import { existsSync } from 'node:fs'
 import { extname, join, normalize, resolve, sep } from 'node:path'
+import { buildSessionPageHtml, esc, fetchSessionMessages, findRunningBySessionId, isValidSessionId, parsePositiveInt } from './session-renderer'
 import { createVerify, handleWebhook } from './webhook'
 import { workspacePath } from './workspace'
 
 const DEFAULT_HOST = '127.0.0.1'
 const ISSUE_PATH_RE = /^\/api\/v1\/([^/]+)$/
-const ESC_AMP_RE = /&/g
-const ESC_LT_RE = /</g
-const ESC_GT_RE = />/g
-const ESC_QUOT_RE = /"/g
+const SESSION_PAGE_RE = /^\/sessions\/([^/]+)$/
+const SESSION_MESSAGES_RE = /^\/api\/v1\/sessions\/([^/]+)\/messages$/
 
 const DASHBOARD_DIST = resolve(
   Bun.env.DASHBOARD_DIST
@@ -120,6 +120,10 @@ export class HttpServer {
       return handleWebhook(req, verify, events, () => orchestrator.triggerRefresh())
     }
 
+    const sessionResult = this.routeSessionRequest(req, pathname, url)
+    if (sessionResult !== null)
+      return sessionResult
+
     const issueMatch = pathname.match(ISSUE_PATH_RE)
     if (issueMatch) {
       if (req.method !== 'GET')
@@ -136,8 +140,34 @@ export class HttpServer {
     return this.serveStatic(pathname, orchestrator)
   }
 
+  private routeSessionRequest(req: Request, pathname: string, url: URL): Response | Promise<Response> | null {
+    const orchestrator = this.orchestrator
+
+    const sessionMsgMatch = pathname.match(SESSION_MESSAGES_RE)
+    if (sessionMsgMatch) {
+      if (req.method !== 'GET')
+        return methodNotAllowed()
+      const sessionId = decodeURIComponent(sessionMsgMatch[1])
+      if (!isValidSessionId(sessionId))
+        return errorResponse(400, 'invalid_session_id', 'Invalid session ID')
+      return sessionMessagesResponse(orchestrator, sessionId, url)
+    }
+
+    // Session page (non-API HTML route)
+    const sessionPageMatch = pathname.match(SESSION_PAGE_RE)
+    if (sessionPageMatch) {
+      if (req.method !== 'GET')
+        return methodNotAllowed()
+      const sessionId = decodeURIComponent(sessionPageMatch[1])
+      if (!isValidSessionId(sessionId))
+        return errorResponse(400, 'invalid_session_id', 'Invalid session ID')
+      return sessionPageResponse(orchestrator, sessionId)
+    }
+
+    return null
+  }
+
   private serveStatic(pathname: string, orchestrator: Orchestrator): Response {
-    // Try exact file match from dashboard dist
     const resolved = normalize(join(DASHBOARD_DIST, pathname))
     if (resolved !== DASHBOARD_DIST && !resolved.startsWith(DASHBOARD_DIST_PREFIX))
       return notFound()
@@ -238,6 +268,56 @@ function refreshResponse(orchestrator: Orchestrator): Response {
   return jsonResponse(body, 202)
 }
 
+async function sessionMessagesResponse(orchestrator: Orchestrator, sessionId: string, url: URL): Promise<Response> {
+  const config = orchestrator.getConfig()
+  const limit = parsePositiveInt(url.searchParams.get('limit'))
+  const offset = parsePositiveInt(url.searchParams.get('offset'))
+
+  try {
+    const messages = await fetchSessionMessages(sessionId, config.workspace.root, { limit, offset })
+    return jsonResponse(messages)
+  }
+  catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    if (msg.includes('ENOENT') || msg.toLowerCase().includes('not found'))
+      return jsonResponse([])
+    console.error('[server] sessionMessagesResponse error:', err)
+    return errorResponse(500, 'session_load_error', 'Failed to load session messages')
+  }
+}
+
+const SESSION_PAGE_CSP = `default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'`
+
+async function sessionPageResponse(orchestrator: Orchestrator, sessionId: string): Promise<Response> {
+  const state = orchestrator.getState()
+  const config = orchestrator.getConfig()
+  const running = findRunningBySessionId(state, sessionId)
+  const sessionHeaders = { ...SECURITY_HEADERS, 'Content-Type': 'text/html; charset=utf-8', 'Content-Security-Policy': SESSION_PAGE_CSP }
+
+  let messages: Array<{ type: string, uuid: string, content: ContentBlock[] }> = []
+  let loadError: string | undefined
+  try {
+    messages = await fetchSessionMessages(sessionId, config.workspace.root)
+  }
+  catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    if (msg.includes('ENOENT') || msg.toLowerCase().includes('not found')) {
+      // session not found — render empty page normally
+    }
+    else {
+      console.error('[server] sessionPageResponse error:', err)
+      loadError = 'Failed to load session messages'
+      const html = buildSessionPageHtml(sessionId, running, [], loadError)
+      return new Response(html, { status: 500, headers: sessionHeaders })
+    }
+  }
+
+  const html = buildSessionPageHtml(sessionId, running, messages)
+  return new Response(html, {
+    headers: sessionHeaders,
+  })
+}
+
 function dashboardResponse(orchestrator: Orchestrator): Response {
   const state = orchestrator.getState()
   const running = [...state.running.values()]
@@ -248,7 +328,7 @@ function dashboardResponse(orchestrator: Orchestrator): Response {
       <td>${esc(r.identifier)}</td>
       <td>${esc(r.issue.state)}</td>
       <td>${r.turn_count}</td>
-      <td>${esc(r.session_id ?? '')}</td>
+      <td>${r.session_id ? `<a href="/sessions/${esc(r.session_id)}">${esc(r.session_id)}</a>` : ''}</td>
       <td>${esc(r.started_at.toISOString())}</td>
       <td>${esc(r.last_agent_event ?? '')}</td>
       <td>${r.agent_total_tokens}</td>
@@ -312,7 +392,7 @@ ${retrying.length === 0
 </html>`
 
   return new Response(html, {
-    headers: { ...SECURITY_HEADERS, 'Content-Type': 'text/html; charset=utf-8' },
+    headers: { ...SECURITY_HEADERS, 'Content-Type': 'text/html; charset=utf-8', 'Content-Security-Policy': SESSION_PAGE_CSP },
   })
 }
 
@@ -424,12 +504,4 @@ function methodNotAllowed(): Response {
 
 function notFound(): Response {
   return errorResponse(404, 'not_found', 'Route not found')
-}
-
-function esc(s: string): string {
-  return s
-    .replace(ESC_AMP_RE, '&amp;')
-    .replace(ESC_LT_RE, '&lt;')
-    .replace(ESC_GT_RE, '&gt;')
-    .replace(ESC_QUOT_RE, '&quot;')
 }
