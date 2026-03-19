@@ -1,0 +1,25 @@
+.gemini/settings.json
+  8fae2e8cbe6e82b0 1-5
+.please/config.yml
+  8fae2e8cbe6e82b0 12-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.15",
+  "base_commit_sha": "e9428c1f044ae4920d805f7ad23c21b39ddd63f8",
+  "prompts": {
+    "8fae2e8cbe6e82b0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9910d6a2-350e-42a9-ac0f-419768532b36",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Minsu Lee <amond@amond.net>",
+      "messages": [],
+      "total_additions": 13,
+      "total_deletions": 0,
+      "accepted_lines": 13,
+      "overriden_lines": 0
+    }
+  }
+}
