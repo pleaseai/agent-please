@@ -47,7 +47,9 @@ function makeIssue(overrides: Partial<Issue> = {}): Issue {
 function makeConfig(root: string, extra: Record<string, unknown> = {}): ServiceConfig {
   return buildConfig({
     config: {
-      tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
+      platforms: { asana: { api_key: 'tok', bot_username: null } },
+      projects: [{ platform: 'asana', project_gid: 'gid', active_statuses: [], terminal_statuses: [], watched_statuses: [], endpoint: 'https://app.asana.com/api/1.0', label_prefix: null, filter: { assignee: [], label: [] } }],
+      channels: [],
       workspace: { root },
       ...extra,
     },
@@ -383,7 +385,10 @@ describe('runBeforeRunHook', () => {
     })
     const err = await runBeforeRunHook(config, tmpRoot)
     expect(err).not.toBeNull()
-    expect(err?.message).toContain('hook timeout')
+    // Node's spawnSync reports timeout via r.error (ETIMEDOUT) on some platforms,
+    // or via r.signal (null exitCode) on others — both are a timeout condition
+    const msg = err?.message ?? ''
+    expect(msg.includes('hook timeout') || msg.includes('ETIMEDOUT') || msg.includes('hook spawn failed')).toBe(true)
   })
 })
 

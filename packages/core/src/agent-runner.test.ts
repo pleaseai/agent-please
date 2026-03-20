@@ -242,7 +242,9 @@ describe('AppServerClient - startSession workspace validation (Section 17.5)', (
   it('returns Error when workspace equals workspace root', async () => {
     const config = buildConfig({
       config: {
-        tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
+        platforms: { asana: { api_key: 'tok', bot_username: null } },
+        projects: [{ platform: 'asana', project_gid: 'gid', active_statuses: [], terminal_statuses: [], watched_statuses: [], endpoint: 'https://app.asana.com/api/1.0', label_prefix: null, filter: { assignee: [], label: [] } }],
+        channels: [],
         workspace: { root: tmpRoot },
         claude: { command: 'claude', read_timeout_ms: 2000, turn_timeout_ms: 5000 },
       },
@@ -259,7 +261,9 @@ describe('AppServerClient - startSession workspace validation (Section 17.5)', (
   it('returns Error when workspace is outside workspace root', async () => {
     const config = buildConfig({
       config: {
-        tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
+        platforms: { asana: { api_key: 'tok', bot_username: null } },
+        projects: [{ platform: 'asana', project_gid: 'gid', active_statuses: [], terminal_statuses: [], watched_statuses: [], endpoint: 'https://app.asana.com/api/1.0', label_prefix: null, filter: { assignee: [], label: [] } }],
+        channels: [],
         workspace: { root: tmpRoot },
         claude: { command: 'claude', read_timeout_ms: 2000, turn_timeout_ms: 5000 },
       },
@@ -279,7 +283,9 @@ describe('AppServerClient - startSession workspace validation (Section 17.5)', (
 
     const config = buildConfig({
       config: {
-        tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
+        platforms: { asana: { api_key: 'tok', bot_username: null } },
+        projects: [{ platform: 'asana', project_gid: 'gid', active_statuses: [], terminal_statuses: [], watched_statuses: [], endpoint: 'https://app.asana.com/api/1.0', label_prefix: null, filter: { assignee: [], label: [] } }],
+        channels: [],
         workspace: { root: tmpRoot },
         claude: { command: 'claude', read_timeout_ms: 2000, turn_timeout_ms: 5000 },
       },
@@ -301,7 +307,9 @@ describe('AppServerClient - startSession workspace validation (Section 17.5)', (
 
     const config = buildConfig({
       config: {
-        tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
+        platforms: { asana: { api_key: 'tok', bot_username: null } },
+        projects: [{ platform: 'asana', project_gid: 'gid', active_statuses: [], terminal_statuses: [], watched_statuses: [], endpoint: 'https://app.asana.com/api/1.0', label_prefix: null, filter: { assignee: [], label: [] } }],
+        channels: [],
         workspace: { root: tmpRoot },
         claude: { command: 'claude', read_timeout_ms: 2000, turn_timeout_ms: 5000 },
       },
@@ -321,7 +329,9 @@ describe('AppServerClient - startSession workspace validation (Section 17.5)', (
 
     const config = buildConfig({
       config: {
-        tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
+        platforms: { asana: { api_key: 'tok', bot_username: null } },
+        projects: [{ platform: 'asana', project_gid: 'gid', active_statuses: [], terminal_statuses: [], watched_statuses: [], endpoint: 'https://app.asana.com/api/1.0', label_prefix: null, filter: { assignee: [], label: [] } }],
+        channels: [],
         workspace: { root: tmpRoot },
         claude: { command: 'claude', read_timeout_ms: 2000, turn_timeout_ms: 5000 },
       },
@@ -355,7 +365,9 @@ describe('AppServerClient - runTurn with SDK mock (Section 17.5)', () => {
   function makeConfig() {
     return buildConfig({
       config: {
-        tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
+        platforms: { asana: { api_key: 'tok', bot_username: null } },
+        projects: [{ platform: 'asana', project_gid: 'gid', active_statuses: [], terminal_statuses: [], watched_statuses: [], endpoint: 'https://app.asana.com/api/1.0', label_prefix: null, filter: { assignee: [], label: [] } }],
+        channels: [],
         workspace: { root: tmpRoot },
         claude: { command: 'claude', read_timeout_ms: 2000, turn_timeout_ms: 5000 },
       },
@@ -520,7 +532,9 @@ describe('AppServerClient - runTurn with SDK mock (Section 17.5)', () => {
   it('aborts query and returns Error on turn_timeout', async () => {
     const config = buildConfig({
       config: {
-        tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
+        platforms: { asana: { api_key: 'tok', bot_username: null } },
+        projects: [{ platform: 'asana', project_gid: 'gid', active_statuses: [], terminal_statuses: [], watched_statuses: [], endpoint: 'https://app.asana.com/api/1.0', label_prefix: null, filter: { assignee: [], label: [] } }],
+        channels: [],
         workspace: { root: tmpRoot },
         claude: { command: 'claude', read_timeout_ms: 200, turn_timeout_ms: 300 },
       },
@@ -550,7 +564,9 @@ describe('AppServerClient - runTurn with SDK mock (Section 17.5)', () => {
   it('stopSession aborts the active query', async () => {
     const config = buildConfig({
       config: {
-        tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
+        platforms: { asana: { api_key: 'tok', bot_username: null } },
+        projects: [{ platform: 'asana', project_gid: 'gid', active_statuses: [], terminal_statuses: [], watched_statuses: [], endpoint: 'https://app.asana.com/api/1.0', label_prefix: null, filter: { assignee: [], label: [] } }],
+        channels: [],
         workspace: { root: tmpRoot },
         claude: { command: 'claude', read_timeout_ms: 2000, turn_timeout_ms: 5000 },
       },
@@ -754,7 +770,9 @@ describe('AppServerClient - runTurn with SDK mock (Section 17.5)', () => {
 
     const config = buildConfig({
       config: {
-        tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
+        platforms: { asana: { api_key: 'tok', bot_username: null } },
+        projects: [{ platform: 'asana', project_gid: 'gid', active_statuses: [], terminal_statuses: [], watched_statuses: [], endpoint: 'https://app.asana.com/api/1.0', label_prefix: null, filter: { assignee: [], label: [] } }],
+        channels: [],
         workspace: { root: tmpRoot },
         claude: { command: 'claude', permission_mode: 'bypassPermissions', read_timeout_ms: 2000, turn_timeout_ms: 5000 },
       },
@@ -883,7 +901,9 @@ describe('AppServerClient - runTurn with SDK mock (Section 17.5)', () => {
 
     const config = buildConfig({
       config: {
-        tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
+        platforms: { asana: { api_key: 'tok', bot_username: null } },
+        projects: [{ platform: 'asana', project_gid: 'gid', active_statuses: [], terminal_statuses: [], watched_statuses: [], endpoint: 'https://app.asana.com/api/1.0', label_prefix: null, filter: { assignee: [], label: [] } }],
+        channels: [],
         workspace: { root: tmpRoot },
         claude: { command: '/usr/local/bin/custom-claude', read_timeout_ms: 2000, turn_timeout_ms: 5000 },
       },
@@ -933,7 +953,9 @@ describe('AppServerClient - runTurn with SDK mock (Section 17.5)', () => {
 
     const config = buildConfig({
       config: {
-        tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
+        platforms: { asana: { api_key: 'tok', bot_username: null } },
+        projects: [{ platform: 'asana', project_gid: 'gid', active_statuses: [], terminal_statuses: [], watched_statuses: [], endpoint: 'https://app.asana.com/api/1.0', label_prefix: null, filter: { assignee: [], label: [] } }],
+        channels: [],
         workspace: { root: tmpRoot },
         claude: { command: 'claude', model: 'claude-sonnet-4-6', read_timeout_ms: 2000, turn_timeout_ms: 5000 },
       },
@@ -1004,7 +1026,9 @@ describe('AppServerClient - runTurn with SDK mock (Section 17.5)', () => {
 
     const config = buildConfig({
       config: {
-        tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
+        platforms: { asana: { api_key: 'tok', bot_username: null } },
+        projects: [{ platform: 'asana', project_gid: 'gid', active_statuses: [], terminal_statuses: [], watched_statuses: [], endpoint: 'https://app.asana.com/api/1.0', label_prefix: null, filter: { assignee: [], label: [] } }],
+        channels: [],
         workspace: { root: tmpRoot },
         claude: { command: 'claude', read_timeout_ms: 2000, turn_timeout_ms: 5000, setting_sources: [] },
       },
@@ -1055,7 +1079,9 @@ describe('AppServerClient - runTurn with SDK mock (Section 17.5)', () => {
 
     const config = buildConfig({
       config: {
-        tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
+        platforms: { asana: { api_key: 'tok', bot_username: null } },
+        projects: [{ platform: 'asana', project_gid: 'gid', active_statuses: [], terminal_statuses: [], watched_statuses: [], endpoint: 'https://app.asana.com/api/1.0', label_prefix: null, filter: { assignee: [], label: [] } }],
+        channels: [],
         workspace: { root: tmpRoot },
         claude: { command: 'claude', system_prompt: 'You are a specialized agent.', read_timeout_ms: 2000, turn_timeout_ms: 5000 },
       },
@@ -1084,7 +1110,9 @@ describe('AppServerClient - runTurn with SDK mock (Section 17.5)', () => {
 
     const config = buildConfig({
       config: {
-        tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
+        platforms: { asana: { api_key: 'tok', bot_username: null } },
+        projects: [{ platform: 'asana', project_gid: 'gid', active_statuses: [], terminal_statuses: [], watched_statuses: [], endpoint: 'https://app.asana.com/api/1.0', label_prefix: null, filter: { assignee: [], label: [] } }],
+        channels: [],
         workspace: { root: tmpRoot },
         claude: { command: 'claude', read_timeout_ms: 2000, turn_timeout_ms: 5000, setting_sources: ['project'] },
       },
@@ -1113,7 +1141,9 @@ describe('AppServerClient - runTurn with SDK mock (Section 17.5)', () => {
 
     const config = buildConfig({
       config: {
-        tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
+        platforms: { asana: { api_key: 'tok', bot_username: null } },
+        projects: [{ platform: 'asana', project_gid: 'gid', active_statuses: [], terminal_statuses: [], watched_statuses: [], endpoint: 'https://app.asana.com/api/1.0', label_prefix: null, filter: { assignee: [], label: [] } }],
+        channels: [],
         workspace: { root: tmpRoot },
         claude: {
           command: 'claude',
@@ -1147,7 +1177,9 @@ describe('AppServerClient - runTurn with SDK mock (Section 17.5)', () => {
 
     const config = buildConfig({
       config: {
-        tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
+        platforms: { asana: { api_key: 'tok', bot_username: null } },
+        projects: [{ platform: 'asana', project_gid: 'gid', active_statuses: [], terminal_statuses: [], watched_statuses: [], endpoint: 'https://app.asana.com/api/1.0', label_prefix: null, filter: { assignee: [], label: [] } }],
+        channels: [],
         workspace: { root: tmpRoot },
         claude: { command: 'claude', read_timeout_ms: 2000, turn_timeout_ms: 5000, setting_sources: ['project', 'user', 'local'] },
       },
@@ -1177,7 +1209,9 @@ describe('AppServerClient - runTurn with SDK mock (Section 17.5)', () => {
 
     const config = buildConfig({
       config: {
-        tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
+        platforms: { asana: { api_key: 'tok', bot_username: null } },
+        projects: [{ platform: 'asana', project_gid: 'gid', active_statuses: [], terminal_statuses: [], watched_statuses: [], endpoint: 'https://app.asana.com/api/1.0', label_prefix: null, filter: { assignee: [], label: [] } }],
+        channels: [],
         workspace: { root: tmpRoot },
         claude: { command: 'claude', effort: 'low', read_timeout_ms: 2000, turn_timeout_ms: 5000 },
       },
@@ -1206,7 +1240,9 @@ describe('AppServerClient - runTurn with SDK mock (Section 17.5)', () => {
 
     const config = buildConfig({
       config: {
-        tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
+        platforms: { asana: { api_key: 'tok', bot_username: null } },
+        projects: [{ platform: 'asana', project_gid: 'gid', active_statuses: [], terminal_statuses: [], watched_statuses: [], endpoint: 'https://app.asana.com/api/1.0', label_prefix: null, filter: { assignee: [], label: [] } }],
+        channels: [],
         workspace: { root: tmpRoot },
         claude: {
           command: 'claude',
@@ -1263,7 +1299,9 @@ describe('AppServerClient - runTurn with SDK mock (Section 17.5)', () => {
 
     const config = buildConfig({
       config: {
-        tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
+        platforms: { asana: { api_key: 'tok', bot_username: null } },
+        projects: [{ platform: 'asana', project_gid: 'gid', active_statuses: [], terminal_statuses: [], watched_statuses: [], endpoint: 'https://app.asana.com/api/1.0', label_prefix: null, filter: { assignee: [], label: [] } }],
+        channels: [],
         workspace: { root: tmpRoot },
         claude: { command: 'claude', read_timeout_ms: 2000, turn_timeout_ms: 5000 },
       },
@@ -1291,7 +1329,9 @@ describe('AppServerClient - runTurn with SDK mock (Section 17.5)', () => {
 
     const config = buildConfig({
       config: {
-        tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
+        platforms: { asana: { api_key: 'tok', bot_username: null } },
+        projects: [{ platform: 'asana', project_gid: 'gid', active_statuses: [], terminal_statuses: [], watched_statuses: [], endpoint: 'https://app.asana.com/api/1.0', label_prefix: null, filter: { assignee: [], label: [] } }],
+        channels: [],
         workspace: { root: tmpRoot },
         claude: { command: 'claude', read_timeout_ms: 2000, turn_timeout_ms: 5000 },
       },

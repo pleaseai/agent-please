@@ -131,7 +131,9 @@ describe('shouldHandleComment', () => {
 describe('handleIssueCommentMention', () => {
   function makeConfig(): ServiceConfig {
     return {
-      tracker: { kind: 'github_projects', endpoint: '', api_key: 'ghtoken', owner: 'myorg', project_number: 1, label_prefix: null, filter: { assignee: [], label: [] } },
+      platforms: { github: { api_key: 'ghtoken', owner: 'myorg', bot_username: 'my-bot', app_id: null, private_key: null, installation_id: null } },
+      projects: [{ platform: 'github', project_number: 1, active_statuses: [], terminal_statuses: [], watched_statuses: [], endpoint: 'https://api.github.com', label_prefix: null, filter: { assignee: [], label: [] } }],
+      channels: [{ platform: 'github' }],
       polling: { mode: 'poll' as const, interval_ms: 30000 },
       // Use a path that cannot be created (file used as directory root) to force deterministic failure
       workspace: { root: '/dev/null/workspaces' },
@@ -139,9 +141,8 @@ describe('handleIssueCommentMention', () => {
       agent: { max_concurrent_agents: 5, max_turns: 20, max_retry_backoff_ms: 300000, max_concurrent_agents_by_state: {} },
       claude: { model: null, effort: 'high' as const, command: 'claude', permission_mode: 'bypassPermissions', allowed_tools: [], setting_sources: [], turn_timeout_ms: 3600000, read_timeout_ms: 5000, stall_timeout_ms: 300000, sandbox: null, system_prompt: { type: 'preset', preset: 'claude_code' }, settings: { attribution: { commit: null, pr: null } } },
       env: {},
-      db: { path: '.work-please/agent_runs.db', turso_url: null, turso_auth_token: null },
+      db: { path: '.agent-please/agent_runs.db', turso_url: null, turso_auth_token: null },
       server: { port: null, webhook: { secret: null, events: null } },
-      chat: { bot_username: 'my-bot', github: null, slack: null },
     }
   }
 
