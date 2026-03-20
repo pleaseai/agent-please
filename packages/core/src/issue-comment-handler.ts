@@ -102,7 +102,7 @@ export async function handleIssueCommentMention(
   deps: IssueCommentHandlerDeps,
 ): Promise<void> {
   const { config, workflow, github, tokenProvider } = deps
-  const botUsername = config.chat.bot_username || 'work-please'
+  const botUsername = config.chat.bot_username || 'agent-please'
   const { owner: { login: owner }, name: repo } = payload.repository
   const commentId = payload.comment.id
   const issueNumber = payload.issue.number
