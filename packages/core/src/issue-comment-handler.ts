@@ -1,5 +1,7 @@
 import type { TokenProvider } from './agent-env'
+import type { DispatchLock, DispatchLockAdapter } from './dispatch-lock'
 import type { AuthorAssociation, Issue, ServiceConfig, WorkflowDefinition } from './types'
+import { toDispatchLockKey } from './dispatch-lock'
 import { resolveAgentEnv } from './agent-env'
 import { AppServerClient } from './agent-runner'
 import { createLogger } from './logger'
@@ -46,6 +48,7 @@ export interface IssueCommentHandlerDeps {
   workflow: WorkflowDefinition
   github: GitHubApi
   tokenProvider?: TokenProvider
+  dispatchLockAdapter?: DispatchLockAdapter
 }
 
 /**
@@ -101,7 +104,7 @@ export async function handleIssueCommentMention(
   payload: IssueCommentPayload,
   deps: IssueCommentHandlerDeps,
 ): Promise<void> {
-  const { config, workflow, github, tokenProvider } = deps
+  const { config, workflow, github, tokenProvider, dispatchLockAdapter } = deps
   // Resolve bot_username from the first github platform (by kind, not key name)
   const githubPlatform = Object.values(config.platforms).find((platform): platform is import('./types').GitHubPlatformConfig => platform.kind === 'github')
   const botUsername = githubPlatform?.bot_username || 'agent-please'
@@ -113,6 +116,17 @@ export async function handleIssueCommentMention(
   if (!prompt) {
     log.warn(`no mention found in comment ${commentId} — skipping`)
     return
+  }
+
+  // Acquire dispatch lock (if adapter configured)
+  let dispatchLock: DispatchLock | null = null
+  if (dispatchLockAdapter) {
+    const lockKey = `github:${owner}/${repo}:issue:${issueNumber}`
+    dispatchLock = await dispatchLockAdapter.acquireLock(lockKey, 5 * 60 * 1000)
+    if (!dispatchLock) {
+      log.info(`dispatch lock held for ${lockKey} — skipping comment handler`)
+      return
+    }
   }
 
   log.info(`handling @mention in ${owner}/${repo}#${issueNumber} comment=${commentId}`)
@@ -242,6 +256,14 @@ export async function handleIssueCommentMention(
     }
     catch (postErr) {
       log.error(`failed to post error comment: ${postErr}`)
+    }
+  }
+  finally {
+    // Release dispatch lock
+    if (dispatchLock && dispatchLockAdapter) {
+      await dispatchLockAdapter.releaseLock(dispatchLock).catch((err) => {
+        log.warn(`dispatch lock release failed: ${err}`)
+      })
     }
   }
 }
