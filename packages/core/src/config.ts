@@ -180,7 +180,10 @@ function buildChatConfig(chat: Record<string, unknown>): ChatConfig {
   const hasSlack = hasSlackKey && (slackBotToken != null || slackSigningSecret != null)
 
   return {
-    bot_username: resolveEnvValue(stringValue(chat.bot_username), process.env.CHAT_BOT_USERNAME),
+    bot_username: resolveEnvValue(
+      stringValue(chat.bot_username),
+      process.env.CHAT_BOT_USERNAME ?? process.env.GITHUB_BOT_USERNAME,
+    ),
     github: hasGithubKey ? {} : null,
     slack: hasSlack
       ? { bot_token: slackBotToken, signing_secret: slackSigningSecret }

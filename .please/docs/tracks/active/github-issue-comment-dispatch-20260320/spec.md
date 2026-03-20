@@ -17,7 +17,7 @@ Add a `chat` config section to WORKFLOW.md and handle plain issue comments (not 
 - [ ] FR-5: On @mention detection, bot adds eyes reaction to the original comment (acknowledge)
 - [ ] FR-6: Comment text (minus @mention) is passed as prompt to Claude Code agent
 - [ ] FR-7: Agent response is posted as a new reply comment on the issue
-- [ ] FR-8: After reply, bot adds check_mark reaction to original comment and removes eyes
+- [ ] FR-8: After reply, bot adds rocket reaction to original comment and removes eyes
 - [x] FR-9: Existing PR comment handling (status response via Chat SDK) continues working unchanged
 
 ### Non-functional Requirements
