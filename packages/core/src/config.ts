@@ -1,8 +1,9 @@
-import type { ClaudeEffort, DbConfig, IssueFilter, PollingMode, SandboxConfig, ServiceConfig, SettingSource, SystemPromptConfig, WorkflowDefinition } from './types'
+import type { AuthorAssociation, ChatConfig, ChatGitHubConfig, ClaudeEffort, DbConfig, IssueFilter, PollingMode, SandboxConfig, ServiceConfig, SettingSource, SystemPromptConfig, WorkflowDefinition } from './types'
 import { tmpdir } from 'node:os'
 import { join, sep } from 'node:path'
 import process from 'node:process'
 import { createLogger } from './logger'
+import { DEFAULT_ALLOWED_ASSOCIATIONS } from './types'
 
 const log = createLogger('config')
 
@@ -78,6 +79,7 @@ export function buildConfig(workflow: WorkflowDefinition): ServiceConfig {
       port: nonNegIntOrNull(server.port),
       webhook: buildWebhookConfig(sectionMap(server, 'webhook')),
     },
+    chat: buildChatConfig(sectionMap(raw, 'chat')),
   }
 }
 
@@ -166,6 +168,52 @@ function buildWebhookConfig(webhook: Record<string, unknown>): ServiceConfig['se
   return {
     secret: resolveEnvValue(stringValue(webhook.secret), process.env.WEBHOOK_SECRET),
     events: csvValue(webhook.events) ?? null,
+  }
+}
+
+const VALID_ASSOCIATIONS = new Set<AuthorAssociation>([
+  'OWNER',
+  'MEMBER',
+  'COLLABORATOR',
+  'CONTRIBUTOR',
+  'FIRST_TIMER',
+  'FIRST_TIME_CONTRIBUTOR',
+  'NONE',
+])
+
+function buildChatGitHubConfig(github: Record<string, unknown>): ChatGitHubConfig {
+  const raw = github.allowed_associations
+  if (!raw)
+    return { allowed_associations: DEFAULT_ALLOWED_ASSOCIATIONS }
+
+  const list = csvValue(raw) ?? []
+  const valid = list
+    .map(s => s.toUpperCase() as AuthorAssociation)
+    .filter(s => VALID_ASSOCIATIONS.has(s))
+
+  return {
+    allowed_associations: valid.length > 0 ? valid : DEFAULT_ALLOWED_ASSOCIATIONS,
+  }
+}
+
+function buildChatConfig(chat: Record<string, unknown>): ChatConfig {
+  const hasGithubKey = chat.github !== undefined && chat.github !== null
+  const hasSlackKey = chat.slack !== undefined && chat.slack !== null
+
+  const slack = sectionMap(chat, 'slack')
+  const slackBotToken = resolveEnvValue(stringValue(slack.bot_token), process.env.SLACK_BOT_TOKEN)
+  const slackSigningSecret = resolveEnvValue(stringValue(slack.signing_secret), process.env.SLACK_SIGNING_SECRET)
+  const hasSlack = hasSlackKey && (slackBotToken != null || slackSigningSecret != null)
+
+  return {
+    bot_username: resolveEnvValue(
+      stringValue(chat.bot_username),
+      process.env.CHAT_BOT_USERNAME ?? process.env.GITHUB_BOT_USERNAME,
+    ),
+    github: hasGithubKey ? buildChatGitHubConfig(sectionMap(chat, 'github')) : null,
+    slack: hasSlack
+      ? { bot_token: slackBotToken, signing_secret: slackSigningSecret }
+      : null,
   }
 }
 

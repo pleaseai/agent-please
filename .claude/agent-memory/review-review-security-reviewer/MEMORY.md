@@ -58,6 +58,14 @@
 5. SUGGESTION — API_PORT env var not range-validated in vite.config.ts (dev only)
 6. POSITIVE — Path traversal guard correctly implemented with sep suffix
 
+### PR amondnet/issue-comment-dispatch
+1. CRITICAL — No signature guard on new agent dispatch path: when `webhook.secret` is null (documented default), unauthenticated callers can POST crafted `issue_comment` payloads to trigger Claude Code agent runs. `github.post.ts:75-87`. Mitigation: require secret to be set before allowing agent dispatch.
+2. IMPORTANT — Full `String(err)` posted to public GitHub comment in catch block: may leak stack traces, filesystem paths, or config values. `issue-comment-handler.ts:218-225`. Fix: log full error server-side, post only a generic message.
+3. IMPORTANT — `owner`, `repo`, `commentId`, `reactionId` from untrusted payload interpolated into GitHub API URLs without validation. No runtime type guard on numeric fields. `github.post.ts:29-63`. Fix: validate/sanitize + encodeURIComponent on string segments.
+4. POSITIVE — `escapeRegex` correctly prevents ReDoS in `extractMentionPrompt`.
+5. POSITIVE — `sanitizeIdentifier` + `validateWorkspacePath` with `resolve`/`sep` guard prevents path traversal on `identifier`.
+6. POSITIVE — Bearer token only sent to hardcoded `https://api.github.com` endpoints; no SSRF risk.
+
 ### PR amondnet/session-chat-view
 1. IMPORTANT — Unbounded offset cap: `parsePositiveInt(url.searchParams.get('offset'), Number.MAX_SAFE_INTEGER)` in server.ts:268 — offset should be capped at a reasonable value (e.g. 10,000) not MAX_SAFE_INTEGER
 2. IMPORTANT — No Content-Security-Policy on session page HTML response (server.ts ~line 300); SECURITY_HEADERS lacks CSP; easy fix: `"default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'"`

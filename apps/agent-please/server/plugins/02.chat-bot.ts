@@ -37,6 +37,9 @@ export default defineNitroPlugin((nitroApp) => {
     const webhookSecret = config.server.webhook.secret
     if (webhookSecret) {
       adapterOpts.webhookSecret = webhookSecret
+      if (config.chat.bot_username) {
+        adapterOpts.userName = config.chat.bot_username
+      }
       adapters.github = createGitHubAdapter(adapterOpts)
     }
     else {
@@ -44,9 +47,13 @@ export default defineNitroPlugin((nitroApp) => {
     }
   }
 
-  // Slack adapter: requires SLACK_BOT_TOKEN + SLACK_SIGNING_SECRET env vars
-  if (process.env.SLACK_BOT_TOKEN && process.env.SLACK_SIGNING_SECRET) {
-    adapters.slack = createSlackAdapter()
+  // Slack adapter: requires bot_token + signing_secret from chat config
+  const slackConfig = config.chat.slack
+  if (slackConfig?.bot_token && slackConfig?.signing_secret) {
+    adapters.slack = createSlackAdapter({
+      botToken: slackConfig.bot_token,
+      signingSecret: slackConfig.signing_secret,
+    })
   }
 
   if (Object.keys(adapters).length === 0) {
@@ -54,7 +61,7 @@ export default defineNitroPlugin((nitroApp) => {
     return
   }
 
-  const botUsername = process.env.CHAT_BOT_USERNAME || process.env.GITHUB_BOT_USERNAME || 'agent-please'
+  const botUsername = config.chat.bot_username || process.env.GITHUB_BOT_USERNAME || 'agent-please'
 
   const bot = new Chat({
     userName: botUsername,
