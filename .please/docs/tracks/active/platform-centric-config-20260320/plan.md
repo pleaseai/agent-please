@@ -132,6 +132,27 @@ _(none — this refactor modifies existing files only)_
 
 - [ ] Create a WORKFLOW.md with the new platforms/projects/channels format and verify the orchestrator starts and polls
 
+## Outcomes & Retrospective
+
+### What Was Shipped
+- Platform-centric config model with discriminated `PlatformConfig` union (`kind` field)
+- Three new config sections: `platforms`, `projects`, `channels` replacing `tracker` + `chat`
+- Comprehensive validation including project identifier checks and empty projects guard
+- Log warnings for all silent guard paths in orchestrator
+
+### What Went Well
+- Type discriminant (`kind` field) emerged from code review and eliminated all unsafe `as` casts
+- Review-fix loop caught 13 issues across 2 iterations, improving code quality significantly
+- All 27 plan tasks completed with zero test regressions
+
+### What Could Improve
+- Initial implementation lacked `kind` discriminant — should have been in the original type design
+- Several silent failure paths were introduced without log warnings — defensive logging should be a standard practice
+
+### Tech Debt Created
+- `orchestrator.ts` exceeds 500-LOC limit (pre-existing, not introduced by this PR)
+- `projects[0]` hardcoding in 6 orchestrator helper methods — multi-project support deferred per spec
+
 ## Decision Log
 
 - Decision: Use Minimal Change approach — modify existing files rather than creating new modules
