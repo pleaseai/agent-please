@@ -43,18 +43,18 @@ The orchestrator currently uses in-memory `Map`/`Set` for all state (`Orchestrat
 ### Phase 1: DB Foundation
 
 - [ ] T001: Add `@libsql/client` dependency
-  - `bun add @libsql/client` in `apps/work-please`
-  - **Files**: `apps/work-please/package.json`
+  - `bun add @libsql/client` in `apps/agent-please`
+  - **Files**: `apps/agent-please/package.json`
 
 - [ ] T002: Add `DbConfig` to `ServiceConfig` (depends on T001)
   - Add `DbConfig` interface: `{ path: string, turso_url: string | null, turso_auth_token: string | null }`
   - Add `db: DbConfig` field to `ServiceConfig`
-  - **Files**: `apps/work-please/src/types.ts`
+  - **Files**: `apps/agent-please/src/types.ts`
 
 - [ ] T003: Implement `buildDbConfig()` in config layer (depends on T002)
   - Follow `sectionMap` + `resolveEnvValue` pattern for `$VAR` support
-  - Default path: `'.work-please/agent_runs.db'` (relative to workspace.root)
-  - **Files**: `apps/work-please/src/config.ts`, `apps/work-please/src/config.test.ts`
+  - Default path: `'.agent-please/agent_runs.db'` (relative to workspace.root)
+  - **Files**: `apps/agent-please/src/config.ts`, `apps/agent-please/src/config.test.ts`
 
 ### Phase 2: DB Module
 
@@ -65,17 +65,17 @@ The orchestrator currently uses in-memory `Map`/`Set` for all state (`Orchestrat
   - Path traversal check: resolved path must be under workspace root
   - `runMigrations(client)`: CREATE TABLE IF NOT EXISTS `agent_runs`
   - Graceful failure: return `null` on connection error (log warning)
-  - **Files**: `apps/work-please/src/db.ts`, `apps/work-please/src/db.test.ts`
+  - **Files**: `apps/agent-please/src/db.ts`, `apps/agent-please/src/db.test.ts`
 
 - [ ] T005: Implement `insertRun()` function (depends on T004)
   - Accepts: issue_id, identifier, issue_state, session_id, started_at, finished_at, duration_ms, status ('success' | 'failure' | 'terminated'), error, turn_count, retry_attempt, input_tokens, output_tokens, total_tokens
   - Async, fire-and-forget (catches and logs errors)
-  - **Files**: `apps/work-please/src/db.ts`, `apps/work-please/src/db.test.ts`
+  - **Files**: `apps/agent-please/src/db.ts`, `apps/agent-please/src/db.test.ts`
 
 - [ ] T006: Implement `queryRuns()` function (depends on T004)
   - Optional filters: identifier, status, limit (default 50), offset
   - Returns typed `AgentRunRecord[]`
-  - **Files**: `apps/work-please/src/db.ts`, `apps/work-please/src/db.test.ts`
+  - **Files**: `apps/agent-please/src/db.ts`, `apps/agent-please/src/db.test.ts`
 
 ### Phase 3: Orchestrator Integration
 
@@ -83,17 +83,17 @@ The orchestrator currently uses in-memory `Map`/`Set` for all state (`Orchestrat
   - After `validateConfig()`: create client, run migrations, store on instance
   - In `stop()`: call `db.close()`
   - DB init failure → log warning, continue without DB (set `this.db = null`)
-  - **Files**: `apps/work-please/src/orchestrator.ts`, `apps/work-please/src/orchestrator.test.ts`
+  - **Files**: `apps/agent-please/src/orchestrator.ts`, `apps/agent-please/src/orchestrator.test.ts`
 
 - [ ] T008: Record agent runs in `onWorkerExit` (depends on T007)
   - After line 416 (totals accumulation): call `db.insertRun()` with data from `running` entry
   - Map `reason: 'normal'` → `status: 'success'`, `reason: 'failed'` → `status: 'failure'`
-  - **Files**: `apps/work-please/src/orchestrator.ts`, `apps/work-please/src/orchestrator.test.ts`
+  - **Files**: `apps/agent-please/src/orchestrator.ts`, `apps/agent-please/src/orchestrator.test.ts`
 
 - [ ] T009: Record terminated runs in `terminateRunningIssue` (depends on T007)
   - At the end of `terminateRunningIssue`, after the workspace cleanup branch (line 594): call `db.insertRun()` with `status: 'terminated'`
   - Compute duration from `entry.started_at`
-  - **Files**: `apps/work-please/src/orchestrator.ts`, `apps/work-please/src/orchestrator.test.ts`
+  - **Files**: `apps/agent-please/src/orchestrator.ts`, `apps/agent-please/src/orchestrator.test.ts`
 
 ### Phase 4: HTTP API
 
@@ -102,24 +102,24 @@ The orchestrator currently uses in-memory `Map`/`Set` for all state (`Orchestrat
   - Call `db.queryRuns()` and return JSON array
   - Return `[]` when DB is not available
   - Follow existing `jsonResponse` / `errorResponse` patterns
-  - **Files**: `apps/work-please/src/server.ts`, `apps/work-please/src/server.test.ts`
+  - **Files**: `apps/agent-please/src/server.ts`, `apps/agent-please/src/server.test.ts`
 
 ### Phase 5: Config & Documentation
 
 - [ ] T011: [P] Update `init.ts` WORKFLOW.md template with `db` section (depends on T002)
   - Add commented-out `db` section showing available options
-  - **Files**: `apps/work-please/src/init.ts`, `apps/work-please/src/init.test.ts`
+  - **Files**: `apps/agent-please/src/init.ts`, `apps/agent-please/src/init.test.ts`
 
 ## Key Files
 
 | File | Role |
 |------|------|
-| `apps/work-please/src/types.ts` | `DbConfig` interface, `ServiceConfig` extension |
-| `apps/work-please/src/config.ts` | `buildDbConfig()` builder |
-| `apps/work-please/src/db.ts` | New — DB connection, migration, insert, query |
-| `apps/work-please/src/orchestrator.ts` | DB init/close, run recording at exit points |
-| `apps/work-please/src/server.ts` | `/api/v1/runs` endpoint |
-| `apps/work-please/src/init.ts` | WORKFLOW.md template update |
+| `apps/agent-please/src/types.ts` | `DbConfig` interface, `ServiceConfig` extension |
+| `apps/agent-please/src/config.ts` | `buildDbConfig()` builder |
+| `apps/agent-please/src/db.ts` | New — DB connection, migration, insert, query |
+| `apps/agent-please/src/orchestrator.ts` | DB init/close, run recording at exit points |
+| `apps/agent-please/src/server.ts` | `/api/v1/runs` endpoint |
+| `apps/agent-please/src/init.ts` | WORKFLOW.md template update |
 
 ## Verification
 
@@ -174,5 +174,5 @@ The orchestrator currently uses in-memory `Map`/`Set` for all state (`Orchestrat
 ## Surprises & Discoveries
 
 - `@libsql/client` has a `migrate()` method purpose-built for `CREATE TABLE IF NOT EXISTS` with `foreign_keys=OFF`
-- `bun build --compile` has a known bug with `@libsql` — not a blocker since Work Please runs as a daemon, not a compiled binary
+- `bun build --compile` has a known bug with `@libsql` — not a blocker since Agent Please runs as a daemon, not a compiled binary
 - `terminateRunningIssue` does NOT accumulate token totals like `onWorkerExit` — terminated runs may have partial token data

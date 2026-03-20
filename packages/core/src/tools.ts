@@ -22,7 +22,7 @@ export interface ToolResult {
 
 const ASANA_API_SPEC: ToolSpec = {
   name: 'asana_api',
-  description: 'Execute a raw REST API call against Asana using Work Please\'s configured auth.',
+  description: 'Execute a raw REST API call against Asana using Agent Please\'s configured auth.',
   inputSchema: {
     type: 'object',
     additionalProperties: false,
@@ -41,7 +41,7 @@ const ASANA_API_SPEC: ToolSpec = {
 
 const GITHUB_GRAPHQL_SPEC: ToolSpec = {
   name: 'github_graphql',
-  description: 'Execute a raw GraphQL query or mutation against GitHub using Work Please\'s configured auth.',
+  description: 'Execute a raw GraphQL query or mutation against GitHub using Agent Please\'s configured auth.',
   inputSchema: {
     type: 'object',
     additionalProperties: false,
@@ -302,5 +302,5 @@ export function createToolsMcpServer(config: ServiceConfig): ReturnType<typeof c
     ) as unknown as SdkMcpToolDefinition<AnyZodRawShape>)
   }
 
-  return createSdkMcpServer({ name: 'work-please-tools', tools })
+  return createSdkMcpServer({ name: 'agent-please-tools', tools })
 }

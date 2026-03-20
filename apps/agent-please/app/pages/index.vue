@@ -2,7 +2,7 @@
 import { formatDateTime, formatSecondsRunning, formatTokens } from '~/utils/format'
 
 definePageMeta({ layout: 'dashboard' })
-useHead({ title: 'Work Please — Dashboard' })
+useHead({ title: 'Agent Please — Dashboard' })
 
 const { state, loading, error, refresh } = useOrchestratorState()
 const refreshError = ref<string | null>(null)

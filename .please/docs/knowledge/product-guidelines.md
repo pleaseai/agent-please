@@ -1,4 +1,4 @@
-# Product Guidelines — Work Please
+# Product Guidelines — Agent Please
 
 ## Code Style
 

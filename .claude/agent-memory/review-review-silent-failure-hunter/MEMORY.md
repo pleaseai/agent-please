@@ -33,12 +33,12 @@
 
 ## Files of Interest
 
-- `apps/work-please/src/orchestrator.ts` -- main dispatch/worker loop, many error handling paths
-- `apps/work-please/src/tracker/github-status-update.ts` -- GraphQL status field resolution + update
-- `apps/work-please/src/tracker/github.ts` -- GitHub Projects v2 adapter
-- `apps/work-please/src/tracker/types.ts` -- TrackerError, TrackerAdapter, StatusFieldInfo types
-- `apps/work-please/src/tracker/index.ts` -- createTrackerAdapter factory
-- `apps/work-please/src/server.ts` -- HTTP server + static file serving (PR #113 modified)
+- `apps/agent-please/src/orchestrator.ts` -- main dispatch/worker loop, many error handling paths
+- `apps/agent-please/src/tracker/github-status-update.ts` -- GraphQL status field resolution + update
+- `apps/agent-please/src/tracker/github.ts` -- GitHub Projects v2 adapter
+- `apps/agent-please/src/tracker/types.ts` -- TrackerError, TrackerAdapter, StatusFieldInfo types
+- `apps/agent-please/src/tracker/index.ts` -- createTrackerAdapter factory
+- `apps/agent-please/src/server.ts` -- HTTP server + static file serving (PR #113 modified)
 - `apps/dashboard/src/lib/api.ts` -- fetch wrappers (PR #113 added)
 - `apps/dashboard/src/composables/useOrchestratorState.ts` -- polling composable (PR #113 added)
 - `apps/dashboard/src/composables/useIssueDetail.ts` -- issue fetch composable (PR #113 added)

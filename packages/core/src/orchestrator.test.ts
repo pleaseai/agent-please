@@ -537,9 +537,9 @@ Prompt for {{ issue.title }}.`
 
 describe('label trigger points', () => {
   it('setLabel is called with "dispatched" when an issue is dispatched via dispatchIssue', async () => {
-    const tmpDir = mkdtempSync(join(tmpdir(), 'work-please-label-test-'))
+    const tmpDir = mkdtempSync(join(tmpdir(), 'agent-please-label-test-'))
     const wfPath = join(tmpDir, 'WORKFLOW.md')
-    writeFileSync(wfPath, makeWorkflowWithLabelPrefix(30_000, 'work-please'))
+    writeFileSync(wfPath, makeWorkflowWithLabelPrefix(30_000, 'agent-please'))
 
     const mockLabelService = makeMockLabelService()
     const orch = new Orchestrator(wfPath)
@@ -579,9 +579,9 @@ describe('label trigger points', () => {
   })
 
   it('setLabel is called with "done" when onWorkerExit is called with reason "normal"', async () => {
-    const tmpDir = mkdtempSync(join(tmpdir(), 'work-please-label-test-'))
+    const tmpDir = mkdtempSync(join(tmpdir(), 'agent-please-label-test-'))
     const wfPath = join(tmpDir, 'WORKFLOW.md')
-    writeFileSync(wfPath, makeWorkflowWithLabelPrefix(30_000, 'work-please'))
+    writeFileSync(wfPath, makeWorkflowWithLabelPrefix(30_000, 'agent-please'))
 
     const mockLabelService = makeMockLabelService()
     const orch = new Orchestrator(wfPath)
@@ -620,9 +620,9 @@ describe('label trigger points', () => {
   })
 
   it('setLabel is called with "failed" when onWorkerExit is called with reason "failed"', async () => {
-    const tmpDir = mkdtempSync(join(tmpdir(), 'work-please-label-test-'))
+    const tmpDir = mkdtempSync(join(tmpdir(), 'agent-please-label-test-'))
     const wfPath = join(tmpDir, 'WORKFLOW.md')
-    writeFileSync(wfPath, makeWorkflowWithLabelPrefix(30_000, 'work-please'))
+    writeFileSync(wfPath, makeWorkflowWithLabelPrefix(30_000, 'agent-please'))
 
     const mockLabelService = makeMockLabelService()
     const orch = new Orchestrator(wfPath)
@@ -661,9 +661,9 @@ describe('label trigger points', () => {
   })
 
   it('setLabel is called with "done" when reconciler detects terminal state (CRITICAL-2)', async () => {
-    const tmpDir = mkdtempSync(join(tmpdir(), 'work-please-label-test-'))
+    const tmpDir = mkdtempSync(join(tmpdir(), 'agent-please-label-test-'))
     const wfPath = join(tmpDir, 'WORKFLOW.md')
-    writeFileSync(wfPath, makeWorkflowWithLabelPrefix(30_000, 'work-please'))
+    writeFileSync(wfPath, makeWorkflowWithLabelPrefix(30_000, 'agent-please'))
 
     const mockLabelService = makeMockLabelService()
     const orch = new Orchestrator(wfPath)
@@ -742,7 +742,7 @@ describe('label trigger points', () => {
   })
 
   it('null label service (no label_prefix) results in no setLabel calls', async () => {
-    const tmpDir = mkdtempSync(join(tmpdir(), 'work-please-label-test-'))
+    const tmpDir = mkdtempSync(join(tmpdir(), 'agent-please-label-test-'))
     const wfPath = join(tmpDir, 'WORKFLOW.md')
     // Workflow without label_prefix — labelService will be null
     writeFileSync(wfPath, `---
@@ -1001,9 +1001,9 @@ describe('processWatchedStates dispatch logic', () => {
 
 describe('watched snapshot recording in onWorkerExit', () => {
   it('records snapshot on normal exit', async () => {
-    const tmpDir = mkdtempSync(join(tmpdir(), 'work-please-snapshot-test-'))
+    const tmpDir = mkdtempSync(join(tmpdir(), 'agent-please-snapshot-test-'))
     const wfPath = join(tmpDir, 'WORKFLOW.md')
-    writeFileSync(wfPath, makeWorkflowWithLabelPrefix(30_000, 'work-please'))
+    writeFileSync(wfPath, makeWorkflowWithLabelPrefix(30_000, 'agent-please'))
 
     const orch = new Orchestrator(wfPath)
     const issue = makeIssue({
@@ -1050,9 +1050,9 @@ describe('watched snapshot recording in onWorkerExit', () => {
   })
 
   it('does NOT record snapshot on failed exit', async () => {
-    const tmpDir = mkdtempSync(join(tmpdir(), 'work-please-snapshot-test-'))
+    const tmpDir = mkdtempSync(join(tmpdir(), 'agent-please-snapshot-test-'))
     const wfPath = join(tmpDir, 'WORKFLOW.md')
-    writeFileSync(wfPath, makeWorkflowWithLabelPrefix(30_000, 'work-please'))
+    writeFileSync(wfPath, makeWorkflowWithLabelPrefix(30_000, 'agent-please'))
 
     const orch = new Orchestrator(wfPath)
     const issue = makeIssue({ id: 'snap2', identifier: 'MT-S2', state: 'Human Review', review_decision: 'approved' })
@@ -1102,7 +1102,7 @@ Prompt text.`
   }
 
   it('detects workflow file change and updates config without restart', async () => {
-    const tmpDir = mkdtempSync(join(tmpdir(), 'work-please-test-'))
+    const tmpDir = mkdtempSync(join(tmpdir(), 'agent-please-test-'))
     const wsRoot = join(tmpDir, 'workspaces')
     mkdirSync(wsRoot)
     const wfPath = join(tmpDir, 'WORKFLOW.md')
@@ -1141,7 +1141,7 @@ Prompt text.`
   })
 
   it('keeps last known good config when reloaded file has invalid YAML', async () => {
-    const tmpDir = mkdtempSync(join(tmpdir(), 'work-please-test-'))
+    const tmpDir = mkdtempSync(join(tmpdir(), 'agent-please-test-'))
     const wfPath = join(tmpDir, 'WORKFLOW.md')
 
     writeFileSync(wfPath, makeWorkflowContent(30_000))
@@ -1170,7 +1170,7 @@ Prompt text.`
   })
 
   it('re-initializes labelService with new config on hot-reload (IMPORTANT-6)', async () => {
-    const tmpDir = mkdtempSync(join(tmpdir(), 'work-please-test-'))
+    const tmpDir = mkdtempSync(join(tmpdir(), 'agent-please-test-'))
     const wsRoot = join(tmpDir, 'workspaces')
     mkdirSync(wsRoot)
     const wfPath = join(tmpDir, 'WORKFLOW.md')
@@ -1195,7 +1195,7 @@ tracker:
   kind: asana
   api_key: test-key
   project_gid: gid-1
-  label_prefix: work-please
+  label_prefix: agent-please
 polling:
   interval_ms: 30000
 ---
@@ -1204,12 +1204,12 @@ Prompt text.`
 
       // Poll until config updates or timeout (max 2s)
       const deadline = Date.now() + 2_000
-      while (orch.getConfig().tracker.label_prefix !== 'work-please' && Date.now() < deadline) {
+      while (orch.getConfig().tracker.label_prefix !== 'agent-please' && Date.now() < deadline) {
         await new Promise(r => setTimeout(r, 20))
       }
 
       // Verify the config was updated — createLabelService is called internally with new config
-      expect(orch.getConfig().tracker.label_prefix).toBe('work-please')
+      expect(orch.getConfig().tracker.label_prefix).toBe('agent-please')
     }
     finally {
       orch.stop()

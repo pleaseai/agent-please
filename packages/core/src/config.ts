@@ -13,7 +13,7 @@ const VALID_SETTING_SOURCES = new Set<string>(['user', 'project', 'local'])
 
 const DEFAULTS = {
   POLL_INTERVAL_MS: 30_000,
-  WORKSPACE_ROOT: join(tmpdir(), 'work-please_workspaces'),
+  WORKSPACE_ROOT: join(tmpdir(), 'agent-please_workspaces'),
   HOOK_TIMEOUT_MS: 60_000,
   MAX_CONCURRENT_AGENTS: 10,
   AGENT_MAX_TURNS: 20,
@@ -81,7 +81,7 @@ export function buildConfig(workflow: WorkflowDefinition): ServiceConfig {
   }
 }
 
-const DEFAULT_DB_PATH = '.work-please/agent_runs.db'
+const DEFAULT_DB_PATH = '.agent-please/agent_runs.db'
 
 function buildDbConfig(db: Record<string, unknown>): DbConfig {
   return {

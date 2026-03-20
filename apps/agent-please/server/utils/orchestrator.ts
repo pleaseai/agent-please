@@ -1,4 +1,4 @@
-import type { Orchestrator } from '@pleaseai/work-core'
+import type { Orchestrator } from '@pleaseai/agent-core'
 import type { H3Event } from 'h3'
 
 export function useOrchestrator(_event: H3Event): Orchestrator {

@@ -1,8 +1,8 @@
 # Test Analyzer Agent Memory
 
-## Project: work-please (apps/work-please)
+## Project: agent-please (apps/agent-please)
 Bun + Turbo TypeScript monorepo. Main test runner: `bun run test:app`.
-Test files live in `apps/work-please/src/*.test.ts`.
+Test files live in `apps/agent-please/src/*.test.ts`.
 326 tests across 13 files — all passing as of PR #61.
 
 ## Key Testing Patterns

@@ -1,4 +1,4 @@
-import { fetchSessionMessages, isValidSessionId, parsePositiveInt } from '@pleaseai/work-core'
+import { fetchSessionMessages, isValidSessionId, parsePositiveInt } from '@pleaseai/agent-core'
 
 export default defineEventHandler(async (event) => {
   const orchestrator = useOrchestrator(event)

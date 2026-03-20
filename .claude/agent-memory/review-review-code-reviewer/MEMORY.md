@@ -1,4 +1,4 @@
-# Review Agent Memory — brisbane (work-please)
+# Review Agent Memory — brisbane (agent-please)
 
 ## Project conventions (from CLAUDE.md)
 - Package manager: bun / bunx (never npm/pnpm)

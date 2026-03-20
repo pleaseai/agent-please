@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import process from 'node:process'
-import { setVerbose } from '@pleaseai/work-core'
+import { setVerbose } from '@pleaseai/agent-core'
 import { Command, CommanderError } from 'commander'
 import pkg from '../package.json' with { type: 'json' }
 import { runInit } from './init'
@@ -35,7 +35,7 @@ export async function runCli(argv: string[]): Promise<void> {
   const resolvedPath = resolve(parsed.workflowPath)
 
   if (!existsSync(resolvedPath)) {
-    console.error(`[work-please] workflow file not found: ${resolvedPath}`)
+    console.error(`[agent-please] workflow file not found: ${resolvedPath}`)
     process.exit(1)
   }
 
@@ -47,14 +47,14 @@ export async function runCli(argv: string[]): Promise<void> {
   }
 
   // Start the Nuxt server
-  console.log(`[work-please] starting with workflow: ${resolvedPath}`)
+  console.log(`[agent-please] starting with workflow: ${resolvedPath}`)
   try {
     // Compute path at runtime to prevent bun build from bundling Nuxt output
     const serverEntry = resolve(import.meta.dir, '..', '.output', 'server', 'index.mjs')
     await import(serverEntry)
   }
   catch (err) {
-    console.error('[work-please] failed to start server:', err)
+    console.error('[agent-please] failed to start server:', err)
     process.exit(1)
   }
 }
@@ -121,7 +121,7 @@ export function parseArgs(args: string[]): ParsedArgs {
   })
 
   try {
-    program.parse(['node', 'work-please', ...args])
+    program.parse(['node', 'agent-please', ...args])
   }
   catch (err) {
     if (err instanceof CommanderError) {

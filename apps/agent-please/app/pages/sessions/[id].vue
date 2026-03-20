@@ -6,7 +6,7 @@ definePageMeta({ layout: 'dashboard' })
 const route = useRoute()
 const sessionId = computed(() => route.params.id as string)
 
-useHead({ title: () => `Session ${sessionId.value.slice(0, 8)} — Work Please` })
+useHead({ title: () => `Session ${sessionId.value.slice(0, 8)} — Agent Please` })
 
 const { messages, loading, error } = useSessionMessages(sessionId)
 

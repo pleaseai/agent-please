@@ -13,8 +13,8 @@ const items = computed<NavigationMenuItem[]>(() => [{
     <UDashboardSidebar collapsible resizable>
       <template #header="{ collapsed }">
         <div class="flex items-center gap-2 px-2 py-1">
-          <span v-if="!collapsed" class="font-bold text-sm">Work Please</span>
-          <span v-else class="font-bold text-sm">WP</span>
+          <span v-if="!collapsed" class="font-bold text-sm">Agent Please</span>
+          <span v-else class="font-bold text-sm">AP</span>
         </div>
       </template>
 

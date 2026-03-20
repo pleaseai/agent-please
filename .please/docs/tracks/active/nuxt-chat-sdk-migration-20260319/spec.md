@@ -4,14 +4,14 @@
 
 ## Overview
 
-Restructure Work Please from a two-workspace monorepo (`apps/work-please` CLI + `apps/dashboard` Vue/Vite SPA) into a single Nuxt application that unifies the orchestrator daemon, dashboard UI, and a Chat SDK-powered GitHub issue comment bot. The Nuxt app uses Nuxt UI's Dashboard layout for the admin interface, Nitro server routes for the webhook endpoint, and Chat SDK's `@chat-adapter/github` for responding to issue comments with status updates, agent progress, or AI-generated answers.
+Restructure Agent Please from a two-workspace monorepo (`apps/agent-please` CLI + `apps/dashboard` Vue/Vite SPA) into a single Nuxt application that unifies the orchestrator daemon, dashboard UI, and a Chat SDK-powered GitHub issue comment bot. The Nuxt app uses Nuxt UI's Dashboard layout for the admin interface, Nitro server routes for the webhook endpoint, and Chat SDK's `@chat-adapter/github` for responding to issue comments with status updates, agent progress, or AI-generated answers.
 
 ## Requirements
 
 ### Functional Requirements
 
-- [ ] FR-1: Single Nuxt app replaces both `apps/work-please` (CLI daemon) and `apps/dashboard` (Vue/Vite SPA)
-- [ ] FR-2: CLI entry point (`work-please run`, `work-please init`) starts the Nuxt server programmatically via a separate entry point
+- [ ] FR-1: Single Nuxt app replaces both `apps/agent-please` (CLI daemon) and `apps/dashboard` (Vue/Vite SPA)
+- [ ] FR-2: CLI entry point (`agent-please run`, `agent-please init`) starts the Nuxt server programmatically via a separate entry point
 - [ ] FR-3: Chat SDK GitHub adapter handles incoming issue/PR comment webhooks at `server/api/webhooks/[platform].post.ts`
 - [ ] FR-4: Bot responds to @mentions in issue/PR comments with status updates, agent progress, or AI-generated answers
 - [ ] FR-5: GitHub authentication supports both PAT (`$GITHUB_TOKEN`) and GitHub App (`app_id` + `private_key` + `installation_id`), reusing existing auth logic
@@ -28,7 +28,7 @@ Restructure Work Please from a two-workspace monorepo (`apps/work-please` CLI + 
 
 ## Acceptance Criteria
 
-- [ ] AC-1: `work-please run` starts the Nuxt server and orchestrator loop
+- [ ] AC-1: `agent-please run` starts the Nuxt server and orchestrator loop
 - [ ] AC-2: Dashboard is accessible at `/` with Nuxt UI Dashboard layout
 - [ ] AC-3: GitHub webhook at `POST /api/webhooks/github` processes issue comment events via Chat SDK
 - [ ] AC-4: Bot responds to @mentions with agent status for the relevant issue

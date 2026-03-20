@@ -10,7 +10,7 @@ coverage:
         threshold: 1%
 
 flags:
-  work-please:
+  agent-please:
     paths:
-      - apps/work-please/src/
+      - apps/agent-please/src/
     carryforward: true

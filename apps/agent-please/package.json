@@ -1,16 +1,18 @@
 {
-  "name": "@pleaseai/work",
+  "name": "@pleaseai/agent",
   "type": "module",
   "version": "0.1.16",
-  "description": "Symphony-spec orchestrator for Claude Code + Asana/GitHub Projects v2",
+  "description": "Autonomous coding agent for GitHub, Linear, and Slack",
   "license": "FSL-1.1-MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/pleaseai/work-please.git",
-    "directory": "apps/work-please"
+    "url": "https://github.com/pleaseai/agent-please.git",
+    "directory": "apps/agent-please"
   },
   "bin": {
-    "work-please": "./dist/index.js"
+    "agent": "./dist/index.js",
+    "agent-please": "./dist/index.js",
+    "agentplease": "./dist/index.js"
   },
   "files": [
     "LICENSE",
@@ -35,7 +37,7 @@
     "@chat-adapter/state-memory": "^4.20.2",
     "@nuxt/ui": "^4.5.1",
     "@octokit/graphql": "^9.0.3",
-    "@pleaseai/work-core": "workspace:*",
+    "@pleaseai/agent-core": "workspace:*",
     "@vueuse/nuxt": "^14.2.1",
     "chat": "^4.20.2",
     "commander": "^14.0.3",

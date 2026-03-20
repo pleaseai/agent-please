@@ -13,11 +13,13 @@
         "typescript": "^5.7.0",
       },
     },
-    "apps/work-please": {
-      "name": "@pleaseai/work",
-      "version": "0.1.15",
+    "apps/agent-please": {
+      "name": "@pleaseai/agent",
+      "version": "0.1.16",
       "bin": {
-        "work-please": "./dist/index.js",
+        "agent": "./dist/index.js",
+        "agent-please": "./dist/index.js",
+        "agentplease": "./dist/index.js",
       },
       "dependencies": {
         "@chat-adapter/github": "^4.20.2",
@@ -25,7 +27,7 @@
         "@chat-adapter/state-memory": "^4.20.2",
         "@nuxt/ui": "^4.5.1",
         "@octokit/graphql": "^9.0.3",
-        "@pleaseai/work-core": "workspace:*",
+        "@pleaseai/agent-core": "workspace:*",
         "@vueuse/nuxt": "^14.2.1",
         "chat": "^4.20.2",
         "commander": "^14.0.3",
@@ -44,8 +46,8 @@
       },
     },
     "packages/core": {
-      "name": "@pleaseai/work-core",
-      "version": "0.1.1",
+      "name": "@pleaseai/agent-core",
+      "version": "0.1.2",
       "dependencies": {
         "@anthropic-ai/claude-agent-sdk": "^0.2.72",
         "@libsql/client": "^0.17.0",
@@ -596,9 +598,9 @@
 
     "@pkgr/core": ["@pkgr/core@0.2.9", "", {}, "sha512-QNqXyfVS2wm9hweSYD2O7F0G06uurj9kZ96TRQE5Y9hU7+tgdZwIkbAKc5Ocy1HxEY2kuDQa6cQ1WRs/O5LFKA=="],
 
-    "@pleaseai/work": ["@pleaseai/work@workspace:apps/work-please"],
+    "@pleaseai/agent": ["@pleaseai/agent@workspace:apps/agent-please"],
 
-    "@pleaseai/work-core": ["@pleaseai/work-core@workspace:packages/core"],
+    "@pleaseai/agent-core": ["@pleaseai/agent-core@workspace:packages/core"],
 
     "@polka/url": ["@polka/url@1.0.0-next.29", "", {}, "sha512-wwQAWhWSuHaag8c4q/KN/vCoeOJYshAIvMQwD4GpSb3OiZklFfvAgmj0VCBBImRpuF/aFgIRzllXlVX93Jevww=="],
 

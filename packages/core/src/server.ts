@@ -395,7 +395,7 @@ function dashboardResponse(orchestrator: Orchestrator): Response {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Work Please</title>
+<title>Agent Please</title>
 <style>
   body { font-family: monospace; margin: 2rem; background: #0f0f0f; color: #d4d4d4; }
   h1 { color: #cba6f7; } h2 { color: #89b4fa; }
@@ -408,7 +408,7 @@ function dashboardResponse(orchestrator: Orchestrator): Response {
 </style>
 </head>
 <body>
-<h1>Work Please</h1>
+<h1>Agent Please</h1>
 <p>
   <span class="stat"><span class="stat-val">${running.length}</span> running</span>
   <span class="stat"><span class="stat-val">${retrying.length}</span> retrying</span>

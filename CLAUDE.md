@@ -44,21 +44,21 @@ bun run dev                    # all workspaces via turbo
 
 # Build
 bun run build                  # root: builds all packages via turbo
-# apps/work-please builds with: bun build ./src/index.ts --outdir ./dist --target bun
+# apps/agent-please builds with: bun build ./src/index.ts --outdir ./dist --target bun
 
 # Test
 bun run test                   # all workspaces via turbo
-bun run test:app               # work-please only
+bun run test:app               # agent-please only
 
 # Type check
 bun run check                  # all workspaces
-bun run check:app              # work-please only
+bun run check:app              # agent-please only
 
 # Lint
 bun run lint                   # all workspaces, check only
-bun run lint:app               # work-please only, check only
+bun run lint:app               # agent-please only, check only
 bun run lint:fix               # all workspaces, auto-fix
-bun run lint:app:fix           # work-please only, auto-fix
+bun run lint:app:fix           # agent-please only, auto-fix
 ```
 
 ## Workspace
@@ -70,12 +70,12 @@ API schema references live in [`.please/docs/references/`](.please/docs/referenc
 
 For the full bird's-eye view, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
-Work Please is a TypeScript monorepo (Bun + Turbo) implementing the [Symphony spec](vendor/symphony/SPEC.md) for Claude
+Agent Please is a TypeScript monorepo (Bun + Turbo) implementing the [Symphony spec](vendor/symphony/SPEC.md) for Claude
 Code + Asana/GitHub Projects v2. The reference implementation in Elixir/OTP lives in `vendor/symphony/elixir/`.
 
 **Workspaces:**
 
-- `apps/work-please` — main service entry point (`@pleaseai/work`)
+- `apps/agent-please` — main service entry point (`@pleaseai/agent`)
 - `packages/*` — shared libraries (none yet scaffolded)
 - `vendor/symphony/` — upstream Symphony reference (read-only, excluded from ESLint/TS)
 
@@ -92,7 +92,7 @@ Code + Asana/GitHub Projects v2. The reference implementation in Elixir/OTP live
 | Status Surface       | Optional HTTP dashboard + structured `key=value` logs          |
 
 **WORKFLOW.md** is a user-created file in a _target repository_ (not this repo). It contains YAML front matter (tracker
-config, hooks, agent limits) and a Liquid prompt template body. Work Please reads it at runtime.
+config, hooks, agent limits) and a Liquid prompt template body. Agent Please reads it at runtime.
 
 ## Multilingual Documentation
 

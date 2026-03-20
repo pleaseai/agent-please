@@ -1,5 +1,5 @@
 {
-  "name": "work-please",
+  "name": "agent-please",
   "version": "0.1.0",
   "devDependencies": {
     "@antfu/eslint-config": "^7.7.0",
@@ -16,12 +16,12 @@
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "lint:fix": "turbo run lint:fix",
-    "lint:app": "turbo run lint --filter=@pleaseai/work",
-    "lint:app:fix": "turbo run lint:fix --filter=@pleaseai/work",
+    "lint:app": "turbo run lint --filter=@pleaseai/agent",
+    "lint:app:fix": "turbo run lint:fix --filter=@pleaseai/agent",
     "check": "turbo run check",
-    "check:app": "turbo run check --filter=@pleaseai/work",
+    "check:app": "turbo run check --filter=@pleaseai/agent",
     "test": "turbo run test",
-    "test:app": "turbo run test --filter=@pleaseai/work",
+    "test:app": "turbo run test --filter=@pleaseai/agent",
     "test:coverage": "turbo run test:coverage",
     "prepare": "husky"
   },

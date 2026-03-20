@@ -1,14 +1,14 @@
-# Work Please
+# Agent Please
 
 English | [한국어](README.ko.md) | [日本語](README.ja.md) | [简体中文](README.zh-CN.md)
 
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=pleaseai_work-please&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=pleaseai_work-please) [![Bugs](https://sonarcloud.io/api/project_badges/measure?project=pleaseai_work-please&metric=bugs)](https://sonarcloud.io/summary/new_code?id=pleaseai_work-please) [![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=pleaseai_work-please&metric=code_smells)](https://sonarcloud.io/summary/new_code?id=pleaseai_work-please) [![Duplicated Lines (%)](https://sonarcloud.io/api/project_badges/measure?project=pleaseai_work-please&metric=duplicated_lines_density)](https://sonarcloud.io/summary/new_code?id=pleaseai_work-please)
-[![codecov](https://codecov.io/gh/pleaseai/work-please/graph/badge.svg?token=do858Z1lsI)](https://codecov.io/gh/pleaseai/work-please)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=pleaseai_agent-please&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=pleaseai_agent-please) [![Bugs](https://sonarcloud.io/api/project_badges/measure?project=pleaseai_agent-please&metric=bugs)](https://sonarcloud.io/summary/new_code?id=pleaseai_agent-please) [![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=pleaseai_agent-please&metric=code_smells)](https://sonarcloud.io/summary/new_code?id=pleaseai_agent-please) [![Duplicated Lines (%)](https://sonarcloud.io/api/project_badges/measure?project=pleaseai_agent-please&metric=duplicated_lines_density)](https://sonarcloud.io/summary/new_code?id=pleaseai_agent-please)
+[![codecov](https://codecov.io/gh/pleaseai/agent-please/graph/badge.svg?token=do858Z1lsI)](https://codecov.io/gh/pleaseai/agent-please)
 
-Work Please turns issue tracker tasks into isolated, autonomous implementation runs — managing work
+Agent Please turns issue tracker tasks into isolated, autonomous implementation runs — managing work
 instead of supervising coding agents.
 
-> **Warning**: Work Please is an engineering preview for use in trusted environments.
+> **Warning**: Agent Please is an engineering preview for use in trusted environments.
 
 ## Table of Contents
 
@@ -38,7 +38,7 @@ instead of supervising coding agents.
 
 ## Overview
 
-Work Please is a long-running TypeScript service that:
+Agent Please is a long-running TypeScript service that:
 
 1. Polls an issue tracker (GitHub Projects v2 or Asana) for tasks in configured active states.
 2. Creates an isolated workspace directory for each eligible issue.
@@ -52,7 +52,7 @@ For full technical details, see [SPEC.md](SPEC.md).
 
 ## Key Differences from Symphony
 
-| | Symphony (reference) | Work Please |
+| | Symphony (reference) | Agent Please |
 |---|---|---|
 | Issue Tracker | Linear | GitHub Projects v2 & Asana (under development) |
 | Coding Agent | Codex (app-server mode) | Claude Code CLI |
@@ -130,8 +130,8 @@ See [SPEC.md](SPEC.md) for the full specification.
 ### Install
 
 ```bash
-git clone https://github.com/pleaseai/work-please.git
-cd work-please
+git clone https://github.com/pleaseai/agent-please.git
+cd agent-please
 bun install
 bun run build
 ```
@@ -170,7 +170,7 @@ polling:
   interval_ms: 30000
 
 workspace:
-  root: ~/work-please_workspaces
+  root: ~/agent-please_workspaces
 
 hooks:
   after_create: |
@@ -242,7 +242,7 @@ polling:
   interval_ms: 30000
 
 workspace:
-  root: ~/work-please_workspaces
+  root: ~/agent-please_workspaces
 
 hooks:
   after_create: |
@@ -303,7 +303,7 @@ polling:
   interval_ms: 30000
 
 workspace:
-  root: ~/work-please_workspaces
+  root: ~/agent-please_workspaces
 
 hooks:
   after_create: |
@@ -356,19 +356,19 @@ export GITHUB_APP_INSTALLATION_ID=67890
 # or (Asana — under development)
 export ASANA_ACCESS_TOKEN=your_token_here
 
-# Run Work Please against a WORKFLOW.md in the current directory
-bunx work-please
+# Run Agent Please against a WORKFLOW.md in the current directory
+bunx agent-please
 
 # Or specify a WORKFLOW.md path
-bunx work-please /path/to/WORKFLOW.md
+bunx agent-please /path/to/WORKFLOW.md
 
 # Enable the optional HTTP dashboard on port 3000
-bunx work-please --port 3000
+bunx agent-please --port 3000
 ```
 
 ## WORKFLOW.md Configuration
 
-`WORKFLOW.md` is the single source of truth for Work Please's runtime behavior. It combines a YAML
+`WORKFLOW.md` is the single source of truth for Agent Please's runtime behavior. It combines a YAML
 front matter configuration block with a Markdown prompt template body.
 
 ### Full Front Matter Schema
@@ -423,7 +423,7 @@ polling:
   interval_ms: 30000                  # Optional: poll cadence in ms, default 30000
 
 workspace:
-  root: ~/work-please_workspaces        # Optional: default <tmpdir>/work-please_workspaces
+  root: ~/agent-please_workspaces        # Optional: default <tmpdir>/agent-please_workspaces
 
 hooks:
   after_create: |                     # Optional: run once when workspace is first created
@@ -463,8 +463,8 @@ claude:
   system_prompt: "custom prompt"      # Optional: custom system prompt string. Default: built-in claude_code preset
   settings:
     attribution:
-      commit: "🙏 Generated with [Work Please](https://github.com/pleaseai/work-please)"  # Optional: appended to git commit messages. Defaults to Work Please link.
-      pr: "🙏 Generated with [Work Please](https://github.com/pleaseai/work-please)"      # Optional: appended to PR descriptions. Defaults to Work Please link.
+      commit: "🙏 Generated with [Agent Please](https://github.com/pleaseai/agent-please)"  # Optional: appended to git commit messages. Defaults to Agent Please link.
+      pr: "🙏 Generated with [Agent Please](https://github.com/pleaseai/agent-please)"      # Optional: appended to PR descriptions. Defaults to Agent Please link.
 
 # worker:                              # Optional: SSH worker support (experimental)
 #   ssh_hosts:                         # List of SSH host aliases for remote execution
@@ -547,23 +547,23 @@ Retry attempt: {{ attempt }}
 
 ```bash
 # Basic usage (reads WORKFLOW.md from current directory)
-work-please
+agent-please
 
 # Specify WORKFLOW.md path (positional argument)
-work-please ./WORKFLOW.md
+agent-please ./WORKFLOW.md
 
 # Enable HTTP dashboard
-work-please --port 3000
+agent-please --port 3000
 
 # Initialize a new GitHub Projects v2 project and scaffold WORKFLOW.md
 # (Requires GITHUB_TOKEN environment variable to be set)
-work-please init --owner <org-or-user> --title "My Project"
+agent-please init --owner <org-or-user> --title "My Project"
 
 # Alternatively, provide the token via a flag:
-work-please init --owner <org-or-user> --title "My Project" --token <your-github-token>
+agent-please init --owner <org-or-user> --title "My Project" --token <your-github-token>
 
 # Show help
-work-please --help
+agent-please --help
 ```
 
 ## GitHub App Authentication
@@ -619,7 +619,7 @@ installation_id: 67890
 
 ### Validation
 
-Work Please validates GitHub App config at startup:
+Agent Please validates GitHub App config at startup:
 
 | Scenario | Result |
 |----------|--------|
@@ -630,7 +630,7 @@ Work Please validates GitHub App config at startup:
 
 ## Slack Notifications
 
-Work Please supports Slack as a notification channel via the [Chat SDK](https://chat-sdk.dev/)
+Agent Please supports Slack as a notification channel via the [Chat SDK](https://chat-sdk.dev/)
 Slack adapter. When configured, you can @mention the bot in any Slack channel to get real-time
 orchestrator status (running issues, retry queue, token usage).
 
@@ -659,11 +659,11 @@ https://your-domain.com/api/webhooks/slack
 
 ```yaml
 display_information:
-  name: Work Please
+  name: Agent Please
   description: Orchestrator status bot
 features:
   bot_user:
-    display_name: Work Please
+    display_name: Agent Please
     always_online: true
 oauth_config:
   scopes:
@@ -702,7 +702,7 @@ settings:
 
 ## Trust and Safety
 
-Work Please runs Claude Code autonomously. Understand the trust implications before deploying.
+Agent Please runs Claude Code autonomously. Understand the trust implications before deploying.
 
 ### Permission Modes
 
@@ -734,5 +734,5 @@ Functional Source License 1.1, MIT Future License (FSL-1.1-MIT). See [LICENSE](L
 
 ### Third-Party Licenses
 
-- Work Please is a TypeScript implementation based on the [Symphony specification](vendor/symphony/SPEC.md) by OpenAI (Apache 2.0).
+- Agent Please is a TypeScript implementation based on the [Symphony specification](vendor/symphony/SPEC.md) by OpenAI (Apache 2.0).
 - This project uses the [Claude Agent SDK](https://github.com/anthropics/claude-agent-sdk-typescript), which is subject to Anthropic's [Commercial Terms of Service](https://www.anthropic.com/legal/commercial-terms).
