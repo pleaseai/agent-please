@@ -16,8 +16,8 @@ The Chat SDK state adapter is currently hardcoded to `createMemoryState()` in `0
 - [ ] FR-4: Create a factory function `createStateAdapter(config)` that returns the appropriate Chat SDK state adapter
 - [ ] FR-5: Replace hardcoded `createMemoryState()` in `02.chat-bot.ts` with factory-based creation
 - [ ] FR-6: Support `$ENV_VAR` syntax for credential fields (`url`) consistent with existing platform config
-- [ ] FR-7: Support `keyPrefix` option for all adapters (default: `"chat-sdk"`)
-- [ ] FR-8: Support `onLockConflict` option at Chat level (`"force"` | `"drop"`)
+- [ ] FR-7: Support `key_prefix` option for all adapters (default: `"chat-sdk"`)
+- [ ] FR-8: Support `on_lock_conflict` option at Chat level (`"force"` | `"drop"`)
 - [ ] FR-9: Default to `memory` when no `state` config is specified (backward compatible)
 
 ### Non-functional Requirements
