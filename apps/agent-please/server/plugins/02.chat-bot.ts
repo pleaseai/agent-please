@@ -123,8 +123,13 @@ export default defineNitroPlugin((nitroApp) => {
     }
   })
 
+  // Share Chat SDK state adapter with orchestrator for dispatch lock dedup
+  const stateAdapter = bot.getState()
+  orchestrator.setDispatchLockAdapter(stateAdapter)
+
   // Store bot on nitroApp for webhook handler access
   ;(nitroApp as any).chatBot = bot
+  ;(nitroApp as any).chatStateAdapter = stateAdapter
 
   nitroApp.hooks.hook('close', async () => {
     try {

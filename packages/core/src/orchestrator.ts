@@ -1,4 +1,5 @@
 import type { Client } from '@libsql/client'
+import type { DispatchLockAdapter } from './dispatch-lock'
 import type { LabelService } from './label'
 import type { GitHubPlatformConfig, Issue, OrchestratorState, ProjectConfig, RetryEntry, RunningEntry, ServiceConfig, WorkflowDefinition } from './types'
 import { watch } from 'node:fs'
@@ -6,6 +7,7 @@ import { resolveAgentEnv } from './agent-env'
 import { AppServerClient } from './agent-runner'
 import { buildConfig, getActiveStates, getTerminalStates, getWatchedStates, maxConcurrentForState, normalizeState, validateConfig } from './config'
 import { createDbClient, insertRun, runMigrations } from './db'
+import { toDispatchLockKey } from './dispatch-lock'
 import { createLabelService } from './label'
 import { createLogger } from './logger'
 import { buildContinuationPrompt, buildPrompt, isPromptBuildError } from './prompt-builder'
@@ -17,6 +19,8 @@ const log = createLogger('orchestrator')
 
 const CONTINUATION_RETRY_DELAY_MS = 1_000
 const FAILURE_RETRY_BASE_MS = 10_000
+const DISPATCH_LOCK_TTL_MS = 5 * 60 * 1000 // 5 minutes
+const DISPATCH_LOCK_EXTEND_INTERVAL_MS = 2 * 60 * 1000 // 2 minutes
 
 export class Orchestrator {
   private state: OrchestratorState
@@ -28,8 +32,9 @@ export class Orchestrator {
   private labelService: LabelService | null = null
   private db: Client | null = null
   private pendingDbWrites: Promise<void>[] = []
+  private dispatchLockAdapter: DispatchLockAdapter | null = null
 
-  constructor(workflowPath: string) {
+  constructor(workflowPath: string, options?: { dispatchLockAdapter?: DispatchLockAdapter }) {
     this.workflowPath = workflowPath
 
     const wf = loadWorkflow(workflowPath)
@@ -39,6 +44,7 @@ export class Orchestrator {
     this.workflow = wf
     this.config = buildConfig(wf)
     this.labelService = createLabelService(this.config)
+    this.dispatchLockAdapter = options?.dispatchLockAdapter ?? null
 
     this.state = {
       poll_interval_ms: this.config.polling.interval_ms,
@@ -129,6 +135,10 @@ export class Orchestrator {
 
   getDb(): Client | null {
     return this.db
+  }
+
+  setDispatchLockAdapter(adapter: DispatchLockAdapter): void {
+    this.dispatchLockAdapter = adapter
   }
 
   triggerRefresh(): void {
@@ -268,6 +278,8 @@ export class Orchestrator {
       turn_count: 0,
       retry_attempt: attempt,
       started_at: new Date(),
+      dispatch_lock: null,
+      dispatch_lock_timer: null,
     }
     this.state.running.set(issue.id, entry)
 
@@ -285,6 +297,41 @@ export class Orchestrator {
 
   private async runWorker(issue: Issue, attempt: number | null): Promise<void> {
     const startedAt = new Date()
+
+    // Acquire dispatch lock (if adapter configured)
+    if (this.dispatchLockAdapter) {
+      const lockKey = toDispatchLockKey(issue)
+      let lock: Awaited<ReturnType<DispatchLockAdapter['acquireLock']>>
+      try {
+        lock = await this.dispatchLockAdapter.acquireLock(lockKey, DISPATCH_LOCK_TTL_MS)
+      }
+      catch (err) {
+        log.error(`dispatch lock acquire threw issue_id=${issue.id}: ${err}`)
+        this.state.running.delete(issue.id)
+        this.state.claimed.delete(issue.id)
+        return
+      }
+      if (!lock) {
+        log.info(`dispatch lock held for ${lockKey} — skipping issue_id=${issue.id}`)
+        this.state.running.delete(issue.id)
+        this.state.claimed.delete(issue.id)
+        return
+      }
+      const entry = this.state.running.get(issue.id)
+      if (!entry) {
+        log.warn(`dispatch lock acquired but entry already removed — releasing lock issue_id=${issue.id}`)
+        this.dispatchLockAdapter.releaseLock(lock).catch((err) => {
+          log.warn(`dispatch lock release (orphaned) failed issue_id=${issue.id}: ${err}`)
+        })
+        return
+      }
+      entry.dispatch_lock = lock
+      entry.dispatch_lock_timer = setInterval(() => {
+        this.dispatchLockAdapter!.extendLock(lock!, DISPATCH_LOCK_TTL_MS).catch((err) => {
+          log.warn(`dispatch lock extend failed issue_id=${issue.id}: ${err}`)
+        })
+      }, DISPATCH_LOCK_EXTEND_INTERVAL_MS)
+    }
 
     try {
       await this.executeAgentRun(issue, attempt)
@@ -480,6 +527,9 @@ export class Orchestrator {
     const running = this.state.running.get(issueId)
     if (!running)
       return
+
+    // Release dispatch lock
+    this.releaseDispatchLock(running)
 
     this.state.running.delete(issueId)
 
@@ -698,6 +748,9 @@ export class Orchestrator {
     if (!entry)
       return
 
+    // Release dispatch lock
+    this.releaseDispatchLock(entry)
+
     this.state.running.delete(issueId)
     this.state.claimed.delete(issueId)
 
@@ -730,6 +783,19 @@ export class Orchestrator {
       removeWorkspace(this.config, entry.identifier, entry.issue).catch((err) => {
         log.error(`workspace cleanup failed issue_id=${issueId}: ${err}`)
       })
+    }
+  }
+
+  private releaseDispatchLock(entry: RunningEntry): void {
+    if (entry.dispatch_lock_timer) {
+      clearInterval(entry.dispatch_lock_timer)
+      entry.dispatch_lock_timer = null
+    }
+    if (entry.dispatch_lock && this.dispatchLockAdapter) {
+      this.dispatchLockAdapter.releaseLock(entry.dispatch_lock).catch((err) => {
+        log.warn(`dispatch lock release failed: ${err}`)
+      })
+      entry.dispatch_lock = null
     }
   }
 

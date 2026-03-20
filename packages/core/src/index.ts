@@ -20,6 +20,11 @@ export {
 
 export type { ValidationError } from './config'
 
+// Dispatch Lock
+export { createNoopDispatchLock, toDispatchLockKey } from './dispatch-lock'
+
+export type { DispatchLock, DispatchLockAdapter } from './dispatch-lock'
+
 // Filter
 export { deduplicateByNormalized, hasFilter, matchesFilter, splitCandidatesAndWatched } from './filter'
 

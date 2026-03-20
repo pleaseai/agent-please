@@ -1,3 +1,4 @@
+import type { DispatchLock, DispatchLockAdapter } from './dispatch-lock'
 import type { GitHubApi, IssueCommentHandlerDeps, IssueCommentPayload } from './issue-comment-handler'
 import type { ServiceConfig } from './types'
 import { describe, expect, mock, test } from 'bun:test'
@@ -236,5 +237,61 @@ describe('handleIssueCommentMention', () => {
     expect(github.calls.removeReaction.length).toBeGreaterThanOrEqual(1)
     const [, , , reactionId] = github.calls.removeReaction[0]
     expect(reactionId).toBe(999)
+  })
+
+  test('skips when dispatch lock is already held', async () => {
+    const github = makeGithubApi()
+    const lockAdapter: DispatchLockAdapter = {
+      acquireLock: async () => null, // Always fails — lock held
+      extendLock: async () => true,
+      releaseLock: async () => {},
+    }
+    const deps: IssueCommentHandlerDeps = {
+      config: makeConfig(),
+      workflow: { config: {}, prompt_template: 'Work on {{ issue.title }}' },
+      github,
+      dispatchLockAdapter: lockAdapter,
+    }
+
+    await handleIssueCommentMention(makePayload(), deps)
+
+    // Should NOT have added eyes reaction — skipped before any work
+    expect(github.calls.addReaction.length).toBe(0)
+    // Should NOT have posted any comment
+    expect(github.calls.postComment.length).toBe(0)
+  })
+
+  test('acquires and releases lock on normal flow', async () => {
+    const github = makeGithubApi()
+    const locks = new Map<string, DispatchLock>()
+    const calls: string[] = []
+    const lockAdapter: DispatchLockAdapter = {
+      async acquireLock(threadId, ttlMs) {
+        calls.push(`acquire:${threadId}`)
+        const lock: DispatchLock = { threadId, token: 'tok', expiresAt: Date.now() + ttlMs }
+        locks.set(threadId, lock)
+        return lock
+      },
+      async extendLock() { return true },
+      async releaseLock(lock) {
+        calls.push(`release:${lock.threadId}`)
+        locks.delete(lock.threadId)
+      },
+    }
+    const deps: IssueCommentHandlerDeps = {
+      config: makeConfig(),
+      workflow: { config: {}, prompt_template: 'Work on {{ issue.title }}' },
+      github,
+      dispatchLockAdapter: lockAdapter,
+    }
+
+    // This will fail at createWorkspace (workspace root is /dev/null/workspaces)
+    // but the lock should still be acquired then released
+    await handleIssueCommentMention(makePayload(), deps)
+
+    expect(calls.some(c => c.startsWith('acquire:'))).toBe(true)
+    expect(calls.some(c => c.startsWith('release:'))).toBe(true)
+    // Lock should be cleaned up
+    expect(locks.size).toBe(0)
   })
 })
