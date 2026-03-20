@@ -137,6 +137,10 @@ export class Orchestrator {
     return this.db
   }
 
+  setDispatchLockAdapter(adapter: DispatchLockAdapter): void {
+    this.dispatchLockAdapter = adapter
+  }
+
   triggerRefresh(): void {
     this.scheduleTick(0)
   }

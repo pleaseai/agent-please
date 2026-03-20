@@ -1,4 +1,4 @@
-import type { GitHubApi, IssueCommentPayload, VerifySignature } from '@pleaseai/agent-core'
+import type { DispatchLockAdapter, GitHubApi, IssueCommentPayload, VerifySignature } from '@pleaseai/agent-core'
 import type { Chat } from 'chat'
 import process from 'node:process'
 import { createLogger, createVerify, handleIssueCommentMention, handleWebhook, shouldHandleComment } from '@pleaseai/agent-core'
@@ -156,10 +156,12 @@ export default defineEventHandler(async (event) => {
         const workflow = orchestrator.getWorkflow()
 
         // Fire and forget — dispatch asynchronously
+        const dispatchLockAdapter = (useNitroApp() as any).chatStateAdapter as DispatchLockAdapter | undefined
         handleIssueCommentMention(payload, {
           config,
           workflow,
           github,
+          dispatchLockAdapter,
         }).catch(err => log.error('issue comment handler error:', err))
 
         setResponseStatus(event, 202)
