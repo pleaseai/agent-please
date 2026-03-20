@@ -32,7 +32,7 @@ runtime environment.
 | `apps/agent-please/server/api/v1/[identifier].get.ts` | GET `/api/v1/:identifier` — per-issue detail |
 | `apps/agent-please/server/api/webhooks/github.post.ts` | POST `/api/webhooks/github` — GitHub webhook handler |
 | `apps/agent-please/server/api/webhooks/slack.post.ts` | POST `/api/webhooks/slack` — Slack webhook handler |
-| `apps/agent-please/server/api/v1/sessions/[sessionId]/messages.get.ts` | GET `/api/v1/sessions/:id/messages` — session message history |
+| `apps/agent-please/server/api/v1/sessions/[sessionId]/messages.get.ts` | GET `/api/v1/sessions/:sessionId/messages` — session message history |
 | `apps/agent-please/server/plugins/02.chat-bot.ts` | Nitro plugin: Chat SDK bot (GitHub + Slack adapters) |
 | `WORKFLOW.md` | User-authored config file in the **target repository** (not this repo) — defines tracker settings, hooks, agent limits, and the Liquid prompt template |
 
@@ -62,7 +62,7 @@ agent-please/                      # Monorepo root (Bun + Turborepo)
 │   │   │   ├── v1/state.get.ts   # GET /api/v1/state
 │   │   │   ├── v1/refresh.post.ts # POST /api/v1/refresh
 │   │   │   ├── v1/[identifier].get.ts # GET /api/v1/:identifier
-│   │   │   ├── v1/sessions/[sessionId]/messages.get.ts # GET /api/v1/sessions/:id/messages
+│   │   │   ├── v1/sessions/[sessionId]/messages.get.ts # GET /api/v1/sessions/:sessionId/messages
 │   │   │   ├── webhooks/github.post.ts # POST /api/webhooks/github
 │   │   │   └── webhooks/slack.post.ts  # POST /api/webhooks/slack
 │   │   └── utils/orchestrator.ts # useOrchestrator() helper
@@ -281,5 +281,5 @@ usage). The bot lifecycle is managed by the Nitro plugin (startup/shutdown).
 - **Cloud mode** — Turso remote database via `db.turso_url` + `db.turso_auth_token` config
 
 Records include issue identifier, session ID, duration, token usage, turn count, and status.
-The session messages API (`/api/v1/sessions/:id/messages`) uses `session-renderer.ts` to
+The session messages API (`/api/v1/sessions/:sessionId/messages`) uses `session-renderer.ts` to
 extract and format messages from the Claude Agent SDK.
