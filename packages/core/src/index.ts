@@ -71,6 +71,7 @@ export type {
   AgentMessage,
   AgentTotals,
   AsanaPlatformConfig,
+  AuthConfig,
   AuthorAssociation,
   BlockerRef,
   ChannelConfig,

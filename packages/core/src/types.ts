@@ -142,6 +142,18 @@ export interface SandboxConfig {
   }
 }
 
+export interface AuthConfig {
+  secret: string | null
+  github: {
+    client_id: string | null
+    client_secret: string | null
+  }
+  admin: {
+    username: string | null
+    password: string | null
+  }
+}
+
 export interface DbConfig {
   path: string
   turso_url: string | null
@@ -222,6 +234,7 @@ export interface ServiceConfig {
       }
     }
   }
+  auth: AuthConfig
   env: Record<string, string>
   db: DbConfig
   state: StateConfig
