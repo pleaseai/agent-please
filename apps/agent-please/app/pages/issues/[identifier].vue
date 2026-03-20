@@ -6,7 +6,7 @@ definePageMeta({ layout: 'dashboard' })
 const route = useRoute()
 const identifier = computed(() => route.params.identifier as string)
 
-useHead({ title: () => `${identifier.value} — Work Please` })
+useHead({ title: () => `${identifier.value} — Agent Please` })
 
 const { detail, loading, error } = useIssueDetail(identifier)
 

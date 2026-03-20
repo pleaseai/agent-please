@@ -1,6 +1,6 @@
 # Architecture
 
-This document provides a bird's-eye view of the Work Please codebase. It is intended to help
+This document provides a bird's-eye view of the Agent Please codebase. It is intended to help
 contributors (human and AI) orient themselves quickly and understand how the pieces fit together.
 
 For the full specification, see [SPEC.md](SPEC.md). For the upstream reference implementation,
@@ -8,7 +8,7 @@ see [vendor/symphony/SPEC.md](vendor/symphony/SPEC.md).
 
 ## System Purpose
 
-Work Please is a long-running TypeScript daemon that turns issue tracker tasks into autonomous
+Agent Please is a long-running TypeScript daemon that turns issue tracker tasks into autonomous
 Claude Code agent sessions. It continuously polls an issue tracker (GitHub Projects v2 or Asana),
 creates an isolated workspace for each eligible issue, renders a Liquid prompt template, and
 launches a Claude Code agent session inside that workspace via the
@@ -23,25 +23,25 @@ runtime environment.
 
 | File | Purpose |
 |------|---------|
-| `apps/work-please/src/index.ts` | Binary entry point — calls `runCli()` |
-| `apps/work-please/src/cli.ts` | CLI argument parsing (`run`, `init`, `--port`) and Nuxt server startup |
+| `apps/agent-please/src/index.ts` | Binary entry point — calls `runCli()` |
+| `apps/agent-please/src/cli.ts` | CLI argument parsing (`run`, `init`, `--port`) and Nuxt server startup |
 | `packages/core/src/orchestrator.ts` | Core poll/dispatch/retry loop — start reading here for runtime behavior |
-| `apps/work-please/server/plugins/01.orchestrator.ts` | Nitro plugin: creates & starts the Orchestrator on server boot |
-| `apps/work-please/server/api/v1/state.get.ts` | GET `/api/v1/state` — orchestrator state snapshot |
-| `apps/work-please/server/api/v1/refresh.post.ts` | POST `/api/v1/refresh` — trigger immediate poll |
-| `apps/work-please/server/api/v1/[identifier].get.ts` | GET `/api/v1/:identifier` — per-issue detail |
-| `apps/work-please/server/api/webhooks/github.post.ts` | POST `/api/webhooks/github` — GitHub webhook handler |
+| `apps/agent-please/server/plugins/01.orchestrator.ts` | Nitro plugin: creates & starts the Orchestrator on server boot |
+| `apps/agent-please/server/api/v1/state.get.ts` | GET `/api/v1/state` — orchestrator state snapshot |
+| `apps/agent-please/server/api/v1/refresh.post.ts` | POST `/api/v1/refresh` — trigger immediate poll |
+| `apps/agent-please/server/api/v1/[identifier].get.ts` | GET `/api/v1/:identifier` — per-issue detail |
+| `apps/agent-please/server/api/webhooks/github.post.ts` | POST `/api/webhooks/github` — GitHub webhook handler |
 | `WORKFLOW.md` | User-authored config file in the **target repository** (not this repo) — defines tracker settings, hooks, agent limits, and the Liquid prompt template |
 
 ## Module Structure
 
 ```
-work-please/                      # Monorepo root (Bun + Turborepo)
-├── apps/work-please/             # Main Nuxt application (@pleaseai/work)
+agent-please/                      # Monorepo root (Bun + Turborepo)
+├── apps/agent-please/             # Main Nuxt application (@pleaseai/agent)
 │   ├── src/                      # CLI entry point
 │   │   ├── index.ts              # Binary entry point — calls runCli()
 │   │   ├── cli.ts                # CLI parsing (Commander) → starts Nuxt server
-│   │   └── init.ts               # `work-please init` — scaffolds GitHub Project + WORKFLOW.md
+│   │   └── init.ts               # `agent-please init` — scaffolds GitHub Project + WORKFLOW.md
 │   ├── app/                      # Nuxt client-side application
 │   │   ├── app.vue               # Root component with <UApp>
 │   │   ├── layouts/dashboard.vue # Nuxt UI Dashboard layout (sidebar + panels)
@@ -62,7 +62,7 @@ work-please/                      # Monorepo root (Bun + Turborepo)
 │   │   │   └── webhooks/github.post.ts # POST /api/webhooks/github
 │   │   └── utils/orchestrator.ts # useOrchestrator() helper
 │   └── nuxt.config.ts            # Nuxt config (Bun preset, Nuxt UI)
-├── packages/core/                # @pleaseai/work-core — orchestrator business logic
+├── packages/core/                # @pleaseai/agent-core — orchestrator business logic
 │   └── src/
 │       ├── orchestrator.ts       # Core loop: poll → reconcile → dispatch → retry
 │       ├── config.ts             # YAML front matter → typed ServiceConfig
@@ -193,7 +193,7 @@ The codebase uses discriminated union types for expected errors rather than exce
 - `ValidationError` — Missing or invalid config fields
 - `WorkflowError` — YAML parse errors, missing files, invalid front matter
 - `PromptBuildError` — Liquid template parse/render failures
-- `InitError` — GitHub API failures during `work-please init`
+- `InitError` — GitHub API failures during `agent-please init`
 
 Each error type has a `code` field for programmatic matching. The `isTrackerError()`,
 `isWorkflowError()`, `isPromptBuildError()`, and `isInitError()` type guards are used
@@ -206,12 +206,12 @@ for narrowing.
 - **Mocking:** `AppServerClient` accepts an injectable `queryFn` for testing without the real
   Claude CLI. Tracker adapters are tested against mock GraphQL/REST responses. Workspace operations
   use `spyOn(_git, 'spawnSync')` to mock git commands.
-- **Commands:** `bun run test` (all), `bun run test:app` (work-please only)
+- **Commands:** `bun run test` (all), `bun run test:app` (agent-please only)
 
 ### Logging
 
 Structured `key=value` format on stderr via `console.warn()` and `console.error()`. All log lines
-are prefixed with `[work-please]` or `[orchestrator]`. No log framework — kept intentionally
+are prefixed with `[agent-please]` or `[orchestrator]`. No log framework — kept intentionally
 simple for daemon operation.
 
 ### Configuration

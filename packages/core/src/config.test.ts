@@ -641,10 +641,10 @@ describe('label_prefix parsing', () => {
         api_key: 'token',
         owner: 'myorg',
         project_number: 1,
-        label_prefix: 'work-please',
+        label_prefix: 'agent-please',
       },
     }))
-    expect(config.tracker.label_prefix).toBe('work-please')
+    expect(config.tracker.label_prefix).toBe('agent-please')
   })
 
   it('defaults label_prefix to null when omitted', () => {
@@ -991,7 +991,7 @@ describe('buildConfig db section', () => {
       delete process.env.TURSO_DATABASE_URL
       delete process.env.TURSO_AUTH_TOKEN
       const config = buildConfig(makeWorkflow({}))
-      expect(config.db.path).toBe('.work-please/agent_runs.db')
+      expect(config.db.path).toBe('.agent-please/agent_runs.db')
       expect(config.db.turso_url).toBeNull()
       expect(config.db.turso_auth_token).toBeNull()
     }

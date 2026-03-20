@@ -1,10 +1,10 @@
-# Security Reviewer Memory — brisbane / work-please
+# Security Reviewer Memory — brisbane / agent-please
 
 ## Project Context
-- Bun + TypeScript monorepo; main service at `apps/work-please/src/`
+- Bun + TypeScript monorepo; main service at `apps/agent-please/src/`
 - Dashboard SPA at `apps/dashboard/src/` (Vue 3 + Vite)
-- HTTP server: `apps/work-please/src/server.ts` (Bun.serve)
-- Workspace path logic: `apps/work-please/src/workspace.ts`
+- HTTP server: `apps/agent-please/src/server.ts` (Bun.serve)
+- Workspace path logic: `apps/agent-please/src/workspace.ts`
 
 ## Confirmed Security Patterns
 

@@ -1,6 +1,6 @@
 # Review Issue Fixer Memory
 
-## Project: brisbane (work-please monorepo)
+## Project: brisbane (agent-please monorepo)
 
 ### Package Manager
 - Always use `bun` / `bunx` (not npm/pnpm)
@@ -16,7 +16,7 @@
 - Error handling pattern in composables: `console.error('[dashboard]', e)` then set `error.value = toMessage(e)`
 - Overlap guard pattern: `let fetching = false` outside `load()`, guard at top of `load()`, reset in `finally`
 - Security headers: defined as `SECURITY_HEADERS` const, spread into response headers
-- Server file: `apps/work-please/src/server.ts` — handles API routes and static file serving
+- Server file: `apps/agent-please/src/server.ts` — handles API routes and static file serving
 
 ### ESLint Style Notes
 - CSP strings with single quotes inside must use template literals, not double-quoted strings (ESLint `style/quotes` rule)

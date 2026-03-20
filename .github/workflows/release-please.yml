@@ -15,7 +15,7 @@ jobs:
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
-      app_release_created: ${{ steps.release.outputs['apps/work-please--release_created'] }}
+      app_release_created: ${{ steps.release.outputs['apps/agent-please--release_created'] }}
       core_release_created: ${{ steps.release.outputs['packages/core--release_created'] }}
     steps:
       - uses: actions/create-github-app-token@f8d387b68d61c58ab83c6c016672934102569859 # v3.0.0
@@ -62,15 +62,15 @@ jobs:
       - run: bun run build
 
       - name: Copy root files into package directory
-        run: cp LICENSE README.md apps/work-please/
+        run: cp LICENSE README.md apps/agent-please/
 
       - name: 'Pack with bun (resolves workspace: protocol)'
         run: bun pm pack --ignore-scripts
-        working-directory: apps/work-please
+        working-directory: apps/agent-please
 
       - name: Publish tarball with npm (supports --provenance)
-        run: npm publish pleaseai-work-*.tgz --provenance --access public
-        working-directory: apps/work-please
+        run: npm publish pleaseai-agent-*.tgz --provenance --access public
+        working-directory: apps/agent-please
 
   publish-core:
     needs: release-please
@@ -110,5 +110,5 @@ jobs:
         working-directory: packages/core
 
       - name: Publish tarball with npm (supports --provenance)
-        run: npm publish pleaseai-work-core-*.tgz --provenance --access public
+        run: npm publish pleaseai-agent-core-*.tgz --provenance --access public
         working-directory: packages/core

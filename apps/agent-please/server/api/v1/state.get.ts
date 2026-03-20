@@ -1,4 +1,4 @@
-import type { OrchestratorState, RetryEntry, RunningEntry } from '@pleaseai/work-core'
+import type { OrchestratorState, RetryEntry, RunningEntry } from '@pleaseai/agent-core'
 
 export default defineEventHandler((event) => {
   const orchestrator = useOrchestrator(event)

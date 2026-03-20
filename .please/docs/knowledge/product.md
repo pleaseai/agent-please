@@ -1,8 +1,8 @@
-# Product Guide — Work Please
+# Product Guide — Agent Please
 
 ## Vision
 
-Work Please turns issue tracker tasks into autonomous, isolated Claude Code agent sessions — enabling engineering teams to manage work at scale instead of supervising individual coding agents.
+Agent Please turns issue tracker tasks into autonomous, isolated Claude Code agent sessions — enabling engineering teams to manage work at scale instead of supervising individual coding agents.
 
 ## Target Users
 
@@ -29,10 +29,10 @@ Engineering teams running autonomous coding agents at scale. Teams that need to 
 
 ## Non-Goals
 
-- **Not a general-purpose AI agent framework** — Work Please is focused specifically on the issue tracker to agent workflow pipeline. It does not aim to be a generic agent orchestration platform.
+- **Not a general-purpose AI agent framework** — Agent Please is focused specifically on the issue tracker to agent workflow pipeline. It does not aim to be a generic agent orchestration platform.
 - **Not a code review tool** — The agent performs implementation tasks. Review remains a human or separate-tool responsibility.
-- **Not a CI/CD replacement** — Work Please complements existing CI/CD pipelines rather than replacing them.
+- **Not a CI/CD replacement** — Agent Please complements existing CI/CD pipelines rather than replacing them.
 
 ## Architecture Summary
 
-Work Please is a long-running TypeScript daemon (Bun + Turborepo monorepo) implementing the Symphony specification. It follows a scheduler/runner pattern: poll tracker → reconcile state → dispatch agents → retry on failure.
+Agent Please is a long-running TypeScript daemon (Bun + Turborepo monorepo) implementing the Symphony specification. It follows a scheduler/runner pattern: poll tracker → reconcile state → dispatch agents → retry on failure.

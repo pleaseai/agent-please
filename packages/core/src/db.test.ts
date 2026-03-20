@@ -8,7 +8,7 @@ import { createDbClient, insertRun, queryRuns, resolveDbPath, runMigrations } fr
 
 function makeDbConfig(overrides: Partial<DbConfig> = {}): DbConfig {
   return {
-    path: '.work-please/agent_runs.db',
+    path: '.agent-please/agent_runs.db',
     turso_url: null,
     turso_auth_token: null,
     ...overrides,
@@ -37,8 +37,8 @@ function makeInsertParams(overrides: Partial<InsertRunParams> = {}): InsertRunPa
 
 describe('resolveDbPath', () => {
   it('resolves a relative path under workspace root', () => {
-    const result = resolveDbPath('.work-please/runs.db', '/tmp/ws')
-    expect(result).toBe('/tmp/ws/.work-please/runs.db')
+    const result = resolveDbPath('.agent-please/runs.db', '/tmp/ws')
+    expect(result).toBe('/tmp/ws/.agent-please/runs.db')
   })
 
   it('blocks path traversal', () => {
@@ -71,7 +71,7 @@ describe('createDbClient', () => {
   it('creates embedded client with auto-created directory', () => {
     const client = createDbClient(makeDbConfig(), tmpRoot)
     expect(client).not.toBeNull()
-    expect(existsSync(join(tmpRoot, '.work-please'))).toBe(true)
+    expect(existsSync(join(tmpRoot, '.agent-please'))).toBe(true)
     client?.close()
   })
 

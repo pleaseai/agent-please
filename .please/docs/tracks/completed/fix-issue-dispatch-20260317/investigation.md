@@ -13,10 +13,10 @@
 ### 2. Root Cause Analysis
 
 **Problem Location:**
-- File: `apps/work-please/src/orchestrator.ts`
+- File: `apps/agent-please/src/orchestrator.ts`
 - Function: `dispatchWatchedIssues()`
 - Line: `606`
-- Secondary: `apps/work-please/src/tracker/github.ts`, `normalizeProjectItem()`, line `415`
+- Secondary: `apps/agent-please/src/tracker/github.ts`, `normalizeProjectItem()`, line `415`
 
 **Root Cause:**
 The `dispatchWatchedIssues()` guard at line 606 (`if (!issue.review_decision) continue`) unconditionally skips any project item whose top-level `review_decision` is `null`. For GitHub Issue-type content, `review_decision` is always `null` because the GraphQL `... on Issue` fragment does not include the `reviewDecision` field — it only exists on the `PullRequest` type in GitHub's schema. The linked PR review decisions ARE available in `pull_requests[*].review_decision` (populated from `closedByPullRequestsReferences` at line 409), but this data is never promoted to the issue-level `review_decision`.

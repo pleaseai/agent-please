@@ -1,9 +1,9 @@
-import type { Orchestrator } from '@pleaseai/work-core'
+import type { Orchestrator } from '@pleaseai/agent-core'
 import process from 'node:process'
 import { createGitHubAdapter } from '@chat-adapter/github'
 import { createSlackAdapter } from '@chat-adapter/slack'
 import { createMemoryState } from '@chat-adapter/state-memory'
-import { createLogger } from '@pleaseai/work-core'
+import { createLogger } from '@pleaseai/agent-core'
 import { Chat } from 'chat'
 
 const log = createLogger('chat-bot')
@@ -54,7 +54,7 @@ export default defineNitroPlugin((nitroApp) => {
     return
   }
 
-  const botUsername = process.env.CHAT_BOT_USERNAME || process.env.GITHUB_BOT_USERNAME || 'work-please'
+  const botUsername = process.env.CHAT_BOT_USERNAME || process.env.GITHUB_BOT_USERNAME || 'agent-please'
 
   const bot = new Chat({
     userName: botUsername,
@@ -71,7 +71,7 @@ export default defineNitroPlugin((nitroApp) => {
       const runningCount = state.running.size
       const retryCount = state.retry_attempts.size
 
-      statusLines.push(`**Work Please Status**`)
+      statusLines.push(`**Agent Please Status**`)
       statusLines.push(`- Running: ${runningCount}`)
       statusLines.push(`- Retrying: ${retryCount}`)
       statusLines.push(`- Total tokens: ${state.agent_totals.total_tokens.toLocaleString()}`)

@@ -1,4 +1,4 @@
-# Tech Stack — Work Please
+# Tech Stack — Agent Please
 
 ## Runtime & Language
 
@@ -64,12 +64,12 @@
 ## Project Structure
 
 ```
-work-please/                      # Monorepo root
-├── apps/work-please/             # Nuxt application (@pleaseai/work)
+agent-please/                      # Monorepo root
+├── apps/agent-please/             # Nuxt application (@pleaseai/agent)
 │   ├── app/                      # Client-side (pages, components, composables)
 │   ├── server/                   # Server-side (Nitro routes, plugins)
 │   └── src/                      # CLI entry point (Commander.js)
-├── packages/core/                # @pleaseai/work-core (orchestrator business logic)
+├── packages/core/                # @pleaseai/agent-core (orchestrator business logic)
 └── vendor/symphony/              # Upstream reference spec (read-only)
 ```
 
@@ -80,7 +80,7 @@ bun install                       # Install dependencies
 bun run dev                       # Development (Nuxt dev server)
 bun run build                     # Build all packages (Nuxt + core)
 bun run test                      # Run all tests
-bun run test:app                  # Run work-please tests only
+bun run test:app                  # Run agent-please tests only
 bun run check                     # Type-check all workspaces
 bun run lint                      # Lint all workspaces
 bun run lint:fix                  # Lint with auto-fix

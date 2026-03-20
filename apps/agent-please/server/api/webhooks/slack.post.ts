@@ -1,5 +1,5 @@
 import type { Chat } from 'chat'
-import { createLogger } from '@pleaseai/work-core'
+import { createLogger } from '@pleaseai/agent-core'
 
 const log = createLogger('webhook:slack')
 

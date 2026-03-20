@@ -4,15 +4,15 @@
   "bump-patch-for-minor-pre-major": true,
   "initial-version": "0.1.0",
   "packages": {
-    "apps/work-please": {
+    "apps/agent-please": {
       "release-type": "node",
-      "package-name": "@pleaseai/work",
+      "package-name": "@pleaseai/agent",
       "changelog-path": "CHANGELOG.md",
       "initial-version": "0.1.0"
     },
     "packages/core": {
       "release-type": "node",
-      "package-name": "@pleaseai/work-core",
+      "package-name": "@pleaseai/agent-core",
       "changelog-path": "CHANGELOG.md",
       "initial-version": "0.1.0"
     }

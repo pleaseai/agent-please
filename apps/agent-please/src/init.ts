@@ -2,12 +2,12 @@ import { existsSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import process from 'node:process'
 import { graphql as createGraphql, GraphqlResponseError } from '@octokit/graphql'
-import { createLogger } from '@pleaseai/work-core'
+import { createLogger } from '@pleaseai/agent-core'
 
-const log = createLogger('work-please')
+const log = createLogger('agent-please')
 
 const GITHUB_API_ENDPOINT = 'https://api.github.com'
-const DEFAULT_TITLE = 'Work Please'
+const DEFAULT_TITLE = 'Agent Please'
 const WORKFLOW_FILE_NAME = 'WORKFLOW.md'
 
 export interface InitOptions {
@@ -241,8 +241,8 @@ claude:
   # system_prompt: null              # optional: custom system prompt string, or { type: preset, preset: claude_code, append: "..." }
   # settings:
   #   attribution:
-  #     commit: "🙏 Generated with Work Please"
-  #     pr: "🙏 Generated with Work Please"
+  #     commit: "🙏 Generated with Agent Please"
+  #     pr: "🙏 Generated with Agent Please"
 # worker:                            # optional: SSH worker support
 #   ssh_hosts: []                    # list of SSH host aliases for remote execution
 #   max_concurrent_agents_per_host: 5
@@ -251,7 +251,7 @@ claude:
 #   refresh_ms: 1000                 # default: 1s; dashboard data refresh interval
 #   render_interval_ms: 16           # default: 16ms; TUI render interval
 # db:
-#   path: ".work-please/agent_runs.db"  # default: relative to workspace root
+#   path: ".agent-please/agent_runs.db"  # default: relative to workspace root
 #   turso_url: "$TURSO_DATABASE_URL"    # optional: Turso cloud URL
 #   turso_auth_token: "$TURSO_AUTH_TOKEN" # optional: Turso auth token
 # server:

@@ -47,5 +47,5 @@ The existing in-memory OrchestratorState remains unchanged. Run records are writ
 ## Assumptions
 
 - `@libsql/client` package is compatible with the Bun runtime
-- Default DB path is `{workspace.root}/.work-please/agent_runs.db` when no config is provided
+- Default DB path is `{workspace.root}/.agent-please/agent_runs.db` when no config is provided
 - The `db` section in `.please/config.yml` is optional; when absent, embedded mode is used

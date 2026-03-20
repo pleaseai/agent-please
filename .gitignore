@@ -10,9 +10,9 @@ coverage/
 .please/state/
 
 # npm publish artifacts copied from root (prepublishOnly/postpublish)
-apps/work-please/LICENSE
-apps/work-please/README.md
+apps/agent-please/LICENSE
+apps/agent-please/README.md
 
 .env.local
 WORKFLOW.local.md
-apps/work-please/WORKFLOW.md
+apps/agent-please/WORKFLOW.md

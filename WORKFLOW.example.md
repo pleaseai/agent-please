@@ -57,8 +57,8 @@ claude:
   # system_prompt: null              # optional: custom system prompt string, or { type: preset, preset: claude_code, append: "..." }
   # settings:
   #   attribution:
-  #     commit: "🙏 Generated with Work Please"
-  #     pr: "🙏 Generated with Work Please"
+  #     commit: "🙏 Generated with Agent Please"
+  #     pr: "🙏 Generated with Agent Please"
 # worker:                            # optional: SSH worker support
 #   ssh_hosts: []                    # list of SSH host aliases for remote execution
 #   max_concurrent_agents_per_host: 5
@@ -433,5 +433,5 @@ The `<!-- workpad:issue-<number> -->` HTML comment at the bottom is a machine-re
 
 ---
 <!-- workpad:issue-<number> -->
-🙏 Generated with [Work Please](https://github.com/pleaseai/work-please)
+🙏 Generated with [Agent Please](https://github.com/pleaseai/agent-please)
 ````

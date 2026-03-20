@@ -132,7 +132,7 @@ export class AppServerClient {
     const toolSpecs = getToolSpecs(this.config)
     if (toolSpecs.length > 0) {
       options.mcpServers = {
-        'work-please-tools': createToolsMcpServer(this.config),
+        'agent-please-tools': createToolsMcpServer(this.config),
       }
     }
 
