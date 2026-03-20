@@ -132,9 +132,10 @@ export default defineEventHandler(async (event) => {
   if (githubEvent === 'issue_comment' && secret) {
     try {
       const payload = await request.clone().json() as IssueCommentPayload
-      const botUsername = config.chat.bot_username || process.env.GITHUB_BOT_USERNAME || 'work-please'
+      const botUsername = config.chat.bot_username || process.env.GITHUB_BOT_USERNAME || 'agent-please'
 
-      if (shouldHandleComment(payload, botUsername)) {
+      const allowedAssociations = config.chat.github?.allowed_associations
+      if (shouldHandleComment(payload, botUsername, allowedAssociations)) {
         const token = config.tracker.api_key
         if (!token) {
           log.warn('no API token available for issue comment handler — tracker.api_key is required for comment dispatch')

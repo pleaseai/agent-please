@@ -19,45 +19,50 @@ export {
 } from './config'
 
 export type { ValidationError } from './config'
+
 // Filter
 export { deduplicateByNormalized, hasFilter, matchesFilter, splitCandidatesAndWatched } from './filter'
 
 // Issue Comment Handler
 export { extractMentionPrompt, handleIssueCommentMention, shouldHandleComment } from './issue-comment-handler'
-export type { GitHubApi, IssueCommentHandlerDeps, IssueCommentPayload } from './issue-comment-handler'
 
+export type { GitHubApi, IssueCommentHandlerDeps, IssueCommentPayload } from './issue-comment-handler'
 // Label
 export { createLabelService, formatLabelName, parseGitHubIssueUrl } from './label'
-export type { LabelService, LabelState } from './label'
 
+export type { LabelService, LabelState } from './label'
 // Logger
 export { createLogger, isVerbose, setVerbose } from './logger'
+
 // Orchestrator
 export { buildTokenProvider, getLinkedPrUpdateMs, isWatchedUnchanged, Orchestrator } from './orchestrator'
-
 // Prompt Builder
 export { buildContinuationPrompt, buildPrompt, isPromptBuildError } from './prompt-builder'
 
 export type { PromptBuildError } from './prompt-builder'
+
 // Server
 export { HttpServer } from './server'
-
 // Session Renderer
 export { fetchSessionMessages, isValidSessionId, parsePositiveInt } from './session-renderer'
 
 // Tools
 export { createToolsMcpServer, executeTool, getToolSpecs } from './tools'
-export type { ToolResult, ToolSpec } from './tools'
 
+export type { ToolResult, ToolSpec } from './tools'
 // Tracker
 export { createTrackerAdapter, formatTrackerError, isTrackerError } from './tracker'
 
 export type { TrackerAdapter, TrackerError } from './tracker'
+
+// Constants
+export { DEFAULT_ALLOWED_ASSOCIATIONS } from './types'
 // Types
 export type {
   AgentEvent,
   AgentMessage,
   AgentTotals,
+  AuthorAssociation,
   BlockerRef,
   ChatConfig,
   ChatGitHubConfig,

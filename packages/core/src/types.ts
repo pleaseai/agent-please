@@ -143,8 +143,12 @@ export interface AgentRunRecord {
   total_tokens: number
 }
 
+export type AuthorAssociation = 'OWNER' | 'MEMBER' | 'COLLABORATOR' | 'CONTRIBUTOR' | 'FIRST_TIMER' | 'FIRST_TIME_CONTRIBUTOR' | 'NONE'
+
+export const DEFAULT_ALLOWED_ASSOCIATIONS: AuthorAssociation[] = ['OWNER', 'MEMBER', 'COLLABORATOR']
+
 export interface ChatGitHubConfig {
-  // reserved for future github-specific overrides
+  allowed_associations: AuthorAssociation[]
 }
 
 export interface ChatSlackConfig {

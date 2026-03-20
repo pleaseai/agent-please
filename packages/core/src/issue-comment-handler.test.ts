@@ -10,6 +10,7 @@ function makePayload(overrides: Partial<IssueCommentPayload> = {}): IssueComment
       id: 123,
       body: '@my-bot please help with this',
       user: { login: 'testuser' },
+      author_association: 'MEMBER',
       node_id: 'IC_test',
     },
     issue: {
@@ -98,6 +99,32 @@ describe('shouldHandleComment', () => {
       comment: { ...makePayload().comment, body: 'no mention here' },
     })
     expect(shouldHandleComment(payload, 'my-bot')).toBe(false)
+  })
+
+  test('returns false when author_association is not in allowed list', () => {
+    const payload = makePayload({
+      comment: { ...makePayload().comment, author_association: 'NONE' },
+    })
+    expect(shouldHandleComment(payload, 'my-bot', ['OWNER', 'MEMBER'])).toBe(false)
+  })
+
+  test('returns true when author_association is in allowed list', () => {
+    const payload = makePayload({
+      comment: { ...makePayload().comment, author_association: 'COLLABORATOR' },
+    })
+    expect(shouldHandleComment(payload, 'my-bot', ['OWNER', 'MEMBER', 'COLLABORATOR'])).toBe(true)
+  })
+
+  test('uses default allowed associations when not specified', () => {
+    // MEMBER is in the default list
+    expect(shouldHandleComment(makePayload(), 'my-bot')).toBe(true)
+  })
+
+  test('author_association check is case-insensitive', () => {
+    const payload = makePayload({
+      comment: { ...makePayload().comment, author_association: 'member' },
+    })
+    expect(shouldHandleComment(payload, 'my-bot', ['OWNER', 'MEMBER'])).toBe(true)
   })
 })
 

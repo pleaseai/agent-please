@@ -1,8 +1,9 @@
-import type { ChatConfig, ClaudeEffort, DbConfig, IssueFilter, PollingMode, SandboxConfig, ServiceConfig, SettingSource, SystemPromptConfig, WorkflowDefinition } from './types'
+import type { AuthorAssociation, ChatConfig, ChatGitHubConfig, ClaudeEffort, DbConfig, IssueFilter, PollingMode, SandboxConfig, ServiceConfig, SettingSource, SystemPromptConfig, WorkflowDefinition } from './types'
 import { tmpdir } from 'node:os'
 import { join, sep } from 'node:path'
 import process from 'node:process'
 import { createLogger } from './logger'
+import { DEFAULT_ALLOWED_ASSOCIATIONS } from './types'
 
 const log = createLogger('config')
 
@@ -170,6 +171,31 @@ function buildWebhookConfig(webhook: Record<string, unknown>): ServiceConfig['se
   }
 }
 
+const VALID_ASSOCIATIONS = new Set<AuthorAssociation>([
+  'OWNER',
+  'MEMBER',
+  'COLLABORATOR',
+  'CONTRIBUTOR',
+  'FIRST_TIMER',
+  'FIRST_TIME_CONTRIBUTOR',
+  'NONE',
+])
+
+function buildChatGitHubConfig(github: Record<string, unknown>): ChatGitHubConfig {
+  const raw = github.allowed_associations
+  if (!raw)
+    return { allowed_associations: DEFAULT_ALLOWED_ASSOCIATIONS }
+
+  const list = csvValue(raw) ?? []
+  const valid = list
+    .map(s => s.toUpperCase() as AuthorAssociation)
+    .filter(s => VALID_ASSOCIATIONS.has(s))
+
+  return {
+    allowed_associations: valid.length > 0 ? valid : DEFAULT_ALLOWED_ASSOCIATIONS,
+  }
+}
+
 function buildChatConfig(chat: Record<string, unknown>): ChatConfig {
   const hasGithubKey = chat.github !== undefined && chat.github !== null
   const hasSlackKey = chat.slack !== undefined && chat.slack !== null
@@ -184,7 +210,7 @@ function buildChatConfig(chat: Record<string, unknown>): ChatConfig {
       stringValue(chat.bot_username),
       process.env.CHAT_BOT_USERNAME ?? process.env.GITHUB_BOT_USERNAME,
     ),
-    github: hasGithubKey ? {} : null,
+    github: hasGithubKey ? buildChatGitHubConfig(sectionMap(chat, 'github')) : null,
     slack: hasSlack
       ? { bot_token: slackBotToken, signing_secret: slackSigningSecret }
       : null,

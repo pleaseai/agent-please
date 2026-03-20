@@ -1,9 +1,10 @@
 import type { TokenProvider } from './agent-env'
-import type { Issue, ServiceConfig, WorkflowDefinition } from './types'
+import type { AuthorAssociation, Issue, ServiceConfig, WorkflowDefinition } from './types'
 import { resolveAgentEnv } from './agent-env'
 import { AppServerClient } from './agent-runner'
 import { createLogger } from './logger'
 import { buildPrompt, isPromptBuildError } from './prompt-builder'
+import { DEFAULT_ALLOWED_ASSOCIATIONS } from './types'
 import { createWorkspace, runAfterRunHook, runBeforeRunHook } from './workspace'
 
 const log = createLogger('issue-comment')
@@ -14,6 +15,7 @@ export interface IssueCommentPayload {
     id: number
     body: string
     user: { login: string }
+    author_association: string
     node_id: string
   }
   issue: {
@@ -69,15 +71,25 @@ function escapeRegex(s: string): string {
 }
 
 /**
- * Check if the payload is a plain issue comment (not PR) with @mention of bot.
+ * Check if the payload is a plain issue comment (not PR) with @mention of bot,
+ * from an authorized author association.
  */
-export function shouldHandleComment(payload: IssueCommentPayload, botUsername: string): boolean {
+export function shouldHandleComment(
+  payload: IssueCommentPayload,
+  botUsername: string,
+  allowedAssociations: AuthorAssociation[] = DEFAULT_ALLOWED_ASSOCIATIONS,
+): boolean {
   if (payload.action !== 'created')
     return false
   if (payload.issue.pull_request)
     return false
   if (payload.comment.user.login.toLowerCase() === botUsername.toLowerCase())
     return false
+  const association = payload.comment.author_association.toUpperCase() as AuthorAssociation
+  if (!allowedAssociations.includes(association)) {
+    log.info(`rejecting comment from ${payload.comment.user.login} (association: ${payload.comment.author_association}, allowed: ${allowedAssociations.join(', ')})`)
+    return false
+  }
   return extractMentionPrompt(payload.comment.body, botUsername) !== null
 }
 

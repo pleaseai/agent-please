@@ -1119,7 +1119,42 @@ describe('buildConfig - chat section', () => {
     const config = buildConfig(makeWorkflow({
       chat: { github: {} },
     }))
-    expect(config.chat.github).toEqual({})
+    expect(config.chat.github).toEqual({ allowed_associations: ['OWNER', 'MEMBER', 'COLLABORATOR'] })
+  })
+
+  it('parses allowed_associations from github config', () => {
+    const config = buildConfig(makeWorkflow({
+      chat: { github: { allowed_associations: ['OWNER', 'CONTRIBUTOR'] } },
+    }))
+    expect(config.chat.github?.allowed_associations).toEqual(['OWNER', 'CONTRIBUTOR'])
+  })
+
+  it('parses allowed_associations from CSV string', () => {
+    const config = buildConfig(makeWorkflow({
+      chat: { github: { allowed_associations: 'OWNER, MEMBER' } },
+    }))
+    expect(config.chat.github?.allowed_associations).toEqual(['OWNER', 'MEMBER'])
+  })
+
+  it('normalizes allowed_associations to uppercase', () => {
+    const config = buildConfig(makeWorkflow({
+      chat: { github: { allowed_associations: ['owner', 'member'] } },
+    }))
+    expect(config.chat.github?.allowed_associations).toEqual(['OWNER', 'MEMBER'])
+  })
+
+  it('filters out invalid association values', () => {
+    const config = buildConfig(makeWorkflow({
+      chat: { github: { allowed_associations: ['OWNER', 'INVALID', 'MEMBER'] } },
+    }))
+    expect(config.chat.github?.allowed_associations).toEqual(['OWNER', 'MEMBER'])
+  })
+
+  it('falls back to defaults when all associations are invalid', () => {
+    const config = buildConfig(makeWorkflow({
+      chat: { github: { allowed_associations: ['INVALID'] } },
+    }))
+    expect(config.chat.github?.allowed_associations).toEqual(['OWNER', 'MEMBER', 'COLLABORATOR'])
   })
 
   it('returns null github when github section absent', () => {
