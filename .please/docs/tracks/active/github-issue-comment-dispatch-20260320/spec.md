@@ -54,7 +54,7 @@ GitHub issue_comment webhook (action: created, no pull_request)
     4. Create/reuse workspace for the issue
     5. Run Claude Code agent with prompt + context
     6. Post agent response as new issue comment
-    7. Replace eyes with white_check_mark on original comment
+    7. Replace eyes with rocket on original comment
 ```
 
 ## Acceptance Criteria
@@ -63,7 +63,7 @@ GitHub issue_comment webhook (action: created, no pull_request)
 - [ ] AC-2: @mention in a plain issue comment triggers agent dispatch
 - [ ] AC-3: Eyes emoji appears on the comment within seconds
 - [ ] AC-4: Agent response is posted as a reply comment
-- [ ] AC-5: Check mark emoji replaces eyes on completion
+- [ ] AC-5: Rocket emoji replaces eyes on completion
 - [ ] AC-6: PR comment handling (existing) is unaffected
 - [ ] AC-7: Missing `chat` section falls back to env vars (backward compatible)
 

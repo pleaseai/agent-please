@@ -47,16 +47,13 @@ export default defineNitroPlugin((nitroApp) => {
     }
   }
 
-  // Slack adapter: requires bot_token + signing_secret from chat config or env
+  // Slack adapter: requires bot_token + signing_secret from chat config
   const slackConfig = config.chat.slack
   if (slackConfig?.bot_token && slackConfig?.signing_secret) {
     adapters.slack = createSlackAdapter({
       botToken: slackConfig.bot_token,
       signingSecret: slackConfig.signing_secret,
     })
-  }
-  else if (process.env.SLACK_BOT_TOKEN && process.env.SLACK_SIGNING_SECRET) {
-    adapters.slack = createSlackAdapter()
   }
 
   if (Object.keys(adapters).length === 0) {

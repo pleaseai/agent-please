@@ -106,7 +106,8 @@ describe('handleIssueCommentMention', () => {
     return {
       tracker: { kind: 'github_projects', endpoint: '', api_key: 'ghtoken', owner: 'myorg', project_number: 1, label_prefix: null, filter: { assignee: [], label: [] } },
       polling: { mode: 'poll' as const, interval_ms: 30000 },
-      workspace: { root: '/tmp/test-ws' },
+      // Use a path that cannot be created (file used as directory root) to force deterministic failure
+      workspace: { root: '/dev/null/workspaces' },
       hooks: { after_create: null, before_run: null, after_run: null, before_remove: null, timeout_ms: 60000 },
       agent: { max_concurrent_agents: 5, max_turns: 20, max_retry_backoff_ms: 300000, max_concurrent_agents_by_state: {} },
       claude: { model: null, effort: 'high' as const, command: 'claude', permission_mode: 'bypassPermissions', allowed_tools: [], setting_sources: [], turn_timeout_ms: 3600000, read_timeout_ms: 5000, stall_timeout_ms: 300000, sandbox: null, system_prompt: { type: 'preset', preset: 'claude_code' }, settings: { attribution: { commit: null, pr: null } } },
@@ -146,7 +147,7 @@ describe('handleIssueCommentMention', () => {
       github,
     }
 
-    // This will fail on createWorkspace (no real filesystem), but eyes reaction should already be added
+    // createWorkspace will fail (workspace root is /dev/null/workspaces), but eyes reaction is added before
     await handleIssueCommentMention(makePayload(), deps).catch(() => {})
 
     // Should have tried to add eyes reaction
@@ -166,7 +167,7 @@ describe('handleIssueCommentMention', () => {
       github,
     }
 
-    // Will fail because createWorkspace tries to access filesystem
+    // createWorkspace will fail deterministically (workspace root is /dev/null/workspaces)
     await handleIssueCommentMention(makePayload(), deps)
 
     // Should have posted an error comment

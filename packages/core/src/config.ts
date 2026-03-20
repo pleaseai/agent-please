@@ -171,13 +171,13 @@ function buildWebhookConfig(webhook: Record<string, unknown>): ServiceConfig['se
 }
 
 function buildChatConfig(chat: Record<string, unknown>): ChatConfig {
-  const hasGithubKey = chat.github !== undefined
-  const hasSlackKey = chat.slack !== undefined
+  const hasGithubKey = chat.github !== undefined && chat.github !== null
+  const hasSlackKey = chat.slack !== undefined && chat.slack !== null
 
   const slack = sectionMap(chat, 'slack')
-  const slackBotToken = resolveEnvValue(stringValue(slack.bot_token), hasSlackKey ? process.env.SLACK_BOT_TOKEN : undefined)
-  const slackSigningSecret = resolveEnvValue(stringValue(slack.signing_secret), hasSlackKey ? process.env.SLACK_SIGNING_SECRET : undefined)
-  const hasSlack = slackBotToken != null || slackSigningSecret != null
+  const slackBotToken = resolveEnvValue(stringValue(slack.bot_token), process.env.SLACK_BOT_TOKEN)
+  const slackSigningSecret = resolveEnvValue(stringValue(slack.signing_secret), process.env.SLACK_SIGNING_SECRET)
+  const hasSlack = hasSlackKey && (slackBotToken != null || slackSigningSecret != null)
 
   return {
     bot_username: resolveEnvValue(stringValue(chat.bot_username), process.env.CHAT_BOT_USERNAME),

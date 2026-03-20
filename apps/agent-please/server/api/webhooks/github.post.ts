@@ -17,7 +17,7 @@ function getVerifier(secret: string): VerifySignature {
   return verifier
 }
 
-function createGitHubRestApi(token: string): GitHubApi {
+function createGitHubRestApi(token: string, apiEndpoint: string = 'https://api.github.com'): GitHubApi {
   const headers = {
     'Authorization': `token ${token}`,
     'Accept': 'application/vnd.github+json',
@@ -27,7 +27,7 @@ function createGitHubRestApi(token: string): GitHubApi {
   return {
     async addReaction(owner, repo, commentId, reaction) {
       const res = await fetch(
-        `https://api.github.com/repos/${owner}/${repo}/issues/comments/${commentId}/reactions`,
+        `${apiEndpoint}/repos/${owner}/${repo}/issues/comments/${commentId}/reactions`,
         {
           method: 'POST',
           headers: { ...headers, 'Content-Type': 'application/json' },
@@ -42,7 +42,7 @@ function createGitHubRestApi(token: string): GitHubApi {
 
     async removeReaction(owner, repo, commentId, reactionId) {
       const res = await fetch(
-        `https://api.github.com/repos/${owner}/${repo}/issues/comments/${commentId}/reactions/${reactionId}`,
+        `${apiEndpoint}/repos/${owner}/${repo}/issues/comments/${commentId}/reactions/${reactionId}`,
         { method: 'DELETE', headers },
       )
       if (!res.ok && res.status !== 404)
@@ -51,7 +51,7 @@ function createGitHubRestApi(token: string): GitHubApi {
 
     async postComment(owner, repo, issueNumber, body) {
       const res = await fetch(
-        `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments`,
+        `${apiEndpoint}/repos/${owner}/${repo}/issues/${issueNumber}/comments`,
         {
           method: 'POST',
           headers: { ...headers, 'Content-Type': 'application/json' },
@@ -137,12 +137,13 @@ export default defineEventHandler(async (event) => {
       if (shouldHandleComment(payload, botUsername)) {
         const token = config.tracker.api_key
         if (!token) {
-          log.warn('no API token available for issue comment handler')
+          log.warn('no API token available for issue comment handler — tracker.api_key is required for comment dispatch')
           setResponseStatus(event, 503)
           return { error: { code: 'no_token', message: 'No API token configured for issue comment dispatch' } }
         }
 
-        const github = createGitHubRestApi(token)
+        const apiEndpoint = config.tracker.endpoint || 'https://api.github.com'
+        const github = createGitHubRestApi(token, apiEndpoint)
         const workflow = orchestrator.getWorkflow()
 
         // Fire and forget — dispatch asynchronously

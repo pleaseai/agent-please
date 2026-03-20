@@ -39,28 +39,10 @@ After this change, operators can configure `chat.bot_username` in WORKFLOW.md in
 
 ## Key Files
 
-### Create
+See `ARCHITECTURE.md` for the full component breakdown. The primary new files introduced in this track are:
 
-| File | Purpose |
-|------|---------|
-| `packages/core/src/issue-comment-handler.ts` | Issue comment handler: @mention detection, agent dispatch, reaction management |
-| `packages/core/src/issue-comment-handler.test.ts` | Tests for extractMentionPrompt, shouldHandleComment, handleIssueCommentMention |
-
-### Modify
-
-| File | Change |
-|------|--------|
-| `packages/core/src/types.ts` | Add `ChatConfig`, `ChatGitHubConfig`, `ChatSlackConfig`; add `chat` to `ServiceConfig` |
-| `packages/core/src/config.ts` | Add `buildChatConfig()`, wire into `buildConfig()` |
-| `packages/core/src/config.test.ts` | Add 9 chat config tests |
-| `packages/core/src/index.ts` | Export new types + issue-comment-handler |
-| `packages/core/src/orchestrator.ts` | Add `getWorkflow()` method |
-| `packages/core/src/server.test.ts` | Add `chat` to mock ServiceConfig |
-| `packages/core/src/tools.test.ts` | Add `chat` to mock ServiceConfig |
-| `packages/core/src/label.test.ts` | Add `chat` to mock ServiceConfig |
-| `packages/core/src/tracker/github-auth.test.ts` | Add `chat` to mock ServiceConfig |
-| `apps/work-please/server/plugins/02.chat-bot.ts` | Use `config.chat` for bot_username and adapter config |
-| `apps/work-please/server/api/webhooks/github.post.ts` | Add plain issue comment agent dispatch routing |
+- `packages/core/src/issue-comment-handler.ts` — @mention detection, agent dispatch, reaction management
+- `packages/core/src/issue-comment-handler.test.ts` — handler tests
 
 ## Verification
 

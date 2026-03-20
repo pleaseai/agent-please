@@ -51,13 +51,15 @@ export interface IssueCommentHandlerDeps {
  * Returns the prompt text (body with @mention stripped) or null if no mention.
  */
 export function extractMentionPrompt(body: string, botUsername: string): string | null {
-  // Match @botUsername followed by end-of-string, whitespace, or punctuation — but not alphanumeric or hyphen
-  const pattern = new RegExp(`@${escapeRegex(botUsername)}(?=[\\s,.:;!?)\\]}>]|$)`, 'gi')
+  // Match @botUsername with left boundary (not preceded by alphanumeric/hyphen/dot)
+  // and right boundary (followed by end-of-string, whitespace, or punctuation — but not alphanumeric or hyphen)
+  const pattern = new RegExp(`(?<![\\w.-])@${escapeRegex(botUsername)}(?=[\\s,.:;!?)\\]}>]|$)`, 'gi')
   if (!pattern.test(body))
     return null
   // Reset lastIndex after test() with global flag
   pattern.lastIndex = 0
-  return body.replace(pattern, '').trim()
+  const stripped = body.replace(pattern, '').trim()
+  return stripped || null
 }
 
 const REGEX_SPECIAL_CHARS = /[.*+?^${}()|[\]\\]/g
@@ -74,7 +76,7 @@ export function shouldHandleComment(payload: IssueCommentPayload, botUsername: s
     return false
   if (payload.issue.pull_request)
     return false
-  if (payload.comment.user.login === botUsername)
+  if (payload.comment.user.login.toLowerCase() === botUsername.toLowerCase())
     return false
   return extractMentionPrompt(payload.comment.body, botUsername) !== null
 }
@@ -174,7 +176,7 @@ export async function handleIssueCommentMention(
 
     // 7. Post agent response as new issue comment
     const responseBody = messages.length > 0
-      ? messages.at(-1)!
+      ? messages.join('\n\n')
       : '_Agent completed but produced no text output._'
 
     await github.postComment(owner, repo, issueNumber, responseBody)
