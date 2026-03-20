@@ -88,6 +88,8 @@ export type {
   ServiceConfig,
   SettingSource,
   SlackPlatformConfig,
+  StateAdapterKind,
+  StateConfig,
   SystemPromptConfig,
   WatchedSnapshot,
   WorkflowDefinition,
