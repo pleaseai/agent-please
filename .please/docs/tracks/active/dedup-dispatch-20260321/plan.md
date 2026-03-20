@@ -164,3 +164,21 @@ Derivation:
   Evidence: `handleWebhook()` checks `issuePayload.issue.pull_request` and skips if absent — plain issue @mentions bypass Chat SDK entirely and go to `handleIssueCommentMention`
 - Observation: Chat SDK threadId format is PR-centric (`github:owner/repo:prNumber`), not issue-centric
   Evidence: `encodeThreadId()` in `@chat-adapter/github` source uses `prNumber` field exclusively; no issue-level threadId format exists
+
+## Outcomes & Retrospective
+
+### What Was Shipped
+Dispatch lock dedup using Chat SDK StateAdapter — prevents duplicate agent execution when polling and comment @mention fire for the same issue concurrently.
+
+### What Went Well
+- Chat SDK's StateAdapter was structurally compatible with our DispatchLockAdapter interface (duck typing), requiring no adapter bridge code
+- Aligning lock keys with Chat SDK threadId convention future-proofs for Linear/Asana adapters
+- Code review caught a real race condition (lock leak when RunningEntry removed concurrently)
+
+### What Could Improve
+- The initial plan missed the race condition between lock acquisition and entry removal — caught only during review
+- Could have written more integration-level tests (e.g., simulating concurrent dispatch paths)
+
+### Tech Debt Created
+- No integration tests for actual concurrent dispatch dedup (unit tests only)
+- `orchestrator.ts` still exceeds 500-LOC limit (now ~970 lines with lock code added)
