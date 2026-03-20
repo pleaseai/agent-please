@@ -1,4 +1,4 @@
-import type { GitHubApi, IssueCommentPayload, VerifySignature } from '@pleaseai/agent-core'
+import type { GitHubApi, GitHubPlatformConfig, IssueCommentPayload, VerifySignature } from '@pleaseai/agent-core'
 import type { Chat } from 'chat'
 import process from 'node:process'
 import { createLogger, createVerify, handleIssueCommentMention, handleWebhook, shouldHandleComment } from '@pleaseai/agent-core'
@@ -132,18 +132,22 @@ export default defineEventHandler(async (event) => {
   if (githubEvent === 'issue_comment' && secret) {
     try {
       const payload = await request.clone().json() as IssueCommentPayload
-      const botUsername = config.chat.bot_username || process.env.GITHUB_BOT_USERNAME || 'agent-please'
 
-      const allowedAssociations = config.chat.github?.allowed_associations
+      const githubPlatform = config.platforms.github as GitHubPlatformConfig | undefined
+      const githubChannel = config.channels.find(c => c.platform === 'github')
+
+      const botUsername = githubPlatform?.bot_username || process.env.GITHUB_BOT_USERNAME || 'agent-please'
+      const allowedAssociations = githubChannel?.allowed_associations
+
       if (shouldHandleComment(payload, botUsername, allowedAssociations)) {
-        const token = config.tracker.api_key
+        const token = githubPlatform?.api_key
         if (!token) {
-          log.warn('no API token available for issue comment handler — tracker.api_key is required for comment dispatch')
+          log.warn('no API token available for issue comment handler — platforms.github.api_key is required for comment dispatch')
           setResponseStatus(event, 503)
           return { error: { code: 'no_token', message: 'No API token configured for issue comment dispatch' } }
         }
 
-        const apiEndpoint = config.tracker.endpoint || 'https://api.github.com'
+        const apiEndpoint = 'https://api.github.com'
         const github = createGitHubRestApi(token, apiEndpoint)
         const workflow = orchestrator.getWorkflow()
 

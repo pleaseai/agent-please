@@ -1,4 +1,4 @@
-import type { Orchestrator } from '@pleaseai/agent-core'
+import type { GitHubPlatformConfig, Orchestrator, SlackPlatformConfig } from '@pleaseai/agent-core'
 import process from 'node:process'
 import { createGitHubAdapter } from '@chat-adapter/github'
 import { createSlackAdapter } from '@chat-adapter/slack'
@@ -16,44 +16,53 @@ export default defineNitroPlugin((nitroApp) => {
   }
 
   const config = orchestrator.getConfig()
-  const tracker = config.tracker
 
   const adapters: Record<string, any> = {}
+  let resolvedBotUsername: string | null = null
 
-  // GitHub adapter: requires github_projects tracker + webhook secret
-  if (tracker.kind === 'github_projects') {
-    const adapterOpts: Record<string, any> = {}
-    if (tracker.api_key) {
-      adapterOpts.token = tracker.api_key
-    }
-    else if (tracker.app_id && tracker.private_key) {
-      adapterOpts.appId = String(tracker.app_id)
-      adapterOpts.privateKey = tracker.private_key
-      if (tracker.installation_id) {
-        adapterOpts.installationId = tracker.installation_id
+  for (const channel of config.channels) {
+    const platform = config.platforms[channel.platform]
+    if (!platform)
+      continue
+
+    if (channel.platform === 'github') {
+      const githubPlatform = platform as GitHubPlatformConfig
+      const adapterOpts: Record<string, any> = {}
+
+      if (githubPlatform.api_key) {
+        adapterOpts.token = githubPlatform.api_key
+      }
+      else if (githubPlatform.app_id && githubPlatform.private_key) {
+        adapterOpts.appId = String(githubPlatform.app_id)
+        adapterOpts.privateKey = githubPlatform.private_key
+        if (githubPlatform.installation_id) {
+          adapterOpts.installationId = githubPlatform.installation_id
+        }
+      }
+
+      const webhookSecret = config.server.webhook.secret
+      if (webhookSecret) {
+        adapterOpts.webhookSecret = webhookSecret
+        if (githubPlatform.bot_username) {
+          adapterOpts.userName = githubPlatform.bot_username
+          resolvedBotUsername ??= githubPlatform.bot_username
+        }
+        adapters.github = createGitHubAdapter(adapterOpts)
+      }
+      else {
+        log.warn('no webhook secret configured — GitHub chat adapter skipped')
       }
     }
-
-    const webhookSecret = config.server.webhook.secret
-    if (webhookSecret) {
-      adapterOpts.webhookSecret = webhookSecret
-      if (config.chat.bot_username) {
-        adapterOpts.userName = config.chat.bot_username
+    else if (channel.platform === 'slack') {
+      const slackPlatform = platform as SlackPlatformConfig
+      if (slackPlatform.bot_token && slackPlatform.signing_secret) {
+        adapters.slack = createSlackAdapter({
+          botToken: slackPlatform.bot_token,
+          signingSecret: slackPlatform.signing_secret,
+        })
+        resolvedBotUsername ??= null
       }
-      adapters.github = createGitHubAdapter(adapterOpts)
     }
-    else {
-      log.warn('no webhook secret configured — GitHub chat adapter skipped')
-    }
-  }
-
-  // Slack adapter: requires bot_token + signing_secret from chat config
-  const slackConfig = config.chat.slack
-  if (slackConfig?.bot_token && slackConfig?.signing_secret) {
-    adapters.slack = createSlackAdapter({
-      botToken: slackConfig.bot_token,
-      signingSecret: slackConfig.signing_secret,
-    })
   }
 
   if (Object.keys(adapters).length === 0) {
@@ -61,7 +70,7 @@ export default defineNitroPlugin((nitroApp) => {
     return
   }
 
-  const botUsername = config.chat.bot_username || process.env.GITHUB_BOT_USERNAME || 'agent-please'
+  const botUsername = resolvedBotUsername || process.env.GITHUB_BOT_USERNAME || 'agent-please'
 
   const bot = new Chat({
     userName: botUsername,
