@@ -1,6 +1,6 @@
+import type { Issue } from './types'
 import { describe, expect, it } from 'bun:test'
 import { createNoopDispatchLock, toDispatchLockKey } from './dispatch-lock'
-import type { Issue } from './types'
 
 function makeIssue(overrides: Partial<Issue> = {}): Issue {
   return {

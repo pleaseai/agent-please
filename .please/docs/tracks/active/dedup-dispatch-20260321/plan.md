@@ -81,12 +81,12 @@ Derivation:
 
 ## Tasks
 
-- [ ] T001 Create canonical lock key utility (file: packages/core/src/dispatch-lock.ts)
-- [ ] T002 Integrate StateAdapter into Orchestrator constructor and dispatchIssue (file: packages/core/src/orchestrator.ts) (depends on T001)
-- [ ] T003 Add lock extend loop in executeAgentRun and release in onWorkerExit (file: packages/core/src/orchestrator.ts) (depends on T002)
-- [ ] T004 Integrate StateAdapter into handleIssueCommentMention (file: packages/core/src/issue-comment-handler.ts) (depends on T001)
-- [ ] T005 Pass StateAdapter from Chat bot plugin to orchestrator and webhook handler (file: apps/agent-please/server/plugins/02.chat-bot.ts) (depends on T002, T004)
-- [ ] T006 Add fallback no-op StateAdapter when Chat SDK is not configured (file: packages/core/src/dispatch-lock.ts) (depends on T001)
+- [x] T001 Create canonical lock key utility (file: packages/core/src/dispatch-lock.ts)
+- [x] T002 Integrate StateAdapter into Orchestrator constructor and dispatchIssue (file: packages/core/src/orchestrator.ts) (depends on T001)
+- [x] T003 Add lock extend loop in executeAgentRun and release in onWorkerExit (file: packages/core/src/orchestrator.ts) (depends on T002)
+- [x] T004 Integrate StateAdapter into handleIssueCommentMention (file: packages/core/src/issue-comment-handler.ts) (depends on T001)
+- [x] T005 Pass StateAdapter from Chat bot plugin to orchestrator and webhook handler (file: apps/agent-please/server/plugins/02.chat-bot.ts) (depends on T002, T004)
+- [x] T006 Add fallback no-op StateAdapter when Chat SDK is not configured (file: packages/core/src/dispatch-lock.ts) (depends on T001)
 
 ## Key Files
 
@@ -130,6 +130,13 @@ Derivation:
 - [ ] Verify existing polling dispatch still works when no StateAdapter is provided (fallback)
 
 ## Progress
+
+- [x] (2026-03-21 04:30 KST) T001 Create canonical lock key utility
+  Evidence: `bun test dispatch-lock.test.ts` → 10 tests passed (17ms)
+- [x] (2026-03-21 04:45 KST) T002 Integrate StateAdapter into Orchestrator constructor and dispatchIssue
+  Evidence: `bun test orchestrator.test.ts` → 80 tests passed (1.3s)
+- [x] (2026-03-21 05:00 KST) T003 Add lock extend loop in executeAgentRun and release in onWorkerExit
+  Evidence: `bun run test` → all workspaces pass, 4/4 tasks successful
 
 ## Decision Log
 

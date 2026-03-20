@@ -7,9 +7,9 @@ export interface DispatchLock {
 }
 
 export interface DispatchLockAdapter {
-  acquireLock(threadId: string, ttlMs: number): Promise<DispatchLock | null>
-  extendLock(lock: DispatchLock, ttlMs: number): Promise<boolean>
-  releaseLock(lock: DispatchLock): Promise<void>
+  acquireLock: (threadId: string, ttlMs: number) => Promise<DispatchLock | null>
+  extendLock: (lock: DispatchLock, ttlMs: number) => Promise<boolean>
+  releaseLock: (lock: DispatchLock) => Promise<void>
 }
 
 const GITHUB_ISSUE_URL_RE = /\/([^/]+)\/([^/]+)\/(issues|pull)\/(\d+)/

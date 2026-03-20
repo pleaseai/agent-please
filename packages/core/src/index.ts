@@ -7,11 +7,6 @@ export type { TokenProvider } from './agent-env'
 export { AppServerClient, extractRateLimits, extractUsage, isInputRequired } from './agent-runner'
 export type { AgentSession, SessionResult } from './agent-runner'
 
-// Dispatch Lock
-export { createNoopDispatchLock, toDispatchLockKey } from './dispatch-lock'
-
-export type { DispatchLock, DispatchLockAdapter } from './dispatch-lock'
-
 // Config
 export {
   buildConfig,
@@ -24,6 +19,11 @@ export {
 } from './config'
 
 export type { ValidationError } from './config'
+
+// Dispatch Lock
+export { createNoopDispatchLock, toDispatchLockKey } from './dispatch-lock'
+
+export type { DispatchLock, DispatchLockAdapter } from './dispatch-lock'
 
 // Filter
 export { deduplicateByNormalized, hasFilter, matchesFilter, splitCandidatesAndWatched } from './filter'

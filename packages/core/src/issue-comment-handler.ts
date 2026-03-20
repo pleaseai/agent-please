@@ -1,7 +1,6 @@
 import type { TokenProvider } from './agent-env'
 import type { DispatchLock, DispatchLockAdapter } from './dispatch-lock'
 import type { AuthorAssociation, Issue, ServiceConfig, WorkflowDefinition } from './types'
-import { toDispatchLockKey } from './dispatch-lock'
 import { resolveAgentEnv } from './agent-env'
 import { AppServerClient } from './agent-runner'
 import { createLogger } from './logger'
