@@ -7,8 +7,8 @@ function makeConfig(trackerKind: 'asana' | 'github_projects', apiKey: string | n
   const platform = isAsana ? 'asana' : 'github'
   const base: ServiceConfig = {
     platforms: isAsana
-      ? { asana: { api_key: apiKey, bot_username: null } }
-      : { github: { api_key: apiKey, owner: null, bot_username: null, app_id: null, private_key: null, installation_id: null } },
+      ? { asana: { kind: 'asana' as const, api_key: apiKey, bot_username: null } }
+      : { github: { kind: 'github' as const, api_key: apiKey, owner: null, bot_username: null, app_id: null, private_key: null, installation_id: null } },
     projects: [{
       platform,
       active_statuses: [],

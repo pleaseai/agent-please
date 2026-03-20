@@ -1,4 +1,4 @@
-import type { GitHubPlatformConfig, Issue, ServiceConfig } from './types'
+import type { Issue, ServiceConfig } from './types'
 import { createLogger } from './logger'
 
 const log = createLogger('label')
@@ -46,10 +46,10 @@ export function createLabelService(config: ServiceConfig): LabelService | null {
     return null
 
   const platform = config.platforms[project.platform]
-  if (!platform || !('api_key' in platform))
+  if (!platform || platform.kind !== 'github')
     return null
 
-  const apiKey = (platform as GitHubPlatformConfig).api_key
+  const apiKey = platform.api_key
   const endpoint = project.endpoint
   const prefix = project.label_prefix
   const headers: Record<string, string> = {

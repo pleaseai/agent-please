@@ -12,6 +12,7 @@ import { describe, expect, it } from 'bun:test'
 describe('platform-centric config types', () => {
   it('ServiceConfig accepts platforms, projects, channels shape', () => {
     const github: GitHubPlatformConfig = {
+      kind: 'github',
       api_key: 'token',
       owner: 'my-org',
       bot_username: 'please-bot',
@@ -21,11 +22,13 @@ describe('platform-centric config types', () => {
     }
 
     const slack: SlackPlatformConfig = {
+      kind: 'slack',
       bot_token: 'xoxb-token',
       signing_secret: 'secret',
     }
 
     const asana: AsanaPlatformConfig = {
+      kind: 'asana',
       api_key: 'asana-key',
       bot_username: null,
     }
@@ -69,6 +72,7 @@ describe('platform-centric config types', () => {
 
   it('SlackPlatformConfig has bot_token and signing_secret', () => {
     const slackPlatform: SlackPlatformConfig = {
+      kind: 'slack',
       bot_token: null,
       signing_secret: null,
     }
@@ -77,6 +81,7 @@ describe('platform-centric config types', () => {
 
   it('AsanaPlatformConfig has api_key and bot_username', () => {
     const asanaPlatform: AsanaPlatformConfig = {
+      kind: 'asana',
       api_key: null,
       bot_username: null,
     }

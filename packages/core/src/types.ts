@@ -59,6 +59,7 @@ export interface IssueFilter {
 }
 
 export interface GitHubPlatformConfig {
+  kind: 'github'
   api_key: string | null
   owner: string | null
   bot_username: string | null
@@ -69,11 +70,13 @@ export interface GitHubPlatformConfig {
 }
 
 export interface SlackPlatformConfig {
+  kind: 'slack'
   bot_token: string | null
   signing_secret: string | null
 }
 
 export interface AsanaPlatformConfig {
+  kind: 'asana'
   api_key: string | null
   bot_username: string | null
 }
@@ -101,31 +104,6 @@ export interface ProjectConfig {
 export interface ChannelConfig {
   platform: string
   allowed_associations?: AuthorAssociation[] // GitHub-specific
-}
-
-export interface TrackerConfig {
-  kind: string | null
-  endpoint: string
-  api_key: string | null
-  // asana
-  project_gid?: string | null
-  active_sections?: string[]
-  terminal_sections?: string[]
-  // github_projects
-  owner?: string | null
-  project_number?: number | null
-  project_id?: string | null
-  active_statuses?: string[]
-  terminal_statuses?: string[]
-  // github_projects — app auth (alternative to api_key)
-  app_id?: string | null
-  private_key?: string | null
-  installation_id?: number | null
-  label_prefix: string | null
-  // shared filter
-  filter: IssueFilter
-  // watched states (shared)
-  watched_statuses?: string[]
 }
 
 export type SettingSource = 'user' | 'project' | 'local'
@@ -191,21 +169,6 @@ export interface AgentRunRecord {
 export type AuthorAssociation = 'OWNER' | 'MEMBER' | 'COLLABORATOR' | 'CONTRIBUTOR' | 'FIRST_TIMER' | 'FIRST_TIME_CONTRIBUTOR' | 'NONE'
 
 export const DEFAULT_ALLOWED_ASSOCIATIONS: AuthorAssociation[] = ['OWNER', 'MEMBER', 'COLLABORATOR']
-
-export interface ChatGitHubConfig {
-  allowed_associations: AuthorAssociation[]
-}
-
-export interface ChatSlackConfig {
-  bot_token: string | null
-  signing_secret: string | null
-}
-
-export interface ChatConfig {
-  bot_username: string | null
-  github: ChatGitHubConfig | null
-  slack: ChatSlackConfig | null
-}
 
 export interface ServiceConfig {
   platforms: Record<string, PlatformConfig>

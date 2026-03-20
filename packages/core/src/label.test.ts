@@ -26,7 +26,7 @@ function makeIssue(overrides: Partial<Issue> = {}): Issue {
 
 function makeGithubConfig(labelPrefix: string | null): ServiceConfig {
   return {
-    platforms: { github: { api_key: 'ghtoken', owner: 'myorg', bot_username: null, app_id: null, private_key: null, installation_id: null } },
+    platforms: { github: { kind: 'github' as const, api_key: 'ghtoken', owner: 'myorg', bot_username: null, app_id: null, private_key: null, installation_id: null } },
     projects: [{ platform: 'github', project_number: 1, active_statuses: [], terminal_statuses: [], watched_statuses: [], endpoint: 'https://api.github.com', label_prefix: labelPrefix, filter: { assignee: [], label: [] } }],
     channels: [],
     polling: { mode: 'poll' as const, interval_ms: 30000 },
@@ -42,7 +42,7 @@ function makeGithubConfig(labelPrefix: string | null): ServiceConfig {
 
 function makeAsanaConfig(): ServiceConfig {
   return {
-    platforms: { asana: { api_key: 'asana-token', bot_username: null } },
+    platforms: { asana: { kind: 'asana' as const, api_key: 'asana-token', bot_username: null } },
     projects: [{ platform: 'asana', project_gid: 'gid123', active_statuses: [], terminal_statuses: [], watched_statuses: [], endpoint: 'https://app.asana.com/api/1.0', label_prefix: 'agent-please', filter: { assignee: [], label: [] } }],
     channels: [],
     polling: { mode: 'poll' as const, interval_ms: 30000 },

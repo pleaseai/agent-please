@@ -527,9 +527,11 @@ describe('validateConfig', () => {
     expect(validateConfig(config)).toBeNull()
   })
 
-  it('returns null when no projects are configured', () => {
+  it('returns no_projects_configured when no projects are configured', () => {
     const config = buildConfig(makeWorkflow({}))
-    expect(validateConfig(config)).toBeNull()
+    const err = validateConfig(config)
+    expect(err).not.toBeNull()
+    expect(err?.code).toBe('no_projects_configured')
   })
 
   it('returns unknown_platform_reference when project references unknown platform', () => {
@@ -626,6 +628,8 @@ describe('validateConfig', () => {
 
   it('returns unknown_platform_reference when channel references unknown platform', () => {
     const config = buildConfig(makeWorkflow({
+      platforms: { github: { api_key: 'tok', owner: 'org' } },
+      projects: [{ platform: 'github', project_number: 1 }],
       channels: [{ platform: 'slack' }],
     }))
     const err = validateConfig(config)
@@ -634,6 +638,58 @@ describe('validateConfig', () => {
       expect(err.platform).toBe('slack')
       expect(err.context).toBe('channel')
     }
+  })
+
+  it('returns no_projects_configured when projects array is empty', () => {
+    const config = buildConfig(makeWorkflow({
+      platforms: { github: { api_key: 'tok' } },
+      projects: [],
+    }))
+    const err = validateConfig(config)
+    expect(err).not.toBeNull()
+    expect(err?.code).toBe('no_projects_configured')
+  })
+
+  it('returns missing_github_project_config when github project has no project_id and no owner+project_number', () => {
+    const config = buildConfig(makeWorkflow({
+      platforms: { github: { api_key: 'token', owner: null } },
+      projects: [{ platform: 'github' }],
+    }))
+    const err = validateConfig(config)
+    expect(err?.code).toBe('missing_github_project_config')
+  })
+
+  it('returns null for github project with project_id (no owner/project_number required)', () => {
+    const config = buildConfig(makeWorkflow({
+      platforms: { github: { api_key: 'token' } },
+      projects: [{ platform: 'github', project_id: 'PVT_kwABC123' }],
+    }))
+    expect(validateConfig(config)).toBeNull()
+  })
+
+  it('returns null for github project with owner and project_number', () => {
+    const config = buildConfig(makeWorkflow({
+      platforms: { github: { api_key: 'token', owner: 'myorg' } },
+      projects: [{ platform: 'github', project_number: 5 }],
+    }))
+    expect(validateConfig(config)).toBeNull()
+  })
+
+  it('returns missing_asana_project_config when asana project has no project_gid', () => {
+    const config = buildConfig(makeWorkflow({
+      platforms: { asana: { api_key: 'token' } },
+      projects: [{ platform: 'asana' }],
+    }))
+    const err = validateConfig(config)
+    expect(err?.code).toBe('missing_asana_project_config')
+  })
+
+  it('returns null for valid asana project with project_gid', () => {
+    const config = buildConfig(makeWorkflow({
+      platforms: { asana: { api_key: 'token' } },
+      projects: [{ platform: 'asana', project_gid: 'gid123' }],
+    }))
+    expect(validateConfig(config)).toBeNull()
   })
 })
 

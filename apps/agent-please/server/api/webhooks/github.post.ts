@@ -1,4 +1,4 @@
-import type { GitHubApi, GitHubPlatformConfig, IssueCommentPayload, VerifySignature } from '@pleaseai/agent-core'
+import type { GitHubApi, IssueCommentPayload, VerifySignature } from '@pleaseai/agent-core'
 import type { Chat } from 'chat'
 import process from 'node:process'
 import { createLogger, createVerify, handleIssueCommentMention, handleWebhook, shouldHandleComment } from '@pleaseai/agent-core'
@@ -133,7 +133,8 @@ export default defineEventHandler(async (event) => {
     try {
       const payload = await request.clone().json() as IssueCommentPayload
 
-      const githubPlatform = config.platforms.github as GitHubPlatformConfig | undefined
+      const rawGithubPlatform = config.platforms.github
+      const githubPlatform = rawGithubPlatform?.kind === 'github' ? rawGithubPlatform : undefined
       const githubChannel = config.channels.find(c => c.platform === 'github')
 
       const botUsername = githubPlatform?.bot_username || process.env.GITHUB_BOT_USERNAME || 'agent-please'

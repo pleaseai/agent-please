@@ -1,4 +1,4 @@
-import type { GitHubPlatformConfig, Orchestrator, SlackPlatformConfig } from '@pleaseai/agent-core'
+import type { Orchestrator } from '@pleaseai/agent-core'
 import process from 'node:process'
 import { createGitHubAdapter } from '@chat-adapter/github'
 import { createSlackAdapter } from '@chat-adapter/slack'
@@ -22,11 +22,13 @@ export default defineNitroPlugin((nitroApp) => {
 
   for (const channel of config.channels) {
     const platform = config.platforms[channel.platform]
-    if (!platform)
+    if (!platform) {
+      log.warn(`unknown platform "${channel.platform}" for channel, skipping`)
       continue
+    }
 
-    if (channel.platform === 'github') {
-      const githubPlatform = platform as GitHubPlatformConfig
+    if (platform.kind === 'github') {
+      const githubPlatform = platform
       const adapterOpts: Record<string, any> = {}
 
       if (githubPlatform.api_key) {
@@ -53,8 +55,8 @@ export default defineNitroPlugin((nitroApp) => {
         log.warn('no webhook secret configured — GitHub chat adapter skipped')
       }
     }
-    else if (channel.platform === 'slack') {
-      const slackPlatform = platform as SlackPlatformConfig
+    else if (platform.kind === 'slack') {
+      const slackPlatform = platform
       if (slackPlatform.bot_token && slackPlatform.signing_secret) {
         adapters.slack = createSlackAdapter({
           botToken: slackPlatform.bot_token,

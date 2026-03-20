@@ -131,7 +131,7 @@ describe('shouldHandleComment', () => {
 describe('handleIssueCommentMention', () => {
   function makeConfig(): ServiceConfig {
     return {
-      platforms: { github: { api_key: 'ghtoken', owner: 'myorg', bot_username: 'my-bot', app_id: null, private_key: null, installation_id: null } },
+      platforms: { github: { kind: 'github' as const, api_key: 'ghtoken', owner: 'myorg', bot_username: 'my-bot', app_id: null, private_key: null, installation_id: null } },
       projects: [{ platform: 'github', project_number: 1, active_statuses: [], terminal_statuses: [], watched_statuses: [], endpoint: 'https://api.github.com', label_prefix: null, filter: { assignee: [], label: [] } }],
       channels: [{ platform: 'github' }],
       polling: { mode: 'poll' as const, interval_ms: 30000 },

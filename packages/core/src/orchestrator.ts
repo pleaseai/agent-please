@@ -168,8 +168,10 @@ export class Orchestrator {
 
     for (const project of this.config.projects) {
       const platform = this.config.platforms[project.platform]
-      if (!platform)
+      if (!platform) {
+        log.warn(`unknown platform "${project.platform}" for project, skipping`)
         continue
+      }
 
       const adapter = createTrackerAdapter(project, platform)
       if (isTrackerError(adapter)) {
@@ -340,11 +342,15 @@ export class Orchestrator {
       return
     try {
       const project = this.config.projects[0]
-      if (!project)
+      if (!project) {
+        log.warn(`no projects configured — cannot populate project context for issue_id=${issue.id}`)
         return
+      }
       const platform = this.config.platforms[project.platform]
-      if (!platform)
+      if (!platform) {
+        log.warn(`platform "${project.platform}" not found — cannot populate project context for issue_id=${issue.id}`)
         return
+      }
       const adapter = createTrackerAdapter(project, platform)
       if (isTrackerError(adapter) || !adapter.resolveStatusField) {
         log.warn(`cannot resolve project context issue_id=${issue.id}: tracker does not support resolveStatusField`)
@@ -401,8 +407,10 @@ export class Orchestrator {
       // Refresh issue state after turn
       const firstProject = this.config.projects[0]
       const firstPlatform = firstProject ? this.config.platforms[firstProject.platform] : undefined
-      if (!firstProject || !firstPlatform)
+      if (!firstProject || !firstPlatform) {
+        log.warn(`no project/platform configured — cannot refresh issue state after turn issue_id=${currentIssue.id}`)
         break
+      }
       const adapter = createTrackerAdapter(firstProject, firstPlatform)
       if (isTrackerError(adapter))
         break
@@ -574,6 +582,7 @@ export class Orchestrator {
     const firstProject = this.config.projects[0]
     const firstPlatform = firstProject ? this.config.platforms[firstProject.platform] : undefined
     if (!firstProject || !firstPlatform) {
+      log.warn(`no project/platform configured — cannot retry issue_id=${issueId}`)
       this.state.claimed.delete(issueId)
       return
     }
@@ -637,8 +646,10 @@ export class Orchestrator {
 
     const firstProject = this.config.projects[0]
     const firstPlatform = firstProject ? this.config.platforms[firstProject.platform] : undefined
-    if (!firstProject || !firstPlatform)
+    if (!firstProject || !firstPlatform) {
+      log.warn('no project/platform configured — cannot refresh running issue states')
       return
+    }
 
     const adapter = createTrackerAdapter(firstProject, firstPlatform)
     if (isTrackerError(adapter))
@@ -759,11 +770,15 @@ export class Orchestrator {
 
   private async startupTerminalWorkspaceCleanup(): Promise<void> {
     const firstProject = this.config.projects[0]
-    if (!firstProject)
+    if (!firstProject) {
+      log.warn('no projects configured — skipping startup terminal workspace cleanup')
       return
+    }
     const firstPlatform = this.config.platforms[firstProject.platform]
-    if (!firstPlatform)
+    if (!firstPlatform) {
+      log.warn(`platform "${firstProject.platform}" not found — skipping startup terminal workspace cleanup`)
       return
+    }
 
     const terminalStates = getTerminalStates(firstProject)
 
@@ -803,9 +818,9 @@ export class Orchestrator {
     if (!firstProject)
       return undefined
     const platform = this.config.platforms[firstProject.platform]
-    if (!platform)
+    if (!platform || platform.kind !== 'github')
       return undefined
-    return buildTokenProvider(firstProject, platform as GitHubPlatformConfig)
+    return buildTokenProvider(firstProject, platform)
   }
 
   private reloadWorkflow(): void {

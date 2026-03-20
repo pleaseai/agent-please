@@ -1243,6 +1243,7 @@ describe('buildTokenProvider', () => {
 
   function makePlatform(overrides: Partial<GitHubPlatformConfig> = {}): GitHubPlatformConfig {
     return {
+      kind: 'github',
       api_key: null,
       owner: null,
       bot_username: null,

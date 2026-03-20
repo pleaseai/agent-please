@@ -22,6 +22,7 @@ function makeAsanaProject(extra: Partial<ProjectConfig> = {}): ProjectConfig {
 
 function makeAsanaPlatform(extra: Partial<AsanaPlatformConfig> = {}): AsanaPlatformConfig {
   return {
+    kind: 'asana',
     api_key: 'tok',
     bot_username: null,
     ...extra,
@@ -45,6 +46,7 @@ function makeGitHubProject(extra: Partial<ProjectConfig> = {}): ProjectConfig {
 
 function makeGitHubPlatform(extra: Partial<GitHubPlatformConfig> = {}): GitHubPlatformConfig {
   return {
+    kind: 'github',
     api_key: 'ghtoken',
     owner: 'myorg',
     bot_username: null,
@@ -267,7 +269,7 @@ describe('github_projects project_id path', () => {
     expect(validateConfig(config)).toBeNull()
   })
 
-  test('validateConfig requires owner when project_id is absent', () => {
+  test('validateConfig returns missing_github_project_config when no project identifier', () => {
     const config = buildConfig({
       config: {
         platforms: { github: { api_key: 'ghtoken' } },
@@ -275,11 +277,8 @@ describe('github_projects project_id path', () => {
       },
       prompt_template: '',
     })
-    // With no project_id and no owner, the project still references a valid platform
-    // so validateConfig should pass platform-level validation.
-    // This is a config-level check — the adapter itself would fail at runtime.
-    // The validation only checks platform references and auth credentials.
-    expect(validateConfig(config)).toBeNull()
+    const err = validateConfig(config)
+    expect(err?.code).toBe('missing_github_project_config')
   })
 })
 

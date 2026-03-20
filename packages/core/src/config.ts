@@ -94,12 +94,14 @@ export function buildPlatformsConfig(raw: Record<string, unknown>): Record<strin
 
     if (key === 'slack' || (sec.bot_token !== undefined && sec.api_key === undefined)) {
       result[key] = {
+        kind: 'slack',
         bot_token: resolveEnvValue(stringValue(sec.bot_token), process.env.SLACK_BOT_TOKEN),
         signing_secret: resolveEnvValue(stringValue(sec.signing_secret), process.env.SLACK_SIGNING_SECRET),
       }
     }
     else if (key === 'asana') {
       result[key] = {
+        kind: 'asana',
         api_key: resolveEnvValue(stringValue(sec.api_key), process.env.ASANA_ACCESS_TOKEN),
         bot_username: resolveEnvValue(
           stringValue(sec.bot_username),
@@ -110,6 +112,7 @@ export function buildPlatformsConfig(raw: Record<string, unknown>): Record<strin
     else {
       // github (or any unknown platform key) — treat as GitHub-style
       result[key] = {
+        kind: 'github',
         api_key: resolveEnvValue(stringValue(sec.api_key), process.env.GITHUB_TOKEN),
         owner: stringValue(sec.owner),
         bot_username: resolveEnvValue(
@@ -124,6 +127,23 @@ export function buildPlatformsConfig(raw: Record<string, unknown>): Record<strin
   }
 
   return result
+}
+
+function buildProjectStatusDefaults(sec: Record<string, unknown>, isAsana: boolean) {
+  if (isAsana) {
+    return {
+      active_statuses: csvValue(sec.active_statuses) ?? csvValue(sec.active_sections) ?? DEFAULTS.ASANA_ACTIVE_SECTIONS,
+      terminal_statuses: csvValue(sec.terminal_statuses) ?? csvValue(sec.terminal_sections) ?? DEFAULTS.ASANA_TERMINAL_SECTIONS,
+      watched_statuses: csvValue(sec.watched_statuses) ?? DEFAULTS.ASANA_WATCHED_SECTIONS,
+      endpoint: stringValue(sec.endpoint) ?? DEFAULTS.ASANA_ENDPOINT,
+    }
+  }
+  return {
+    active_statuses: csvValue(sec.active_statuses) ?? csvValue(sec.active_states) ?? DEFAULTS.GITHUB_ACTIVE_STATUSES,
+    terminal_statuses: csvValue(sec.terminal_statuses) ?? csvValue(sec.terminal_states) ?? DEFAULTS.GITHUB_TERMINAL_STATUSES,
+    watched_statuses: csvValue(sec.watched_statuses) ?? csvValue(sec.watched_states) ?? DEFAULTS.GITHUB_WATCHED_STATUSES,
+    endpoint: stringValue(sec.endpoint) ?? DEFAULTS.GITHUB_ENDPOINT,
+  }
 }
 
 export function buildProjectsConfig(
@@ -144,40 +164,16 @@ export function buildProjectsConfig(
     if (!platform)
       continue
 
-    const isAsana = platform === 'asana'
-    const filter = buildFilterConfig(sectionMap(sec, 'filter'))
-    const label_prefix = stringValue(sec.label_prefix) ?? null
-
-    let active_statuses: string[]
-    let terminal_statuses: string[]
-    let watched_statuses: string[]
-    let endpoint: string
-
-    if (isAsana) {
-      active_statuses = csvValue(sec.active_statuses) ?? csvValue(sec.active_sections) ?? DEFAULTS.ASANA_ACTIVE_SECTIONS
-      terminal_statuses = csvValue(sec.terminal_statuses) ?? csvValue(sec.terminal_sections) ?? DEFAULTS.ASANA_TERMINAL_SECTIONS
-      watched_statuses = csvValue(sec.watched_statuses) ?? DEFAULTS.ASANA_WATCHED_SECTIONS
-      endpoint = stringValue(sec.endpoint) ?? DEFAULTS.ASANA_ENDPOINT
-    }
-    else {
-      // github_projects or any github-like platform
-      active_statuses = csvValue(sec.active_statuses) ?? csvValue(sec.active_states) ?? DEFAULTS.GITHUB_ACTIVE_STATUSES
-      terminal_statuses = csvValue(sec.terminal_statuses) ?? csvValue(sec.terminal_states) ?? DEFAULTS.GITHUB_TERMINAL_STATUSES
-      watched_statuses = csvValue(sec.watched_statuses) ?? csvValue(sec.watched_states) ?? DEFAULTS.GITHUB_WATCHED_STATUSES
-      endpoint = stringValue(sec.endpoint) ?? DEFAULTS.GITHUB_ENDPOINT
-    }
+    const defaults = buildProjectStatusDefaults(sec, platform === 'asana')
 
     result.push({
       platform,
       project_number: posIntValue(sec.project_number, null as unknown as number) ?? null,
       project_id: stringValue(sec.project_id) ?? null,
       project_gid: stringValue(sec.project_gid) ?? null,
-      active_statuses,
-      terminal_statuses,
-      watched_statuses,
-      endpoint,
-      label_prefix,
-      filter,
+      ...defaults,
+      label_prefix: stringValue(sec.label_prefix) ?? null,
+      filter: buildFilterConfig(sectionMap(sec, 'filter')),
     })
   }
 
@@ -283,17 +279,18 @@ function buildFilterConfig(filter: Record<string, unknown>): IssueFilter {
 }
 
 export type ValidationError
-  = | { code: 'missing_tracker_kind' }
-    | { code: 'unsupported_tracker_kind', kind: string }
-    | { code: 'missing_tracker_api_key' }
-    | { code: 'incomplete_github_app_config', missing: string[] }
-    | { code: 'missing_tracker_project_config', field: string }
-    | { code: 'missing_claude_command' }
+  = | { code: 'missing_claude_command' }
+    | { code: 'no_projects_configured' }
     | { code: 'unknown_platform_reference', platform: string, context: string }
     | { code: 'missing_platform_api_key', platform: string }
     | { code: 'incomplete_platform_app_config', platform: string, missing: string[] }
+    | { code: 'missing_github_project_config' }
+    | { code: 'missing_asana_project_config' }
 
 export function validateConfig(config: ServiceConfig): ValidationError | null {
+  if (config.projects.length === 0)
+    return { code: 'no_projects_configured' }
+
   // Validate each project references a known platform
   for (const project of config.projects) {
     if (!(project.platform in config.platforms)) {
@@ -301,8 +298,8 @@ export function validateConfig(config: ServiceConfig): ValidationError | null {
     }
 
     const platform = config.platforms[project.platform]
-    const isSlack = 'bot_token' in platform
-    const isAsana = project.platform === 'asana'
+    const isSlack = platform.kind === 'slack'
+    const isAsana = platform.kind === 'asana'
 
     // For github-like platforms: require api_key or complete app auth
     if (!isSlack && !isAsana) {
@@ -321,6 +318,15 @@ export function validateConfig(config: ServiceConfig): ValidationError | null {
         if (missing.length > 0)
           return { code: 'incomplete_platform_app_config', platform: project.platform, missing }
       }
+      // Require at least project_id or (owner + project_number)
+      if (!project.project_id && !(gh.owner && project.project_number)) {
+        return { code: 'missing_github_project_config' }
+      }
+    }
+
+    // For Asana projects: require project_gid
+    if (isAsana && !project.project_gid) {
+      return { code: 'missing_asana_project_config' }
     }
   }
 

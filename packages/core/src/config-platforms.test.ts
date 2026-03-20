@@ -396,10 +396,11 @@ describe('validateConfig with new structure', () => {
     expect(error?.code).toBe('missing_claude_command')
   })
 
-  it('returns null when platforms/projects/channels are all empty', () => {
+  it('returns no_projects_configured when platforms/projects/channels are all empty', () => {
     const config = buildConfig(makeWorkflow({}))
     const error = validateConfig(config)
-    expect(error).toBeNull()
+    expect(error).not.toBeNull()
+    expect(error?.code).toBe('no_projects_configured')
   })
 
   it('returns error for missing github api_key when no app auth', () => {
