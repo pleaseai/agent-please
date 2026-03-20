@@ -270,6 +270,8 @@ export interface RunningEntry {
   turn_count: number
   retry_attempt: number | null
   started_at: Date
+  dispatch_lock: { threadId: string, token: string, expiresAt: number } | null
+  dispatch_lock_timer: ReturnType<typeof setInterval> | null
 }
 
 export interface AgentTotals {

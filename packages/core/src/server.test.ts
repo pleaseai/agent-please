@@ -39,6 +39,8 @@ function makeRunningEntry(overrides: Partial<RunningEntry> = {}): RunningEntry {
     turn_count: 3,
     retry_attempt: null,
     started_at: new Date('2026-01-01T09:00:00Z'),
+    dispatch_lock: null,
+    dispatch_lock_timer: null,
     ...overrides,
   }
 }
