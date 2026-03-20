@@ -58,6 +58,51 @@ export interface IssueFilter {
   label: string[]
 }
 
+export interface GitHubPlatformConfig {
+  api_key: string | null
+  owner: string | null
+  bot_username: string | null
+  // GitHub App auth (alternative to api_key)
+  app_id: string | null
+  private_key: string | null
+  installation_id: number | null
+}
+
+export interface SlackPlatformConfig {
+  bot_token: string | null
+  signing_secret: string | null
+}
+
+export interface AsanaPlatformConfig {
+  api_key: string | null
+  bot_username: string | null
+}
+
+export type PlatformConfig = GitHubPlatformConfig | SlackPlatformConfig | AsanaPlatformConfig
+
+export interface ProjectConfig {
+  platform: string
+  // platform-specific project identifiers
+  project_number?: number | null    // GitHub
+  project_id?: string | null        // GitHub
+  project_gid?: string | null       // Asana
+  // status mappings
+  active_statuses: string[]
+  terminal_statuses: string[]
+  watched_statuses: string[]
+  // endpoint override
+  endpoint: string
+  // label prefix for orchestrator labels
+  label_prefix: string | null
+  // filter
+  filter: IssueFilter
+}
+
+export interface ChannelConfig {
+  platform: string
+  allowed_associations?: AuthorAssociation[]  // GitHub-specific
+}
+
 export interface TrackerConfig {
   kind: string | null
   endpoint: string
@@ -163,7 +208,9 @@ export interface ChatConfig {
 }
 
 export interface ServiceConfig {
-  tracker: TrackerConfig
+  platforms: Record<string, PlatformConfig>
+  projects: ProjectConfig[]
+  channels: ChannelConfig[]
   polling: { mode: PollingMode, interval_ms: number }
   workspace: {
     root: string
@@ -210,7 +257,6 @@ export interface ServiceConfig {
       events: string[] | null
     }
   }
-  chat: ChatConfig
 }
 
 export interface Workspace {
