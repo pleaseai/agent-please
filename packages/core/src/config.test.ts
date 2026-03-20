@@ -1,5 +1,5 @@
 /* eslint-disable no-template-curly-in-string */
-import type { WorkflowDefinition } from './types'
+import type { GitHubPlatformConfig, SlackPlatformConfig, WorkflowDefinition } from './types'
 import process from 'node:process'
 import { describe, expect, it } from 'bun:test'
 import { buildConfig, getActiveStates, getTerminalStates, getWatchedStates, maxConcurrentForState, normalizeState, validateConfig } from './config'
@@ -26,57 +26,77 @@ describe('buildConfig', () => {
     expect(config.hooks.before_run).toBeNull()
   })
 
-  it('parses asana tracker config', () => {
+  it('parses asana platform and project config', () => {
     const config = buildConfig(makeWorkflow({
-      tracker: {
-        kind: 'asana',
-        api_key: 'token123',
-        project_gid: 'gid456',
-        active_sections: ['Todo', 'In Progress'],
+      platforms: {
+        asana: {
+          api_key: 'token123',
+        },
       },
+      projects: [
+        {
+          platform: 'asana',
+          project_gid: 'gid456',
+          active_statuses: ['Todo', 'In Progress'],
+        },
+      ],
     }))
-    expect(config.tracker.kind).toBe('asana')
-    expect(config.tracker.api_key).toBe('token123')
-    expect(config.tracker.project_gid).toBe('gid456')
-    expect(config.tracker.active_sections).toEqual(['Todo', 'In Progress'])
+    expect(config.projects[0].platform).toBe('asana')
+    const asana = config.platforms.asana as { api_key: string | null }
+    expect(asana.api_key).toBe('token123')
+    expect(config.projects[0].project_gid).toBe('gid456')
+    expect(config.projects[0].active_statuses).toEqual(['Todo', 'In Progress'])
   })
 
-  it('parses github_projects tracker config', () => {
+  it('parses github platform and project config', () => {
     const config = buildConfig(makeWorkflow({
-      tracker: {
-        kind: 'github_projects',
-        api_key: 'ghtoken',
-        owner: 'myorg',
-        project_number: 42,
+      platforms: {
+        github: {
+          api_key: 'ghtoken',
+          owner: 'myorg',
+        },
       },
+      projects: [
+        {
+          platform: 'github',
+          project_number: 42,
+        },
+      ],
     }))
-    expect(config.tracker.kind).toBe('github_projects')
-    expect(config.tracker.api_key).toBe('ghtoken')
-    expect(config.tracker.owner).toBe('myorg')
-    expect(config.tracker.project_number).toBe(42)
+    expect(config.projects[0].platform).toBe('github')
+    const gh = config.platforms.github as GitHubPlatformConfig
+    expect(gh.api_key).toBe('ghtoken')
+    expect(gh.owner).toBe('myorg')
+    expect(config.projects[0].project_number).toBe(42)
   })
 
-  it('resolves $VAR env references for api_key', () => {
+  it('resolves $VAR env references for platform api_key', () => {
     process.env.TEST_API_KEY = 'resolved-token'
     const config = buildConfig(makeWorkflow({
-      tracker: { kind: 'asana', api_key: '$TEST_API_KEY', project_gid: 'gid' },
+      platforms: {
+        asana: { api_key: '$TEST_API_KEY' },
+      },
+      projects: [{ platform: 'asana', project_gid: 'gid' }],
     }))
-    expect(config.tracker.api_key).toBe('resolved-token')
+    const asana = config.platforms.asana as { api_key: string | null }
+    expect(asana.api_key).toBe('resolved-token')
     delete process.env.TEST_API_KEY
   })
 
-  it('parses comma-separated active_sections string', () => {
+  it('parses comma-separated active_statuses string for asana project', () => {
     const config = buildConfig(makeWorkflow({
-      tracker: { kind: 'asana', active_sections: 'Todo, In Progress, Review' },
+      platforms: { asana: { api_key: 'tok' } },
+      projects: [{ platform: 'asana', active_statuses: 'Todo, In Progress, Review' }],
     }))
-    expect(config.tracker.active_sections).toEqual(['Todo', 'In Progress', 'Review'])
+    expect(config.projects[0].active_statuses).toEqual(['Todo', 'In Progress', 'Review'])
   })
 
-  it('accepts active_states as alias for active_sections (asana)', () => {
+  it('accepts active_sections as alias for active_statuses (asana project)', () => {
     const config = buildConfig(makeWorkflow({
-      tracker: { kind: 'asana', active_states: ['Todo', 'In Progress'] },
+      platforms: { asana: { api_key: 'tok' } },
+      projects: [{ platform: 'asana', active_sections: ['Todo', 'In Progress'] }],
     }))
-    expect(config.tracker.active_sections).toEqual(['Todo', 'In Progress'])
+    expect(config.projects[0].active_statuses).toEqual(['Todo', 'In Progress'])
   })
 
   it('defaults polling.mode to "poll"', () => {
@@ -413,26 +433,30 @@ describe('buildConfig - claude.settings.attribution', () => {
 describe('buildConfig - github app auth fields', () => {
   it('parses app_id, private_key, and installation_id from YAML', () => {
     const config = buildConfig(makeWorkflow({
-      tracker: {
-        kind: 'github_projects',
-        app_id: 'app-123',
-        private_key: '-----BEGIN RSA PRIVATE KEY-----\ntest',
-        installation_id: 456,
-        owner: 'myorg',
-        project_number: 1,
+      platforms: {
+        github: {
+          app_id: 'app-123',
+          private_key: '-----BEGIN RSA PRIVATE KEY-----\ntest',
+          installation_id: 456,
+          owner: 'myorg',
+        },
       },
+      projects: [{ platform: 'github', project_number: 1 }],
     }))
-    expect(config.tracker.app_id).toBe('app-123')
-    expect(config.tracker.private_key).toBe('-----BEGIN RSA PRIVATE KEY-----\ntest')
-    expect(config.tracker.installation_id).toBe(456)
+    const gh = config.platforms.github as GitHubPlatformConfig
+    expect(gh.app_id).toBe('app-123')
+    expect(gh.private_key).toBe('-----BEGIN RSA PRIVATE KEY-----\ntest')
+    expect(gh.installation_id).toBe(456)
   })
 
   it('resolves app_id from $VAR env reference', () => {
     process.env.TEST_GITHUB_APP_ID = 'env-app-id'
     const config = buildConfig(makeWorkflow({
-      tracker: { kind: 'github_projects', app_id: '$TEST_GITHUB_APP_ID', owner: 'org', project_number: 1 },
+      platforms: { github: { app_id: '$TEST_GITHUB_APP_ID', owner: 'org' } },
+      projects: [{ platform: 'github', project_number: 1 }],
     }))
-    expect(config.tracker.app_id).toBe('env-app-id')
+    const gh = config.platforms.github as GitHubPlatformConfig
+    expect(gh.app_id).toBe('env-app-id')
     delete process.env.TEST_GITHUB_APP_ID
   })
 
@@ -441,9 +465,11 @@ describe('buildConfig - github app auth fields', () => {
     process.env.GITHUB_APP_ID = 'fallback-app-id'
     try {
       const config = buildConfig(makeWorkflow({
-        tracker: { kind: 'github_projects', owner: 'org', project_number: 1 },
+        platforms: { github: { owner: 'org' } },
+        projects: [{ platform: 'github', project_number: 1 }],
       }))
-      expect(config.tracker.app_id).toBe('fallback-app-id')
+      const gh = config.platforms.github as GitHubPlatformConfig
+      expect(gh.app_id).toBe('fallback-app-id')
     }
     finally {
       if (orig !== undefined)
@@ -458,9 +484,11 @@ describe('buildConfig - github app auth fields', () => {
     process.env.GITHUB_APP_INSTALLATION_ID = '9999'
     try {
       const config = buildConfig(makeWorkflow({
-        tracker: { kind: 'github_projects', owner: 'org', project_number: 1 },
+        platforms: { github: { owner: 'org' } },
+        projects: [{ platform: 'github', project_number: 1 }],
       }))
-      expect(config.tracker.installation_id).toBe(9999)
+      const gh = config.platforms.github as GitHubPlatformConfig
+      expect(gh.installation_id).toBe(9999)
     }
     finally {
       if (orig !== undefined)
@@ -473,9 +501,11 @@ describe('buildConfig - github app auth fields', () => {
   it('resolves installation_id from $VAR env reference', () => {
     process.env.TEST_INSTALLATION_ID = '12345'
     const config = buildConfig(makeWorkflow({
-      tracker: { kind: 'github_projects', installation_id: '$TEST_INSTALLATION_ID', owner: 'org', project_number: 1 },
+      platforms: { github: { installation_id: '$TEST_INSTALLATION_ID', owner: 'org' } },
+      projects: [{ platform: 'github', project_number: 1 }],
     }))
-    expect(config.tracker.installation_id).toBe(12345)
+    const gh = config.platforms.github as GitHubPlatformConfig
+    expect(gh.installation_id).toBe(12345)
     delete process.env.TEST_INSTALLATION_ID
   })
 })
@@ -483,54 +513,65 @@ describe('buildConfig - github app auth fields', () => {
 describe('validateConfig', () => {
   it('returns null for valid asana config', () => {
     const config = buildConfig(makeWorkflow({
-      tracker: { kind: 'asana', api_key: 'token', project_gid: 'gid' },
+      platforms: { asana: { api_key: 'token' } },
+      projects: [{ platform: 'asana', project_gid: 'gid' }],
     }))
     expect(validateConfig(config)).toBeNull()
   })
 
-  it('returns null for valid github_projects config', () => {
+  it('returns null for valid github config', () => {
     const config = buildConfig(makeWorkflow({
-      tracker: { kind: 'github_projects', api_key: 'token', owner: 'org', project_number: 1 },
+      platforms: { github: { api_key: 'token', owner: 'org' } },
+      projects: [{ platform: 'github', project_number: 1 }],
     }))
     expect(validateConfig(config)).toBeNull()
   })
 
-  it('returns missing_tracker_kind when kind is absent', () => {
+  it('returns no_projects_configured when no projects are configured', () => {
     const config = buildConfig(makeWorkflow({}))
     const err = validateConfig(config)
-    expect(err?.code).toBe('missing_tracker_kind')
+    expect(err).not.toBeNull()
+    expect(err?.code).toBe('no_projects_configured')
   })
 
-  it('returns unsupported_tracker_kind for unknown tracker', () => {
-    const config = buildConfig(makeWorkflow({ tracker: { kind: 'linear' } }))
-    const err = validateConfig(config)
-    expect(err?.code).toBe('unsupported_tracker_kind')
-  })
-
-  it('returns null for valid github_projects config with app auth (no api_key)', () => {
+  it('returns unknown_platform_reference when project references unknown platform', () => {
     const config = buildConfig(makeWorkflow({
-      tracker: {
-        kind: 'github_projects',
-        app_id: 'app-123',
-        private_key: '-----BEGIN RSA PRIVATE KEY-----\nkey',
-        installation_id: 456,
-        owner: 'myorg',
-        project_number: 1,
+      projects: [{ platform: 'github', project_number: 1 }],
+    }))
+    const err = validateConfig(config)
+    expect(err?.code).toBe('unknown_platform_reference')
+    if (err?.code === 'unknown_platform_reference') {
+      expect(err.platform).toBe('github')
+      expect(err.context).toBe('project')
+    }
+  })
+
+  it('returns null for valid github config with app auth (no api_key)', () => {
+    const config = buildConfig(makeWorkflow({
+      platforms: {
+        github: {
+          app_id: 'app-123',
+          private_key: '-----BEGIN RSA PRIVATE KEY-----\nkey',
+          installation_id: 456,
+          owner: 'myorg',
+        },
       },
+      projects: [{ platform: 'github', project_number: 1 }],
     }))
     expect(validateConfig(config)).toBeNull()
   })
 
-  it('returns incomplete_github_app_config when only some app fields are present', () => {
+  it('returns incomplete_platform_app_config when only some app fields are present', () => {
     const origToken = process.env.GITHUB_TOKEN
     delete process.env.GITHUB_TOKEN
     try {
       const config = buildConfig(makeWorkflow({
-        tracker: { kind: 'github_projects', app_id: 'app-123', owner: 'myorg', project_number: 1 },
+        platforms: { github: { app_id: 'app-123', owner: 'myorg' } },
+        projects: [{ platform: 'github', project_number: 1 }],
       }))
       const err = validateConfig(config)
-      expect(err?.code).toBe('incomplete_github_app_config')
-      if (err?.code === 'incomplete_github_app_config') {
+      expect(err?.code).toBe('incomplete_platform_app_config')
+      if (err?.code === 'incomplete_platform_app_config') {
         expect(err.missing).toContain('private_key')
         expect(err.missing).toContain('installation_id')
       }
@@ -541,13 +582,19 @@ describe('validateConfig', () => {
     }
   })
 
-  it('returns missing_tracker_api_key when api_key is absent and no app fields', () => {
+  it('returns missing_platform_api_key when api_key is absent and no app fields', () => {
     const origToken = process.env.GITHUB_TOKEN
     delete process.env.GITHUB_TOKEN
     try {
-      const config = buildConfig(makeWorkflow({ tracker: { kind: 'github_projects', owner: 'org', project_number: 1 } }))
+      const config = buildConfig(makeWorkflow({
+        platforms: { github: { owner: 'org' } },
+        projects: [{ platform: 'github', project_number: 1 }],
+      }))
       const err = validateConfig(config)
-      expect(err?.code).toBe('missing_tracker_api_key')
+      expect(err?.code).toBe('missing_platform_api_key')
+      if (err?.code === 'missing_platform_api_key') {
+        expect(err.platform).toBe('github')
+      }
     }
     finally {
       if (origToken !== undefined)
@@ -555,21 +602,10 @@ describe('validateConfig', () => {
     }
   })
 
-  it('returns missing_tracker_api_key when api_key is absent', () => {
-    const config = buildConfig(makeWorkflow({ tracker: { kind: 'asana', project_gid: 'gid' } }))
-    const err = validateConfig(config)
-    expect(err?.code).toBe('missing_tracker_api_key')
-  })
-
-  it('returns missing_tracker_project_config when asana project_gid missing', () => {
-    const config = buildConfig(makeWorkflow({ tracker: { kind: 'asana', api_key: 'tok' } }))
-    const err = validateConfig(config)
-    expect(err?.code).toBe('missing_tracker_project_config')
-  })
-
   it('returns null for webhook mode (port validation deferred to CLI)', () => {
     const config = buildConfig(makeWorkflow({
-      tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
+      platforms: { asana: { api_key: 'tok' } },
+      projects: [{ platform: 'asana', project_gid: 'gid' }],
       polling: { mode: 'webhook' },
     }))
     expect(validateConfig(config)).toBeNull()
@@ -579,7 +615,8 @@ describe('validateConfig', () => {
     // buildConfig always applies default when command is empty, so we test validateConfig
     // directly with a ServiceConfig that has a blank command
     const baseConfig = buildConfig(makeWorkflow({
-      tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
+      platforms: { asana: { api_key: 'tok' } },
+      projects: [{ platform: 'asana', project_gid: 'gid' }],
     }))
     const configWithBlankCommand = {
       ...baseConfig,
@@ -588,41 +625,114 @@ describe('validateConfig', () => {
     const err = validateConfig(configWithBlankCommand)
     expect(err?.code).toBe('missing_claude_command')
   })
+
+  it('returns unknown_platform_reference when channel references unknown platform', () => {
+    const config = buildConfig(makeWorkflow({
+      platforms: { github: { api_key: 'tok', owner: 'org' } },
+      projects: [{ platform: 'github', project_number: 1 }],
+      channels: [{ platform: 'slack' }],
+    }))
+    const err = validateConfig(config)
+    expect(err?.code).toBe('unknown_platform_reference')
+    if (err?.code === 'unknown_platform_reference') {
+      expect(err.platform).toBe('slack')
+      expect(err.context).toBe('channel')
+    }
+  })
+
+  it('returns no_projects_configured when projects array is empty', () => {
+    const config = buildConfig(makeWorkflow({
+      platforms: { github: { api_key: 'tok' } },
+      projects: [],
+    }))
+    const err = validateConfig(config)
+    expect(err).not.toBeNull()
+    expect(err?.code).toBe('no_projects_configured')
+  })
+
+  it('returns missing_github_project_config when github project has no project_id and no owner+project_number', () => {
+    const config = buildConfig(makeWorkflow({
+      platforms: { github: { api_key: 'token', owner: null } },
+      projects: [{ platform: 'github' }],
+    }))
+    const err = validateConfig(config)
+    expect(err?.code).toBe('missing_github_project_config')
+  })
+
+  it('returns null for github project with project_id (no owner/project_number required)', () => {
+    const config = buildConfig(makeWorkflow({
+      platforms: { github: { api_key: 'token' } },
+      projects: [{ platform: 'github', project_id: 'PVT_kwABC123' }],
+    }))
+    expect(validateConfig(config)).toBeNull()
+  })
+
+  it('returns null for github project with owner and project_number', () => {
+    const config = buildConfig(makeWorkflow({
+      platforms: { github: { api_key: 'token', owner: 'myorg' } },
+      projects: [{ platform: 'github', project_number: 5 }],
+    }))
+    expect(validateConfig(config)).toBeNull()
+  })
+
+  it('returns missing_asana_project_config when asana project has no project_gid', () => {
+    const config = buildConfig(makeWorkflow({
+      platforms: { asana: { api_key: 'token' } },
+      projects: [{ platform: 'asana' }],
+    }))
+    const err = validateConfig(config)
+    expect(err?.code).toBe('missing_asana_project_config')
+  })
+
+  it('returns null for valid asana project with project_gid', () => {
+    const config = buildConfig(makeWorkflow({
+      platforms: { asana: { api_key: 'token' } },
+      projects: [{ platform: 'asana', project_gid: 'gid123' }],
+    }))
+    expect(validateConfig(config)).toBeNull()
+  })
 })
 
 describe('getActiveStates / getTerminalStates', () => {
-  it('returns asana active_sections', () => {
+  it('returns asana project active_statuses', () => {
     const config = buildConfig(makeWorkflow({
-      tracker: { kind: 'asana', active_sections: ['Todo'] },
+      platforms: { asana: { api_key: 'tok' } },
+      projects: [{ platform: 'asana', active_statuses: ['Todo'] }],
     }))
-    expect(getActiveStates(config)).toEqual(['Todo'])
+    expect(getActiveStates(config.projects[0])).toEqual(['Todo'])
   })
 
-  it('returns github_projects active_statuses', () => {
+  it('returns github project active_statuses', () => {
     const config = buildConfig(makeWorkflow({
-      tracker: { kind: 'github_projects', active_statuses: ['In Progress'] },
+      platforms: { github: { api_key: 'tok', owner: 'org' } },
+      projects: [{ platform: 'github', active_statuses: ['In Progress'] }],
     }))
-    expect(getActiveStates(config)).toEqual(['In Progress'])
+    expect(getActiveStates(config.projects[0])).toEqual(['In Progress'])
   })
 
-  it('includes "Rework" and "Merging" in default github_projects active_statuses', () => {
+  it('includes "Rework" and "Merging" in default github project active_statuses', () => {
     const config = buildConfig(makeWorkflow({
-      tracker: { kind: 'github_projects', owner: 'org', project_number: 1 },
+      platforms: { github: { owner: 'org' } },
+      projects: [{ platform: 'github', project_number: 1 }],
     }))
-    expect(getActiveStates(config)).toContain('Rework')
-    expect(getActiveStates(config)).toContain('Merging')
+    expect(getActiveStates(config.projects[0])).toContain('Rework')
+    expect(getActiveStates(config.projects[0])).toContain('Merging')
   })
 
-  it('does not include "Human Review" in default github_projects active_statuses', () => {
+  it('does not include "Human Review" in default github project active_statuses', () => {
     const config = buildConfig(makeWorkflow({
-      tracker: { kind: 'github_projects', owner: 'org', project_number: 1 },
+      platforms: { github: { owner: 'org' } },
+      projects: [{ platform: 'github', project_number: 1 }],
     }))
-    expect(getActiveStates(config)).not.toContain('Human Review')
+    expect(getActiveStates(config.projects[0])).not.toContain('Human Review')
   })
 
-  it('returns defaults when not configured', () => {
-    const config = buildConfig(makeWorkflow({ tracker: { kind: 'asana' } }))
-    expect(getTerminalStates(config)).toEqual(['Done', 'Cancelled'])
+  it('returns defaults when not configured (asana terminal statuses)', () => {
+    const config = buildConfig(makeWorkflow({
+      platforms: { asana: { api_key: 'tok' } },
+      projects: [{ platform: 'asana' }],
+    }))
+    expect(getTerminalStates(config.projects[0])).toEqual(['Done', 'Cancelled'])
   })
 })
 
@@ -634,31 +744,28 @@ describe('normalizeState', () => {
 })
 
 describe('label_prefix parsing', () => {
-  it('parses label_prefix from github_projects config', () => {
+  it('parses label_prefix from github project config', () => {
     const config = buildConfig(makeWorkflow({
-      tracker: {
-        kind: 'github_projects',
-        api_key: 'token',
-        owner: 'myorg',
-        project_number: 1,
-        label_prefix: 'agent-please',
-      },
+      platforms: { github: { api_key: 'token', owner: 'myorg' } },
+      projects: [{ platform: 'github', project_number: 1, label_prefix: 'agent-please' }],
     }))
-    expect(config.tracker.label_prefix).toBe('agent-please')
+    expect(config.projects[0].label_prefix).toBe('agent-please')
   })
 
   it('defaults label_prefix to null when omitted', () => {
     const config = buildConfig(makeWorkflow({
-      tracker: { kind: 'github_projects', api_key: 'token', owner: 'myorg', project_number: 1 },
+      platforms: { github: { api_key: 'token', owner: 'myorg' } },
+      projects: [{ platform: 'github', project_number: 1 }],
     }))
-    expect(config.tracker.label_prefix).toBeNull()
+    expect(config.projects[0].label_prefix).toBeNull()
   })
 
-  it('parses label_prefix from asana config', () => {
+  it('parses label_prefix from asana project config', () => {
     const config = buildConfig(makeWorkflow({
-      tracker: { kind: 'asana', api_key: 'token', project_gid: 'gid', label_prefix: 'ci' },
+      platforms: { asana: { api_key: 'token' } },
+      projects: [{ platform: 'asana', project_gid: 'gid', label_prefix: 'ci' }],
     }))
-    expect(config.tracker.label_prefix).toBe('ci')
+    expect(config.projects[0].label_prefix).toBe('ci')
   })
 })
 
@@ -709,124 +816,126 @@ describe('per-state concurrency limits', () => {
   })
 })
 
-describe('tracker filter config', () => {
+describe('project filter config', () => {
   it('defaults to empty assignee and label arrays when filter section absent', () => {
     const config = buildConfig(makeWorkflow({
-      tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid' },
+      platforms: { asana: { api_key: 'tok' } },
+      projects: [{ platform: 'asana', project_gid: 'gid' }],
     }))
-    expect(config.tracker.filter).toEqual({ assignee: [], label: [] })
+    expect(config.projects[0].filter).toEqual({ assignee: [], label: [] })
   })
 
   it('defaults to empty arrays when filter fields are missing', () => {
     const config = buildConfig(makeWorkflow({
-      tracker: { kind: 'github_projects', api_key: 'tok', owner: 'org', project_number: 1, filter: {} },
+      platforms: { github: { api_key: 'tok', owner: 'org' } },
+      projects: [{ platform: 'github', project_number: 1, filter: {} }],
     }))
-    expect(config.tracker.filter).toEqual({ assignee: [], label: [] })
+    expect(config.projects[0].filter).toEqual({ assignee: [], label: [] })
   })
 
   it('parses filter.assignee from CSV string', () => {
     const config = buildConfig(makeWorkflow({
-      tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid', filter: { assignee: 'user1, user2' } },
+      platforms: { asana: { api_key: 'tok' } },
+      projects: [{ platform: 'asana', project_gid: 'gid', filter: { assignee: 'user1, user2' } }],
     }))
-    expect(config.tracker.filter?.assignee).toEqual(['user1', 'user2'])
+    expect(config.projects[0].filter?.assignee).toEqual(['user1', 'user2'])
   })
 
   it('parses filter.assignee from YAML array', () => {
     const config = buildConfig(makeWorkflow({
-      tracker: { kind: 'github_projects', api_key: 'tok', owner: 'org', project_number: 1, filter: { assignee: ['alice', 'bob'] } },
+      platforms: { github: { api_key: 'tok', owner: 'org' } },
+      projects: [{ platform: 'github', project_number: 1, filter: { assignee: ['alice', 'bob'] } }],
     }))
-    expect(config.tracker.filter?.assignee).toEqual(['alice', 'bob'])
+    expect(config.projects[0].filter?.assignee).toEqual(['alice', 'bob'])
   })
 
   it('parses filter.label from CSV string', () => {
     const config = buildConfig(makeWorkflow({
-      tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid', filter: { label: 'bug, feature' } },
+      platforms: { asana: { api_key: 'tok' } },
+      projects: [{ platform: 'asana', project_gid: 'gid', filter: { label: 'bug, feature' } }],
     }))
-    expect(config.tracker.filter?.label).toEqual(['bug', 'feature'])
+    expect(config.projects[0].filter?.label).toEqual(['bug', 'feature'])
   })
 
   it('parses filter.label from YAML array', () => {
     const config = buildConfig(makeWorkflow({
-      tracker: { kind: 'github_projects', api_key: 'tok', owner: 'org', project_number: 1, filter: { label: ['bug', 'enhancement'] } },
+      platforms: { github: { api_key: 'tok', owner: 'org' } },
+      projects: [{ platform: 'github', project_number: 1, filter: { label: ['bug', 'enhancement'] } }],
     }))
-    expect(config.tracker.filter?.label).toEqual(['bug', 'enhancement'])
+    expect(config.projects[0].filter?.label).toEqual(['bug', 'enhancement'])
   })
 
   it('parses both assignee and label together', () => {
     const config = buildConfig(makeWorkflow({
-      tracker: { kind: 'asana', api_key: 'tok', project_gid: 'gid', filter: { assignee: 'user1', label: 'bug' } },
+      platforms: { asana: { api_key: 'tok' } },
+      projects: [{ platform: 'asana', project_gid: 'gid', filter: { assignee: 'user1', label: 'bug' } }],
     }))
-    expect(config.tracker.filter?.assignee).toEqual(['user1'])
-    expect(config.tracker.filter?.label).toEqual(['bug'])
+    expect(config.projects[0].filter?.assignee).toEqual(['user1'])
+    expect(config.projects[0].filter?.label).toEqual(['bug'])
   })
 })
 
 describe('watched_statuses parsing', () => {
-  it('defaults to ["Human Review"] for github_projects when not configured', () => {
+  it('defaults to ["Human Review"] for github project when not configured', () => {
     const config = buildConfig(makeWorkflow({
-      tracker: { kind: 'github_projects', api_key: 'token', owner: 'org', project_number: 1 },
+      platforms: { github: { api_key: 'token', owner: 'org' } },
+      projects: [{ platform: 'github', project_number: 1 }],
     }))
-    expect(config.tracker.watched_statuses).toEqual(['Human Review'])
+    expect(config.projects[0].watched_statuses).toEqual(['Human Review'])
   })
 
-  it('defaults to [] for asana when not configured', () => {
+  it('defaults to [] for asana project when not configured', () => {
     const config = buildConfig(makeWorkflow({
-      tracker: { kind: 'asana', api_key: 'token', project_gid: 'gid' },
+      platforms: { asana: { api_key: 'token' } },
+      projects: [{ platform: 'asana', project_gid: 'gid' }],
     }))
-    expect(config.tracker.watched_statuses).toEqual([])
+    expect(config.projects[0].watched_statuses).toEqual([])
   })
 
-  it('parses watched_statuses from YAML array for github_projects', () => {
+  it('parses watched_statuses from YAML array for github project', () => {
     const config = buildConfig(makeWorkflow({
-      tracker: {
-        kind: 'github_projects',
-        api_key: 'token',
-        owner: 'org',
+      platforms: { github: { api_key: 'token', owner: 'org' } },
+      projects: [{
+        platform: 'github',
         project_number: 1,
         watched_statuses: ['Human Review', 'Blocked'],
-      },
+      }],
     }))
-    expect(config.tracker.watched_statuses).toEqual(['Human Review', 'Blocked'])
+    expect(config.projects[0].watched_statuses).toEqual(['Human Review', 'Blocked'])
   })
 
   it('parses watched_statuses from CSV string', () => {
     const config = buildConfig(makeWorkflow({
-      tracker: {
-        kind: 'github_projects',
-        api_key: 'token',
-        owner: 'org',
+      platforms: { github: { api_key: 'token', owner: 'org' } },
+      projects: [{
+        platform: 'github',
         project_number: 1,
         watched_statuses: 'Human Review, Blocked',
-      },
+      }],
     }))
-    expect(config.tracker.watched_statuses).toEqual(['Human Review', 'Blocked'])
+    expect(config.projects[0].watched_statuses).toEqual(['Human Review', 'Blocked'])
   })
 })
 
 describe('getWatchedStates', () => {
-  it('returns watched_statuses for github_projects', () => {
+  it('returns watched_statuses for github project', () => {
     const config = buildConfig(makeWorkflow({
-      tracker: {
-        kind: 'github_projects',
-        api_key: 'token',
-        owner: 'org',
+      platforms: { github: { api_key: 'token', owner: 'org' } },
+      projects: [{
+        platform: 'github',
         project_number: 1,
         watched_statuses: ['Human Review'],
-      },
+      }],
     }))
-    expect(getWatchedStates(config)).toEqual(['Human Review'])
+    expect(getWatchedStates(config.projects[0])).toEqual(['Human Review'])
   })
 
-  it('returns empty array for asana', () => {
+  it('returns empty array for asana project', () => {
     const config = buildConfig(makeWorkflow({
-      tracker: { kind: 'asana', api_key: 'token', project_gid: 'gid' },
+      platforms: { asana: { api_key: 'token' } },
+      projects: [{ platform: 'asana', project_gid: 'gid' }],
     }))
-    expect(getWatchedStates(config)).toEqual([])
-  })
-
-  it('returns empty array for unknown tracker kind', () => {
-    const config = buildConfig(makeWorkflow({ tracker: { kind: 'linear' } }))
-    expect(getWatchedStates(config)).toEqual([])
+    expect(getWatchedStates(config.projects[0])).toEqual([])
   })
 })
 
@@ -1060,37 +1169,26 @@ describe('buildConfig db section', () => {
   })
 })
 
-describe('buildConfig - chat section', () => {
-  it('defaults to all nulls when chat section absent', () => {
-    const prevBot = process.env.CHAT_BOT_USERNAME
-    delete process.env.CHAT_BOT_USERNAME
-    try {
-      const config = buildConfig(makeWorkflow({}))
-      expect(config.chat.bot_username).toBeNull()
-      expect(config.chat.github).toBeNull()
-      expect(config.chat.slack).toBeNull()
-    }
-    finally {
-      if (prevBot !== undefined)
-        process.env.CHAT_BOT_USERNAME = prevBot
-    }
-  })
-
-  it('parses chat.bot_username from YAML', () => {
+describe('buildConfig - platforms.github bot_username', () => {
+  it('parses bot_username from github platform config', () => {
     const config = buildConfig(makeWorkflow({
-      chat: { bot_username: 'my-bot' },
+      platforms: {
+        github: { api_key: 'token', owner: 'myorg', bot_username: 'my-bot' },
+      },
     }))
-    expect(config.chat.bot_username).toBe('my-bot')
+    const gh = config.platforms.github as GitHubPlatformConfig
+    expect(gh.bot_username).toBe('my-bot')
   })
 
-  it('resolves $VAR for chat.bot_username', () => {
+  it('resolves $VAR for bot_username', () => {
     const orig = process.env.TEST_BOT_USER
     process.env.TEST_BOT_USER = 'env-bot-name'
     try {
       const config = buildConfig(makeWorkflow({
-        chat: { bot_username: '$TEST_BOT_USER' },
+        platforms: { github: { api_key: 'token', bot_username: '$TEST_BOT_USER' } },
       }))
-      expect(config.chat.bot_username).toBe('env-bot-name')
+      const gh = config.platforms.github as GitHubPlatformConfig
+      expect(gh.bot_username).toBe('env-bot-name')
     }
     finally {
       if (orig !== undefined)
@@ -1104,8 +1202,11 @@ describe('buildConfig - chat section', () => {
     const orig = process.env.CHAT_BOT_USERNAME
     process.env.CHAT_BOT_USERNAME = 'fallback-bot'
     try {
-      const config = buildConfig(makeWorkflow({ chat: {} }))
-      expect(config.chat.bot_username).toBe('fallback-bot')
+      const config = buildConfig(makeWorkflow({
+        platforms: { github: { api_key: 'token' } },
+      }))
+      const gh = config.platforms.github as GitHubPlatformConfig
+      expect(gh.bot_username).toBe('fallback-bot')
     }
     finally {
       if (orig !== undefined)
@@ -1114,74 +1215,80 @@ describe('buildConfig - chat section', () => {
         delete process.env.CHAT_BOT_USERNAME
     }
   })
+})
 
-  it('returns github config when github section present', () => {
-    const config = buildConfig(makeWorkflow({
-      chat: { github: {} },
-    }))
-    expect(config.chat.github).toEqual({ allowed_associations: ['OWNER', 'MEMBER', 'COLLABORATOR'] })
+describe('buildConfig - channels config', () => {
+  it('defaults to empty channels array when channels section absent', () => {
+    const config = buildConfig(makeWorkflow({}))
+    expect(config.channels).toEqual([])
   })
 
-  it('parses allowed_associations from github config', () => {
+  it('returns github channel with default allowed_associations when github channel present', () => {
     const config = buildConfig(makeWorkflow({
-      chat: { github: { allowed_associations: ['OWNER', 'CONTRIBUTOR'] } },
+      platforms: { github: { api_key: 'token', owner: 'org' } },
+      channels: [{ platform: 'github' }],
     }))
-    expect(config.chat.github?.allowed_associations).toEqual(['OWNER', 'CONTRIBUTOR'])
+    expect(config.channels[0].allowed_associations).toEqual(['OWNER', 'MEMBER', 'COLLABORATOR'])
+  })
+
+  it('parses allowed_associations from github channel config', () => {
+    const config = buildConfig(makeWorkflow({
+      platforms: { github: { api_key: 'token', owner: 'org' } },
+      channels: [{ platform: 'github', allowed_associations: ['OWNER', 'CONTRIBUTOR'] }],
+    }))
+    expect(config.channels[0].allowed_associations).toEqual(['OWNER', 'CONTRIBUTOR'])
   })
 
   it('parses allowed_associations from CSV string', () => {
     const config = buildConfig(makeWorkflow({
-      chat: { github: { allowed_associations: 'OWNER, MEMBER' } },
+      platforms: { github: { api_key: 'token', owner: 'org' } },
+      channels: [{ platform: 'github', allowed_associations: 'OWNER, MEMBER' }],
     }))
-    expect(config.chat.github?.allowed_associations).toEqual(['OWNER', 'MEMBER'])
+    expect(config.channels[0].allowed_associations).toEqual(['OWNER', 'MEMBER'])
   })
 
   it('normalizes allowed_associations to uppercase', () => {
     const config = buildConfig(makeWorkflow({
-      chat: { github: { allowed_associations: ['owner', 'member'] } },
+      platforms: { github: { api_key: 'token', owner: 'org' } },
+      channels: [{ platform: 'github', allowed_associations: ['owner', 'member'] }],
     }))
-    expect(config.chat.github?.allowed_associations).toEqual(['OWNER', 'MEMBER'])
+    expect(config.channels[0].allowed_associations).toEqual(['OWNER', 'MEMBER'])
   })
 
   it('filters out invalid association values', () => {
     const config = buildConfig(makeWorkflow({
-      chat: { github: { allowed_associations: ['OWNER', 'INVALID', 'MEMBER'] } },
+      platforms: { github: { api_key: 'token', owner: 'org' } },
+      channels: [{ platform: 'github', allowed_associations: ['OWNER', 'INVALID', 'MEMBER'] }],
     }))
-    expect(config.chat.github?.allowed_associations).toEqual(['OWNER', 'MEMBER'])
+    expect(config.channels[0].allowed_associations).toEqual(['OWNER', 'MEMBER'])
   })
 
   it('falls back to defaults when all associations are invalid', () => {
     const config = buildConfig(makeWorkflow({
-      chat: { github: { allowed_associations: ['INVALID'] } },
+      platforms: { github: { api_key: 'token', owner: 'org' } },
+      channels: [{ platform: 'github', allowed_associations: ['INVALID'] }],
     }))
-    expect(config.chat.github?.allowed_associations).toEqual(['OWNER', 'MEMBER', 'COLLABORATOR'])
+    expect(config.channels[0].allowed_associations).toEqual(['OWNER', 'MEMBER', 'COLLABORATOR'])
   })
 
-  it('returns null github when github section absent', () => {
-    const config = buildConfig(makeWorkflow({
-      chat: { bot_username: 'bot' },
-    }))
-    expect(config.chat.github).toBeNull()
-  })
-
-  it('parses slack config with bot_token and signing_secret', () => {
+  it('parses slack platform config with bot_token and signing_secret', () => {
     const prevToken = process.env.SLACK_BOT_TOKEN
     const prevSecret = process.env.SLACK_SIGNING_SECRET
     delete process.env.SLACK_BOT_TOKEN
     delete process.env.SLACK_SIGNING_SECRET
     try {
       const config = buildConfig(makeWorkflow({
-        chat: {
+        platforms: {
           slack: {
             bot_token: 'xoxb-test-token',
             signing_secret: 'slack-secret',
           },
         },
+        channels: [{ platform: 'slack' }],
       }))
-      expect(config.chat.slack).toEqual({
-        bot_token: 'xoxb-test-token',
-        signing_secret: 'slack-secret',
-      })
+      const slack = config.platforms.slack as SlackPlatformConfig
+      expect(slack.bot_token).toBe('xoxb-test-token')
+      expect(slack.signing_secret).toBe('slack-secret')
     }
     finally {
       if (prevToken !== undefined)
@@ -1191,22 +1298,24 @@ describe('buildConfig - chat section', () => {
     }
   })
 
-  it('resolves $VAR for slack config fields', () => {
+  it('resolves $VAR for slack platform config fields', () => {
     const origToken = process.env.TEST_SLACK_TOKEN
     const origSecret = process.env.TEST_SLACK_SECRET
     process.env.TEST_SLACK_TOKEN = 'resolved-slack-token'
     process.env.TEST_SLACK_SECRET = 'resolved-slack-secret'
     try {
       const config = buildConfig(makeWorkflow({
-        chat: {
+        platforms: {
           slack: {
             bot_token: '$TEST_SLACK_TOKEN',
             signing_secret: '$TEST_SLACK_SECRET',
           },
         },
+        channels: [{ platform: 'slack' }],
       }))
-      expect(config.chat.slack?.bot_token).toBe('resolved-slack-token')
-      expect(config.chat.slack?.signing_secret).toBe('resolved-slack-secret')
+      const slack = config.platforms.slack as SlackPlatformConfig
+      expect(slack.bot_token).toBe('resolved-slack-token')
+      expect(slack.signing_secret).toBe('resolved-slack-secret')
     }
     finally {
       if (origToken !== undefined)
@@ -1218,31 +1327,18 @@ describe('buildConfig - chat section', () => {
     }
   })
 
-  it('returns null slack when slack section absent and no env vars', () => {
-    const prevToken = process.env.SLACK_BOT_TOKEN
-    const prevSecret = process.env.SLACK_SIGNING_SECRET
-    delete process.env.SLACK_BOT_TOKEN
-    delete process.env.SLACK_SIGNING_SECRET
-    try {
-      const config = buildConfig(makeWorkflow({ chat: {} }))
-      expect(config.chat.slack).toBeNull()
-    }
-    finally {
-      if (prevToken !== undefined)
-        process.env.SLACK_BOT_TOKEN = prevToken
-      if (prevSecret !== undefined)
-        process.env.SLACK_SIGNING_SECRET = prevSecret
-    }
-  })
-
   it('falls back to SLACK_BOT_TOKEN env when slack.bot_token absent', () => {
     const prevToken = process.env.SLACK_BOT_TOKEN
     const prevSecret = process.env.SLACK_SIGNING_SECRET
     process.env.SLACK_BOT_TOKEN = 'env-slack-token'
     delete process.env.SLACK_SIGNING_SECRET
     try {
-      const config = buildConfig(makeWorkflow({ chat: { slack: {} } }))
-      expect(config.chat.slack?.bot_token).toBe('env-slack-token')
+      const config = buildConfig(makeWorkflow({
+        platforms: { slack: {} },
+        channels: [{ platform: 'slack' }],
+      }))
+      const slack = config.platforms.slack as SlackPlatformConfig
+      expect(slack.bot_token).toBe('env-slack-token')
     }
     finally {
       if (prevToken !== undefined)

@@ -3,8 +3,22 @@ import { describe, expect, mock, test } from 'bun:test'
 import { createToolsMcpServer, executeTool, getToolSpecs } from './tools'
 
 function makeConfig(trackerKind: 'asana' | 'github_projects', apiKey: string | null = 'test-key'): ServiceConfig {
+  const isAsana = trackerKind === 'asana'
+  const platform = isAsana ? 'asana' : 'github'
   const base: ServiceConfig = {
-    tracker: { kind: trackerKind, endpoint: 'https://app.asana.com/api/1.0', api_key: apiKey, label_prefix: null, filter: { assignee: [], label: [] } },
+    platforms: isAsana
+      ? { asana: { kind: 'asana' as const, api_key: apiKey, bot_username: null } }
+      : { github: { kind: 'github' as const, api_key: apiKey, owner: null, bot_username: null, app_id: null, private_key: null, installation_id: null } },
+    projects: [{
+      platform,
+      active_statuses: [],
+      terminal_statuses: [],
+      watched_statuses: [],
+      endpoint: isAsana ? 'https://app.asana.com/api/1.0' : 'https://api.github.com',
+      label_prefix: null,
+      filter: { assignee: [], label: [] },
+    }],
+    channels: [],
     polling: { mode: 'poll' as const, interval_ms: 30000 },
     workspace: { root: '/tmp' },
     hooks: { after_create: null, before_run: null, after_run: null, before_remove: null, timeout_ms: 60000 },
@@ -13,7 +27,6 @@ function makeConfig(trackerKind: 'asana' | 'github_projects', apiKey: string | n
     env: {},
     db: { path: '.agent-please/agent_runs.db', turso_url: null, turso_auth_token: null },
     server: { port: null, webhook: { secret: null, events: null } },
-    chat: { bot_username: null, github: null, slack: null },
   }
   return base
 }

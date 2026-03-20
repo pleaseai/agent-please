@@ -3,7 +3,10 @@ import type { ServiceConfig } from './types'
 import { createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk'
 import { GraphqlResponseError } from '@octokit/graphql'
 import { z } from 'zod'
+import { createLogger } from './logger'
 import { createAuthenticatedGraphql } from './tracker/github-auth'
+
+const log = createLogger('tools')
 
 const NETWORK_TIMEOUT_MS = 30_000
 const MULTIPLE_OPERATIONS_RE = /\b(query|mutation|subscription)\b/gi
@@ -58,12 +61,18 @@ const GITHUB_GRAPHQL_SPEC: ToolSpec = {
 }
 
 export function getToolSpecs(config: ServiceConfig): ToolSpec[] {
-  const { kind } = config.tracker
-  if (kind === 'asana')
-    return [ASANA_API_SPEC]
-  if (kind === 'github_projects')
-    return [GITHUB_GRAPHQL_SPEC]
-  return []
+  if (!config.projects.length) {
+    log.warn('no projects configured, tool specs unavailable')
+    return []
+  }
+  const hasAsana = config.projects.some(p => config.platforms[p.platform]?.kind === 'asana')
+  const hasGithub = config.projects.some(p => config.platforms[p.platform]?.kind === 'github')
+  const specs: ToolSpec[] = []
+  if (hasAsana)
+    specs.push(ASANA_API_SPEC)
+  if (hasGithub)
+    specs.push(GITHUB_GRAPHQL_SPEC)
+  return specs
 }
 
 export async function executeTool(
@@ -71,13 +80,20 @@ export async function executeTool(
   toolName: string,
   rawArgs: unknown,
 ): Promise<ToolResult> {
-  const { kind } = config.tracker
+  if (!config.projects.length) {
+    return failureResult({
+      error: { message: 'No projects configured — cannot execute tracker tools. Check your WORKFLOW.md projects section.' },
+    })
+  }
 
-  if (toolName === 'asana_api' && kind === 'asana') {
+  const hasAsana = config.projects.some(p => config.platforms[p.platform]?.kind === 'asana')
+  const hasGithub = config.projects.some(p => config.platforms[p.platform]?.kind === 'github')
+
+  if (toolName === 'asana_api' && hasAsana) {
     return executeAsanaApi(config, rawArgs)
   }
 
-  if (toolName === 'github_graphql' && kind === 'github_projects') {
+  if (toolName === 'github_graphql' && hasGithub) {
     return executeGitHubGraphql(config, rawArgs)
   }
 
@@ -97,12 +113,15 @@ async function executeAsanaApi(config: ServiceConfig, rawArgs: unknown): Promise
     return failureResult({ error: args.error })
 
   const { method, path, params } = args
-  const apiKey = config.tracker.api_key
+  const rawAsana = config.platforms.asana
+  const asanaPlatform = rawAsana?.kind === 'asana' ? rawAsana : null
+  const apiKey = asanaPlatform?.api_key ?? null
   if (!apiKey) {
-    return failureResult({ error: { message: 'Asana auth not configured. Set tracker.api_key or ASANA_ACCESS_TOKEN.' } })
+    return failureResult({ error: { message: 'Asana auth not configured. Set platforms.asana.api_key or ASANA_ACCESS_TOKEN.' } })
   }
 
-  const base = (config.tracker.endpoint ?? 'https://app.asana.com/api/1.0').replace(TRAILING_SLASH_RE, '')
+  const firstProject = config.projects.find(p => config.platforms[p.platform]?.kind === 'asana')
+  const base = ((firstProject?.endpoint) ?? 'https://app.asana.com/api/1.0').replace(TRAILING_SLASH_RE, '')
   const url = buildAsanaUrl(base, path, method, params)
   const init: RequestInit = {
     method,
@@ -188,14 +207,20 @@ async function executeGitHubGraphql(config: ServiceConfig, rawArgs: unknown): Pr
     return failureResult({ error: args.error })
 
   const { query, variables } = args
-  const { api_key, app_id, private_key, installation_id } = config.tracker
+  const firstProject = config.projects.find(p => config.platforms[p.platform]?.kind === 'github')
+  const rawGithub = firstProject ? config.platforms[firstProject.platform] : null
+  const githubPlatform = rawGithub?.kind === 'github' ? rawGithub : null
+  if (!githubPlatform) {
+    return failureResult({ error: { message: 'GitHub auth not configured. No github platform found.' } })
+  }
+  const { api_key, app_id, private_key, installation_id } = githubPlatform
   const hasAuth = api_key || (app_id && private_key && installation_id != null)
   if (!hasAuth) {
-    return failureResult({ error: { message: 'GitHub auth not configured. Set tracker.api_key or GITHUB_TOKEN, or configure app_id, private_key, and installation_id.' } })
+    return failureResult({ error: { message: 'GitHub auth not configured. Set platforms.github.api_key or GITHUB_TOKEN, or configure app_id, private_key, and installation_id.' } })
   }
 
   try {
-    const octokit = createAuthenticatedGraphql(config)
+    const octokit = createAuthenticatedGraphql(firstProject!, githubPlatform)
     const data = await octokit(query, variables ?? {})
     return {
       success: true,
@@ -262,10 +287,11 @@ function failureResult(payload: unknown): ToolResult {
 }
 
 export function createToolsMcpServer(config: ServiceConfig): ReturnType<typeof createSdkMcpServer> {
-  const { kind } = config.tracker
+  const hasAsana = config.projects.some(p => config.platforms[p.platform]?.kind === 'asana')
+  const hasGithub = config.projects.some(p => config.platforms[p.platform]?.kind === 'github')
   const tools: SdkMcpToolDefinition<AnyZodRawShape>[] = []
 
-  if (kind === 'asana') {
+  if (hasAsana) {
     tools.push(tool(
       'asana_api',
       ASANA_API_SPEC.description,
@@ -284,7 +310,7 @@ export function createToolsMcpServer(config: ServiceConfig): ReturnType<typeof c
     ) as unknown as SdkMcpToolDefinition<AnyZodRawShape>)
   }
 
-  if (kind === 'github_projects') {
+  if (hasGithub) {
     tools.push(tool(
       'github_graphql',
       GITHUB_GRAPHQL_SPEC.description,

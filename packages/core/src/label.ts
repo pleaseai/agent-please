@@ -40,15 +40,18 @@ export function formatLabelName(prefix: string, state: LabelState): string {
 }
 
 export function createLabelService(config: ServiceConfig): LabelService | null {
-  const { kind, label_prefix } = config.tracker
-  if (!label_prefix)
-    return null
-  if (kind !== 'github_projects')
+  // Use the first github-like project with a label_prefix
+  const project = config.projects.find(p => p.label_prefix && config.platforms[p.platform]?.kind === 'github')
+  if (!project?.label_prefix)
     return null
 
-  const apiKey = config.tracker.api_key
-  const endpoint = config.tracker.endpoint
-  const prefix = label_prefix
+  const platform = config.platforms[project.platform]
+  if (!platform || platform.kind !== 'github')
+    return null
+
+  const apiKey = platform.api_key
+  const endpoint = project.endpoint
+  const prefix = project.label_prefix
   const headers: Record<string, string> = {
     'Authorization': `bearer ${apiKey ?? ''}`,
     'Content-Type': 'application/json',

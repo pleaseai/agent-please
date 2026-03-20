@@ -1,4 +1,4 @@
-import type { Issue, IssueFilter, LinkedPR, ServiceConfig } from '../types'
+import type { GitHubPlatformConfig, Issue, IssueFilter, LinkedPR, ProjectConfig } from '../types'
 import type { CandidateAndWatchedResult, TrackerAdapter, TrackerError } from './types'
 import { GraphqlResponseError } from '@octokit/graphql'
 import { normalizeState } from '../config'
@@ -11,14 +11,14 @@ const log = createLogger('github')
 
 const PAGE_SIZE = 50
 
-export function createGitHubAdapter(config: ServiceConfig): TrackerAdapter {
-  const owner = config.tracker.owner ?? ''
-  const projectNumber = config.tracker.project_number ?? 0
-  const projectId = config.tracker.project_id ?? null
-  const activeStatuses = config.tracker.active_statuses ?? ['Todo', 'In Progress']
-  const filter = config.tracker.filter
+export function createGitHubAdapter(project: ProjectConfig, platform: GitHubPlatformConfig): TrackerAdapter {
+  const owner = platform.owner ?? ''
+  const projectNumber = project.project_number ?? 0
+  const projectId = project.project_id ?? null
+  const activeStatuses = project.active_statuses ?? ['Todo', 'In Progress']
+  const filter = project.filter
 
-  const octokit = createAuthenticatedGraphql(config)
+  const octokit = createAuthenticatedGraphql(project, platform)
 
   async function runGraphql(query: string, variables: Record<string, unknown> = {}): Promise<{ data: unknown } | TrackerError> {
     try {

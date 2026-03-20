@@ -58,29 +58,52 @@ export interface IssueFilter {
   label: string[]
 }
 
-export interface TrackerConfig {
-  kind: string | null
-  endpoint: string
+export interface GitHubPlatformConfig {
+  kind: 'github'
   api_key: string | null
-  // asana
-  project_gid?: string | null
-  active_sections?: string[]
-  terminal_sections?: string[]
-  // github_projects
-  owner?: string | null
-  project_number?: number | null
-  project_id?: string | null
-  active_statuses?: string[]
-  terminal_statuses?: string[]
-  // github_projects — app auth (alternative to api_key)
-  app_id?: string | null
-  private_key?: string | null
-  installation_id?: number | null
+  owner: string | null
+  bot_username: string | null
+  // GitHub App auth (alternative to api_key)
+  app_id: string | null
+  private_key: string | null
+  installation_id: number | null
+}
+
+export interface SlackPlatformConfig {
+  kind: 'slack'
+  bot_token: string | null
+  signing_secret: string | null
+}
+
+export interface AsanaPlatformConfig {
+  kind: 'asana'
+  api_key: string | null
+  bot_username: string | null
+}
+
+export type PlatformConfig = GitHubPlatformConfig | SlackPlatformConfig | AsanaPlatformConfig
+
+export interface ProjectConfig {
+  platform: string
+  // platform-specific project identifiers
+  project_number?: number | null // GitHub
+  project_id?: string | null // GitHub
+  project_gid?: string | null // Asana
+  // status mappings
+  active_statuses: string[]
+  terminal_statuses: string[]
+  watched_statuses: string[]
+  // endpoint override
+  endpoint: string
+  // label prefix for orchestrator labels
   label_prefix: string | null
-  // shared filter
+  // filter
   filter: IssueFilter
-  // watched states (shared)
-  watched_statuses?: string[]
+}
+
+export interface ChannelConfig {
+  platform: string
+  allowed_associations?: AuthorAssociation[] // GitHub-specific
 }
 
 export type SettingSource = 'user' | 'project' | 'local'
@@ -147,23 +170,10 @@ export type AuthorAssociation = 'OWNER' | 'MEMBER' | 'COLLABORATOR' | 'CONTRIBUT
 
 export const DEFAULT_ALLOWED_ASSOCIATIONS: AuthorAssociation[] = ['OWNER', 'MEMBER', 'COLLABORATOR']
 
-export interface ChatGitHubConfig {
-  allowed_associations: AuthorAssociation[]
-}
-
-export interface ChatSlackConfig {
-  bot_token: string | null
-  signing_secret: string | null
-}
-
-export interface ChatConfig {
-  bot_username: string | null
-  github: ChatGitHubConfig | null
-  slack: ChatSlackConfig | null
-}
-
 export interface ServiceConfig {
-  tracker: TrackerConfig
+  platforms: Record<string, PlatformConfig>
+  projects: ProjectConfig[]
+  channels: ChannelConfig[]
   polling: { mode: PollingMode, interval_ms: number }
   workspace: {
     root: string
@@ -210,7 +220,6 @@ export interface ServiceConfig {
       events: string[] | null
     }
   }
-  chat: ChatConfig
 }
 
 export interface Workspace {

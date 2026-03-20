@@ -6,7 +6,9 @@ import { HttpServer } from './server'
 function makeConfig(overrides: Partial<ServiceConfig> = {}): ServiceConfig {
   return {
 
-    tracker: { kind: 'asana', endpoint: '', api_key: null, label_prefix: null, filter: { assignee: [], label: [] } },
+    platforms: {},
+    projects: [],
+    channels: [],
     polling: { mode: 'poll' as const, interval_ms: 30000 },
     workspace: { root: '/tmp/test_ws' },
     hooks: { after_create: null, before_run: null, after_run: null, before_remove: null, timeout_ms: 60000 },
@@ -15,7 +17,6 @@ function makeConfig(overrides: Partial<ServiceConfig> = {}): ServiceConfig {
     env: {},
     db: { path: '.agent-please/agent_runs.db', turso_url: null, turso_auth_token: null },
     server: { port: null, webhook: { secret: null, events: null } },
-    chat: { bot_username: null, github: null, slack: null },
     ...overrides,
   }
 }
