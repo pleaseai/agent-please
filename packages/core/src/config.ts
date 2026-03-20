@@ -1,4 +1,4 @@
-import type { AuthorAssociation, ChatConfig, ChatGitHubConfig, ClaudeEffort, DbConfig, IssueFilter, PollingMode, SandboxConfig, ServiceConfig, SettingSource, SystemPromptConfig, WorkflowDefinition } from './types'
+import type { AuthorAssociation, ChannelConfig, ChatConfig, ChatGitHubConfig, ClaudeEffort, DbConfig, IssueFilter, PlatformConfig, PollingMode, ProjectConfig, SandboxConfig, ServiceConfig, SettingSource, SystemPromptConfig, TrackerConfig, WorkflowDefinition } from './types'
 import { tmpdir } from 'node:os'
 import { join, sep } from 'node:path'
 import process from 'node:process'
@@ -39,7 +39,6 @@ const DEFAULTS = {
 
 export function buildConfig(workflow: WorkflowDefinition): ServiceConfig {
   const raw = workflow.config
-  const tracker = sectionMap(raw, 'tracker')
   const polling = sectionMap(raw, 'polling')
   const workspace = sectionMap(raw, 'workspace')
   const hooks = sectionMap(raw, 'hooks')
@@ -48,10 +47,12 @@ export function buildConfig(workflow: WorkflowDefinition): ServiceConfig {
   const db = sectionMap(raw, 'db')
   const server = sectionMap(raw, 'server')
 
-  const kind = normalizeTrackerKind(stringValue(tracker.kind))
+  const platforms = buildPlatformsConfig(raw)
 
   return {
-    tracker: buildTrackerConfig(kind, tracker),
+    platforms,
+    projects: buildProjectsConfig(raw, platforms),
+    channels: buildChannelsConfig(raw),
     polling: {
       mode: pollingModeValue(polling.mode),
       interval_ms: intValue(polling.interval_ms, DEFAULTS.POLL_INTERVAL_MS),
@@ -79,8 +80,147 @@ export function buildConfig(workflow: WorkflowDefinition): ServiceConfig {
       port: nonNegIntOrNull(server.port),
       webhook: buildWebhookConfig(sectionMap(server, 'webhook')),
     },
-    chat: buildChatConfig(sectionMap(raw, 'chat')),
   }
+}
+
+export function buildPlatformsConfig(raw: Record<string, unknown>): Record<string, PlatformConfig> {
+  const platforms = sectionMap(raw, 'platforms')
+  const result: Record<string, PlatformConfig> = {}
+
+  for (const [key, val] of Object.entries(platforms)) {
+    if (!val || typeof val !== 'object' || Array.isArray(val))
+      continue
+    const sec = val as Record<string, unknown>
+
+    if (key === 'slack' || (sec.bot_token !== undefined && sec.api_key === undefined)) {
+      result[key] = {
+        bot_token: resolveEnvValue(stringValue(sec.bot_token), process.env.SLACK_BOT_TOKEN),
+        signing_secret: resolveEnvValue(stringValue(sec.signing_secret), process.env.SLACK_SIGNING_SECRET),
+      }
+    }
+    else if (key === 'asana') {
+      result[key] = {
+        api_key: resolveEnvValue(stringValue(sec.api_key), process.env.ASANA_ACCESS_TOKEN),
+        bot_username: resolveEnvValue(
+          stringValue(sec.bot_username),
+          process.env.CHAT_BOT_USERNAME ?? process.env.GITHUB_BOT_USERNAME,
+        ),
+      }
+    }
+    else {
+      // github (or any unknown platform key) — treat as GitHub-style
+      result[key] = {
+        api_key: resolveEnvValue(stringValue(sec.api_key), process.env.GITHUB_TOKEN),
+        owner: stringValue(sec.owner),
+        bot_username: resolveEnvValue(
+          stringValue(sec.bot_username),
+          process.env.CHAT_BOT_USERNAME ?? process.env.GITHUB_BOT_USERNAME,
+        ),
+        app_id: resolveEnvValue(stringValue(sec.app_id), process.env.GITHUB_APP_ID),
+        private_key: resolveEnvValue(stringValue(sec.private_key), process.env.GITHUB_APP_PRIVATE_KEY),
+        installation_id: resolveInstallationId(sec.installation_id),
+      }
+    }
+  }
+
+  return result
+}
+
+export function buildProjectsConfig(
+  raw: Record<string, unknown>,
+  _platforms: Record<string, PlatformConfig>,
+): ProjectConfig[] {
+  const projectsRaw = raw.projects
+  if (!Array.isArray(projectsRaw))
+    return []
+
+  const result: ProjectConfig[] = []
+
+  for (const item of projectsRaw) {
+    if (!item || typeof item !== 'object' || Array.isArray(item))
+      continue
+    const sec = item as Record<string, unknown>
+    const platform = stringValue(sec.platform)
+    if (!platform)
+      continue
+
+    const isAsana = platform === 'asana'
+    const filter = buildFilterConfig(sectionMap(sec, 'filter'))
+    const label_prefix = stringValue(sec.label_prefix) ?? null
+
+    let active_statuses: string[]
+    let terminal_statuses: string[]
+    let watched_statuses: string[]
+    let endpoint: string
+
+    if (isAsana) {
+      active_statuses = csvValue(sec.active_statuses) ?? csvValue(sec.active_sections) ?? DEFAULTS.ASANA_ACTIVE_SECTIONS
+      terminal_statuses = csvValue(sec.terminal_statuses) ?? csvValue(sec.terminal_sections) ?? DEFAULTS.ASANA_TERMINAL_SECTIONS
+      watched_statuses = csvValue(sec.watched_statuses) ?? DEFAULTS.ASANA_WATCHED_SECTIONS
+      endpoint = stringValue(sec.endpoint) ?? DEFAULTS.ASANA_ENDPOINT
+    }
+    else {
+      // github_projects or any github-like platform
+      active_statuses = csvValue(sec.active_statuses) ?? csvValue(sec.active_states) ?? DEFAULTS.GITHUB_ACTIVE_STATUSES
+      terminal_statuses = csvValue(sec.terminal_statuses) ?? csvValue(sec.terminal_states) ?? DEFAULTS.GITHUB_TERMINAL_STATUSES
+      watched_statuses = csvValue(sec.watched_statuses) ?? csvValue(sec.watched_states) ?? DEFAULTS.GITHUB_WATCHED_STATUSES
+      endpoint = stringValue(sec.endpoint) ?? DEFAULTS.GITHUB_ENDPOINT
+    }
+
+    result.push({
+      platform,
+      project_number: posIntValue(sec.project_number, null as unknown as number) ?? null,
+      project_id: stringValue(sec.project_id) ?? null,
+      project_gid: stringValue(sec.project_gid) ?? null,
+      active_statuses,
+      terminal_statuses,
+      watched_statuses,
+      endpoint,
+      label_prefix,
+      filter,
+    })
+  }
+
+  return result
+}
+
+export function buildChannelsConfig(raw: Record<string, unknown>): ChannelConfig[] {
+  const channelsRaw = raw.channels
+  if (!Array.isArray(channelsRaw))
+    return []
+
+  const result: ChannelConfig[] = []
+
+  for (const item of channelsRaw) {
+    if (!item || typeof item !== 'object' || Array.isArray(item))
+      continue
+    const sec = item as Record<string, unknown>
+    const platform = stringValue(sec.platform)
+    if (!platform)
+      continue
+
+    if (platform === 'github') {
+      const raw_assoc = sec.allowed_associations
+      if (!raw_assoc) {
+        result.push({ platform, allowed_associations: DEFAULT_ALLOWED_ASSOCIATIONS })
+      }
+      else {
+        const list = csvValue(raw_assoc) ?? []
+        const valid = list
+          .map(s => s.toUpperCase() as AuthorAssociation)
+          .filter(s => VALID_ASSOCIATIONS.has(s))
+        result.push({
+          platform,
+          allowed_associations: valid.length > 0 ? valid : DEFAULT_ALLOWED_ASSOCIATIONS,
+        })
+      }
+    }
+    else {
+      result.push({ platform })
+    }
+  }
+
+  return result
 }
 
 const DEFAULT_DB_PATH = '.agent-please/agent_runs.db'
@@ -118,7 +258,7 @@ function buildClaudeConfig(claude: Record<string, unknown>): ServiceConfig['clau
   }
 }
 
-function buildTrackerConfig(kind: string | null, tracker: Record<string, unknown>): ServiceConfig['tracker'] {
+function buildTrackerConfig(kind: string | null, tracker: Record<string, unknown>): TrackerConfig {
   const label_prefix = stringValue(tracker.label_prefix) ?? null
   const filter = buildFilterConfig(sectionMap(tracker, 'filter'))
 
@@ -231,49 +371,42 @@ export type ValidationError
     | { code: 'incomplete_github_app_config', missing: string[] }
     | { code: 'missing_tracker_project_config', field: string }
     | { code: 'missing_claude_command' }
+    | { code: 'unknown_platform_reference', platform: string, context: string }
+    | { code: 'missing_platform_api_key', platform: string }
+    | { code: 'incomplete_platform_app_config', platform: string, missing: string[] }
 
 export function validateConfig(config: ServiceConfig): ValidationError | null {
-  const { kind } = config.tracker
-
-  if (!kind)
-    return { code: 'missing_tracker_kind' }
-  if (kind !== 'asana' && kind !== 'github_projects') {
-    return { code: 'unsupported_tracker_kind', kind }
-  }
-
-  if (!config.tracker.api_key) {
-    if (kind === 'github_projects') {
-      const appId = config.tracker.app_id
-      const privateKey = config.tracker.private_key
-      const installationId = config.tracker.installation_id
-      const hasAny = appId || privateKey || (installationId != null)
-      if (!hasAny)
-        return { code: 'missing_tracker_api_key' }
-      const missing: string[] = []
-      if (!appId)
-        missing.push('app_id')
-      if (!privateKey)
-        missing.push('private_key')
-      if (installationId == null)
-        missing.push('installation_id')
-      if (missing.length > 0)
-        return { code: 'incomplete_github_app_config', missing }
-      // Valid app auth — fall through
+  // Validate each project references a known platform
+  for (const project of config.projects) {
+    if (!(project.platform in config.platforms)) {
+      return { code: 'unknown_platform_reference', platform: project.platform, context: 'project' }
     }
-    else {
-      return { code: 'missing_tracker_api_key' }
+
+    const platform = config.platforms[project.platform]
+    const isSlack = 'bot_token' in platform
+    const isAsana = project.platform === 'asana'
+
+    // For github-like platforms: require api_key or complete app auth
+    if (!isSlack && !isAsana) {
+      const gh = platform as import('./types').GitHubPlatformConfig
+      if (!gh.api_key) {
+        const hasAny = gh.app_id || gh.private_key || (gh.installation_id != null)
+        if (!hasAny)
+          return { code: 'missing_platform_api_key', platform: project.platform }
+        const missing: string[] = []
+        if (!gh.app_id) missing.push('app_id')
+        if (!gh.private_key) missing.push('private_key')
+        if (gh.installation_id == null) missing.push('installation_id')
+        if (missing.length > 0)
+          return { code: 'incomplete_platform_app_config', platform: project.platform, missing }
+      }
     }
   }
 
-  if (kind === 'asana' && !config.tracker.project_gid) {
-    return { code: 'missing_tracker_project_config', field: 'project_gid' }
-  }
-  if (kind === 'github_projects' && !config.tracker.project_id) {
-    if (!config.tracker.owner) {
-      return { code: 'missing_tracker_project_config', field: 'owner' }
-    }
-    if (!config.tracker.project_number) {
-      return { code: 'missing_tracker_project_config', field: 'project_number' }
+  // Validate each channel references a known platform
+  for (const channel of config.channels) {
+    if (!(channel.platform in config.platforms)) {
+      return { code: 'unknown_platform_reference', platform: channel.platform, context: 'channel' }
     }
   }
 
@@ -283,31 +416,16 @@ export function validateConfig(config: ServiceConfig): ValidationError | null {
   return null
 }
 
-export function getActiveStates(config: ServiceConfig): string[] {
-  const { kind } = config.tracker
-  if (kind === 'asana')
-    return config.tracker.active_sections ?? DEFAULTS.ASANA_ACTIVE_SECTIONS
-  if (kind === 'github_projects')
-    return config.tracker.active_statuses ?? DEFAULTS.GITHUB_ACTIVE_STATUSES
-  return []
+export function getActiveStates(project: ProjectConfig): string[] {
+  return project.active_statuses
 }
 
-export function getTerminalStates(config: ServiceConfig): string[] {
-  const { kind } = config.tracker
-  if (kind === 'asana')
-    return config.tracker.terminal_sections ?? DEFAULTS.ASANA_TERMINAL_SECTIONS
-  if (kind === 'github_projects')
-    return config.tracker.terminal_statuses ?? DEFAULTS.GITHUB_TERMINAL_STATUSES
-  return []
+export function getTerminalStates(project: ProjectConfig): string[] {
+  return project.terminal_statuses
 }
 
-export function getWatchedStates(config: ServiceConfig): string[] {
-  const { kind } = config.tracker
-  if (kind === 'asana')
-    return config.tracker.watched_statuses ?? DEFAULTS.ASANA_WATCHED_SECTIONS
-  if (kind === 'github_projects')
-    return config.tracker.watched_statuses ?? DEFAULTS.GITHUB_WATCHED_STATUSES
-  return []
+export function getWatchedStates(project: ProjectConfig): string[] {
+  return project.watched_statuses
 }
 
 export function normalizeState(state: string): string {
