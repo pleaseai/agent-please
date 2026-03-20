@@ -1,4 +1,4 @@
-import type { Issue, ServiceConfig } from '../types'
+import type { AsanaPlatformConfig, Issue, ProjectConfig } from '../types'
 import type { CandidateAndWatchedResult, TrackerAdapter, TrackerError } from './types'
 import { normalizeState } from '../config'
 import { deduplicateByNormalized, matchesFilter, splitCandidatesAndWatched } from '../filter'
@@ -7,12 +7,12 @@ import { isTrackerError } from './types'
 const PAGE_SIZE = 50
 const NETWORK_TIMEOUT_MS = 30_000
 
-export function createAsanaAdapter(config: ServiceConfig): TrackerAdapter {
-  const endpoint = config.tracker.endpoint ?? 'https://app.asana.com/api/1.0'
-  const apiKey = config.tracker.api_key
-  const projectGid = config.tracker.project_gid ?? ''
-  const activeSections = config.tracker.active_sections ?? ['To Do', 'In Progress']
-  const filter = config.tracker.filter
+export function createAsanaAdapter(project: ProjectConfig, platform: AsanaPlatformConfig): TrackerAdapter {
+  const endpoint = project.endpoint ?? 'https://app.asana.com/api/1.0'
+  const apiKey = platform.api_key
+  const projectGid = project.project_gid ?? ''
+  const activeSections = project.active_statuses ?? ['To Do', 'In Progress']
+  const filter = project.filter
 
   function headers(): Record<string, string> {
     return {

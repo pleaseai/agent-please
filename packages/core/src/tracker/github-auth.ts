@@ -1,5 +1,5 @@
 import type { graphql as GraphqlInstance } from '@octokit/graphql'
-import type { ServiceConfig } from '../types'
+import type { GitHubPlatformConfig, ProjectConfig } from '../types'
 import { createAppAuth } from '@octokit/auth-app'
 import { graphql as createGraphql } from '@octokit/graphql'
 
@@ -11,9 +11,9 @@ const TRAILING_SLASH_RE = /\/$/
  * Supports both PAT (api_key) and GitHub App (app_id + private_key + installation_id).
  * PAT takes precedence when both are provided.
  */
-export function createAuthenticatedGraphql(config: ServiceConfig): typeof GraphqlInstance {
-  const endpoint = (config.tracker.endpoint ?? 'https://api.github.com').replace(TRAILING_SLASH_RE, '')
-  const { api_key, app_id, private_key, installation_id } = config.tracker
+export function createAuthenticatedGraphql(project: ProjectConfig, platform: GitHubPlatformConfig): typeof GraphqlInstance {
+  const endpoint = (project.endpoint ?? 'https://api.github.com').replace(TRAILING_SLASH_RE, '')
+  const { api_key, app_id, private_key, installation_id } = platform
 
   if (api_key) {
     return createGraphql.defaults({

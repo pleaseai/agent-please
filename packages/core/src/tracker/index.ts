@@ -1,4 +1,4 @@
-import type { ServiceConfig } from '../types'
+import type { GitHubPlatformConfig, AsanaPlatformConfig, PlatformConfig, ProjectConfig } from '../types'
 import type { TrackerAdapter, TrackerError } from './types'
 import { createAsanaAdapter } from './asana'
 import { createGitHubAdapter } from './github'
@@ -6,15 +6,13 @@ import { createGitHubAdapter } from './github'
 export { formatTrackerError, isTrackerError } from './types'
 export type { TrackerAdapter, TrackerError }
 
-export function createTrackerAdapter(config: ServiceConfig): TrackerAdapter | TrackerError {
-  const { kind } = config.tracker
+export function createTrackerAdapter(project: ProjectConfig, platform: PlatformConfig): TrackerAdapter | TrackerError {
+  const kind = project.platform
 
-  if (!kind)
-    return { code: 'unsupported_tracker_kind', kind: '' }
+  if (kind === 'github')
+    return createGitHubAdapter(project, platform as GitHubPlatformConfig)
   if (kind === 'asana')
-    return createAsanaAdapter(config)
-  if (kind === 'github_projects')
-    return createGitHubAdapter(config)
+    return createAsanaAdapter(project, platform as AsanaPlatformConfig)
 
   return { code: 'unsupported_tracker_kind', kind }
 }
