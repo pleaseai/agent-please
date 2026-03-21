@@ -1,5 +1,5 @@
 /* eslint-disable no-template-curly-in-string */
-import type { GitHubPlatformConfig, SlackPlatformConfig, WorkflowDefinition } from './types'
+import type { AuthConfig, GitHubPlatformConfig, SlackPlatformConfig, WorkflowDefinition } from './types'
 import process from 'node:process'
 import { describe, expect, it } from 'bun:test'
 import { buildConfig, getActiveStates, getTerminalStates, getWatchedStates, maxConcurrentForState, normalizeState, validateConfig } from './config'
@@ -1454,6 +1454,120 @@ describe('buildConfig state section', () => {
       if (prev !== undefined)
         process.env.REDIS_URL = prev
       else delete process.env.REDIS_URL
+    }
+  })
+})
+
+describe('buildConfig — auth', () => {
+  it('returns all-null auth config when auth section is missing', () => {
+    const config = buildConfig(makeWorkflow({}))
+    expect(config.auth).toEqual({
+      secret: null,
+      github: { client_id: null, client_secret: null },
+      admin: { username: null, password: null },
+    } satisfies AuthConfig)
+  })
+
+  it('parses auth section with literal values', () => {
+    const config = buildConfig(makeWorkflow({
+      auth: {
+        secret: 'my-secret-key-32-chars-long-xxxxx',
+        github: {
+          client_id: 'gh-client-id',
+          client_secret: 'gh-client-secret',
+        },
+        admin: {
+          username: 'admin',
+          password: 'admin-pass',
+        },
+      },
+    }))
+    expect(config.auth.secret).toBe('my-secret-key-32-chars-long-xxxxx')
+    expect(config.auth.github.client_id).toBe('gh-client-id')
+    expect(config.auth.github.client_secret).toBe('gh-client-secret')
+    expect(config.auth.admin.username).toBe('admin')
+    expect(config.auth.admin.password).toBe('admin-pass')
+  })
+
+  it('resolves $ENV_VAR references in auth config', () => {
+    const prev = {
+      BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
+      AUTH_GITHUB_CLIENT_ID: process.env.AUTH_GITHUB_CLIENT_ID,
+      AUTH_GITHUB_CLIENT_SECRET: process.env.AUTH_GITHUB_CLIENT_SECRET,
+      AUTH_ADMIN_USERNAME: process.env.AUTH_ADMIN_USERNAME,
+      AUTH_ADMIN_PASSWORD: process.env.AUTH_ADMIN_PASSWORD,
+    }
+    process.env.BETTER_AUTH_SECRET = 'env-secret'
+    process.env.AUTH_GITHUB_CLIENT_ID = 'env-gh-id'
+    process.env.AUTH_GITHUB_CLIENT_SECRET = 'env-gh-secret'
+    process.env.AUTH_ADMIN_USERNAME = 'env-admin'
+    process.env.AUTH_ADMIN_PASSWORD = 'env-pass'
+    try {
+      const config = buildConfig(makeWorkflow({
+        auth: {
+          secret: '$BETTER_AUTH_SECRET',
+          github: {
+            client_id: '$AUTH_GITHUB_CLIENT_ID',
+            client_secret: '$AUTH_GITHUB_CLIENT_SECRET',
+          },
+          admin: {
+            username: '$AUTH_ADMIN_USERNAME',
+            password: '$AUTH_ADMIN_PASSWORD',
+          },
+        },
+      }))
+      expect(config.auth.secret).toBe('env-secret')
+      expect(config.auth.github.client_id).toBe('env-gh-id')
+      expect(config.auth.github.client_secret).toBe('env-gh-secret')
+      expect(config.auth.admin.username).toBe('env-admin')
+      expect(config.auth.admin.password).toBe('env-pass')
+    }
+    finally {
+      for (const [key, val] of Object.entries(prev)) {
+        if (val !== undefined)
+          process.env[key] = val
+        else delete process.env[key]
+      }
+    }
+  })
+
+  it('falls back to env vars when auth section has no values', () => {
+    const prev = {
+      BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
+      AUTH_GITHUB_CLIENT_ID: process.env.AUTH_GITHUB_CLIENT_ID,
+    }
+    process.env.BETTER_AUTH_SECRET = 'fallback-secret'
+    process.env.AUTH_GITHUB_CLIENT_ID = 'fallback-id'
+    try {
+      const config = buildConfig(makeWorkflow({
+        auth: {},
+      }))
+      expect(config.auth.secret).toBe('fallback-secret')
+      expect(config.auth.github.client_id).toBe('fallback-id')
+    }
+    finally {
+      for (const [key, val] of Object.entries(prev)) {
+        if (val !== undefined)
+          process.env[key] = val
+        else delete process.env[key]
+      }
+    }
+  })
+
+  it('returns null for unresolvable $ENV_VAR references', () => {
+    const prevSecret = process.env.NONEXISTENT_SECRET
+    delete process.env.NONEXISTENT_SECRET
+    try {
+      const config = buildConfig(makeWorkflow({
+        auth: {
+          secret: '$NONEXISTENT_SECRET',
+        },
+      }))
+      expect(config.auth.secret).toBeNull()
+    }
+    finally {
+      if (prevSecret !== undefined)
+        process.env.NONEXISTENT_SECRET = prevSecret
     }
   })
 })

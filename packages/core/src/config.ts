@@ -1,4 +1,4 @@
-import type { AuthorAssociation, ChannelConfig, ClaudeEffort, DbConfig, IssueFilter, PlatformConfig, PollingMode, ProjectConfig, SandboxConfig, ServiceConfig, SettingSource, StateAdapterKind, StateConfig, SystemPromptConfig, WorkflowDefinition } from './types'
+import type { AuthConfig, AuthorAssociation, ChannelConfig, ClaudeEffort, DbConfig, IssueFilter, PlatformConfig, PollingMode, ProjectConfig, SandboxConfig, ServiceConfig, SettingSource, StateAdapterKind, StateConfig, SystemPromptConfig, WorkflowDefinition } from './types'
 import { tmpdir } from 'node:os'
 import { join, sep } from 'node:path'
 import process from 'node:process'
@@ -75,6 +75,7 @@ export function buildConfig(workflow: WorkflowDefinition): ServiceConfig {
       max_concurrent_agents_by_state: stateLimitsValue(agent.max_concurrent_agents_by_state),
     },
     claude: buildClaudeConfig(claude),
+    auth: buildAuthConfig(sectionMap(raw, 'auth')),
     env: buildEnvConfig(raw),
     db: buildDbConfig(db),
     state: buildStateConfig(state),
@@ -230,6 +231,22 @@ export function buildChannelsConfig(raw: Record<string, unknown>): ChannelConfig
   }
 
   return result
+}
+
+function buildAuthConfig(auth: Record<string, unknown>): AuthConfig {
+  const github = sectionMap(auth, 'github')
+  const admin = sectionMap(auth, 'admin')
+  return {
+    secret: resolveEnvValue(stringValue(auth.secret), process.env.BETTER_AUTH_SECRET),
+    github: {
+      client_id: resolveEnvValue(stringValue(github.client_id), process.env.AUTH_GITHUB_CLIENT_ID),
+      client_secret: resolveEnvValue(stringValue(github.client_secret), process.env.AUTH_GITHUB_CLIENT_SECRET),
+    },
+    admin: {
+      username: resolveEnvValue(stringValue(admin.username), process.env.AUTH_ADMIN_USERNAME),
+      password: resolveEnvValue(stringValue(admin.password), process.env.AUTH_ADMIN_PASSWORD),
+    },
+  }
 }
 
 const DEFAULT_DB_PATH = '.agent-please/agent_runs.db'
