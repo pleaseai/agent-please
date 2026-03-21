@@ -1,5 +1,6 @@
 import type { Orchestrator } from '@pleaseai/agent-core'
 import process from 'node:process'
+import { createAsanaAdapter } from 'chat-adapter-asana'
 import { createGitHubAdapter } from '@chat-adapter/github'
 import { createSlackAdapter } from '@chat-adapter/slack'
 import { createMemoryState } from '@chat-adapter/state-memory'
@@ -63,6 +64,25 @@ export default defineNitroPlugin((nitroApp) => {
           signingSecret: slackPlatform.signing_secret,
         })
         resolvedBotUsername ??= null
+      }
+    }
+    else if (platform.kind === 'asana') {
+      const asanaPlatform = platform
+      if (asanaPlatform.api_key) {
+        const adapterOpts: Record<string, any> = {
+          accessToken: asanaPlatform.api_key,
+        }
+        if (asanaPlatform.bot_username) {
+          adapterOpts.userName = asanaPlatform.bot_username
+          resolvedBotUsername ??= asanaPlatform.bot_username
+        }
+        if (asanaPlatform.webhook_secret) {
+          adapterOpts.webhookSecret = asanaPlatform.webhook_secret
+        }
+        adapters.asana = createAsanaAdapter(adapterOpts)
+      }
+      else {
+        log.warn('no api_key configured — Asana chat adapter skipped')
       }
     }
   }
