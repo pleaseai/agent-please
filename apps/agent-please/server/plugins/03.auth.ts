@@ -39,15 +39,13 @@ export default defineNitroPlugin(async (nitroApp) => {
 
     try {
       const existing = await auth.api.listUsers({
-        query: { limit: 1, offset: 0 },
+        query: { limit: 1, offset: 0, filterField: 'role', filterValue: 'admin' },
       }).catch((err) => {
         log.warn('failed to list users during admin seeding:', err)
         return null
       })
 
-      const adminExists = existing?.users?.some(
-        (u: any) => u.role === 'admin',
-      )
+      const adminExists = (existing?.total ?? 0) > 0
 
       if (!adminExists) {
         await auth.api.createUser({
