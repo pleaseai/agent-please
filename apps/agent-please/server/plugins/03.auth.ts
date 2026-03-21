@@ -50,7 +50,7 @@ export default defineNitroPlugin(async (nitroApp) => {
       const adminExists = (existing?.total ?? 0) > 0
 
       if (!adminExists) {
-        const name = config.auth.admin.email.split('@')[0]
+        const name = config.auth.admin.email.split('@')[0] || config.auth.admin.email
         await auth.api.createUser({
           body: {
             email: config.auth.admin.email,
