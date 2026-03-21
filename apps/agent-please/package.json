@@ -15,10 +15,10 @@
     "agentplease": "./dist/index.js"
   },
   "files": [
+    ".output",
     "LICENSE",
     "README.md",
-    "dist",
-    ".output"
+    "dist"
   ],
   "scripts": {
     "prepublishOnly": "cp ../../LICENSE ../../README.md .",
