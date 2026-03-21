@@ -25,6 +25,7 @@ function makeAsanaPlatform(extra: Partial<AsanaPlatformConfig> = {}): AsanaPlatf
     kind: 'asana',
     api_key: 'tok',
     bot_username: null,
+    webhook_secret: null,
     ...extra,
   }
 }
