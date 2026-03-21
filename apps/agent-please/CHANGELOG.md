@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.19](https://github.com/pleaseai/agent-please/compare/agent-v0.1.18...agent-v0.1.19) (2026-03-21)
+
+
+### Features
+
+* **core:** add full Asana support (webhooks, write, chat adapter) ([#160](https://github.com/pleaseai/agent-please/issues/160)) ([f17554a](https://github.com/pleaseai/agent-please/commit/f17554af2fd8f0bb2d55281f9af560e0a7d4b97f))
+
 ## [0.1.18](https://github.com/pleaseai/agent-please/compare/agent-v0.1.17...agent-v0.1.18) (2026-03-21)
 
 
