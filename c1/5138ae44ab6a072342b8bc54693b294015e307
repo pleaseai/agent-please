@@ -1,0 +1,27 @@
+packages/core/src/state.error.test.ts
+  75d42f1b97017c30 4-6,8-12,18-28
+packages/core/src/state.test.ts
+  75d42f1b97017c30 28
+packages/core/src/state.ts
+  75d42f1b97017c30 47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "c15138ae44ab6a072342b8bc54693b294015e307",
+  "prompts": {
+    "75d42f1b97017c30": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0cdc528a-6a8a-4da4-beb4-a11725351cb3",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Minsu Lee <amond@amond.net>",
+      "messages": [],
+      "total_additions": 25,
+      "total_deletions": 9,
+      "accepted_lines": 23,
+      "overriden_lines": 0
+    }
+  }
+}
