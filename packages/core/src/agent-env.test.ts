@@ -182,7 +182,10 @@ describe('resolveAgentEnv', () => {
       })
       const result = await resolveAgentEnv(config, {
         installationAccessToken: async () => 'token',
-        botIdentity: async () => { called = true; return { name: 'bot', email: 'bot@x.com' } },
+        botIdentity: async () => {
+          called = true
+          return { name: 'bot', email: 'bot@x.com' }
+        },
       })
       expect(called).toBe(false)
       expect(result.GIT_AUTHOR_NAME).toBe('A')

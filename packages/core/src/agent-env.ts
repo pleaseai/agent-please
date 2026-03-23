@@ -79,6 +79,7 @@ async function buildDefaults(
   // Inject GH_TOKEN / GITHUB_TOKEN defaults
   for (const key of TOKEN_ENV_KEYS) {
     if (!(key in userEnv)) {
+      // eslint-disable-next-line no-template-curly-in-string
       defaults[key] = '${INSTALLATION_ACCESS_TOKEN}'
     }
   }
