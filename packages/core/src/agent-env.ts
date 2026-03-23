@@ -6,9 +6,18 @@ const log = createLogger('agent-env')
 
 const RUNTIME_VAR_RE = /^\$\{(\w+)\}$/
 
+export interface BotIdentity {
+  name: string
+  email: string
+}
+
 export interface TokenProvider {
   installationAccessToken: () => Promise<string | null>
+  botIdentity?: () => Promise<BotIdentity | null>
 }
+
+const TOKEN_ENV_KEYS = ['GH_TOKEN', 'GITHUB_TOKEN'] as const
+const GIT_IDENTITY_KEYS = ['GIT_AUTHOR_NAME', 'GIT_AUTHOR_EMAIL', 'GIT_COMMITTER_NAME', 'GIT_COMMITTER_EMAIL'] as const
 
 export async function resolveAgentEnv(
   config: ServiceConfig,
@@ -17,7 +26,13 @@ export async function resolveAgentEnv(
   const resolved: Record<string, string> = {}
   let cachedToken: string | null | undefined
 
-  for (const [key, val] of Object.entries(config.env)) {
+  // Build defaults from tokenProvider (only when available)
+  const defaults = await buildDefaults(config.env, tokenProvider)
+
+  // Merge defaults first, then user-defined env on top
+  const merged = { ...defaults, ...config.env }
+
+  for (const [key, val] of Object.entries(merged)) {
     const runtimeMatch = val.match(RUNTIME_VAR_RE)
     if (runtimeMatch) {
       const varName = runtimeMatch[1]
@@ -50,4 +65,50 @@ export async function resolveAgentEnv(
     Object.entries(process.env).filter((entry): entry is [string, string] => entry[1] !== undefined),
   )
   return { ...baseEnv, ...resolved }
+}
+
+async function buildDefaults(
+  userEnv: Record<string, string>,
+  tokenProvider?: TokenProvider,
+): Promise<Record<string, string>> {
+  if (!tokenProvider)
+    return {}
+
+  const defaults: Record<string, string> = {}
+
+  // Inject GH_TOKEN / GITHUB_TOKEN defaults
+  for (const key of TOKEN_ENV_KEYS) {
+    if (!(key in userEnv)) {
+      // eslint-disable-next-line no-template-curly-in-string
+      defaults[key] = '${INSTALLATION_ACCESS_TOKEN}'
+    }
+  }
+
+  // Only inject git identity when GitHub credentials will be available
+  // (either via default token injection above, or via user-defined token env)
+  const hasTokenEnv = TOKEN_ENV_KEYS.some(k => k in userEnv || k in defaults)
+
+  // Inject git identity defaults from botIdentity (skip if all keys are user-defined)
+  const needsIdentity = GIT_IDENTITY_KEYS.some(k => !(k in userEnv))
+  if (hasTokenEnv && needsIdentity && tokenProvider.botIdentity) {
+    const identity = await tokenProvider.botIdentity()
+    if (identity) {
+      for (const key of GIT_IDENTITY_KEYS) {
+        if (!(key in userEnv)) {
+          switch (key) {
+            case 'GIT_AUTHOR_NAME':
+            case 'GIT_COMMITTER_NAME':
+              defaults[key] = identity.name
+              break
+            case 'GIT_AUTHOR_EMAIL':
+            case 'GIT_COMMITTER_EMAIL':
+              defaults[key] = identity.email
+              break
+          }
+        }
+      }
+    }
+  }
+
+  return defaults
 }

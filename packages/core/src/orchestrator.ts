@@ -1,4 +1,5 @@
 import type { Client } from '@libsql/client'
+import type { BotIdentity } from './agent-env'
 import type { DispatchLockAdapter } from './dispatch-lock'
 import type { LabelService } from './label'
 import type { GitHubPlatformConfig, Issue, OrchestratorState, ProjectConfig, RetryEntry, RunningEntry, ServiceConfig, WorkflowDefinition } from './types'
@@ -994,7 +995,8 @@ export function buildTokenProvider(project: ProjectConfig, platform: GitHubPlatf
   if (platform.kind !== 'github')
     return undefined
 
-  const { api_key, app_id, private_key, installation_id } = platform
+  const { api_key, app_id, private_key, installation_id, bot_username } = platform
+  const endpoint = project.endpoint || 'https://api.github.com'
 
   // PAT auth: provide the api_key directly as the token
   if (api_key) {
@@ -1006,6 +1008,8 @@ export function buildTokenProvider(project: ProjectConfig, platform: GitHubPlatf
   // App auth: requires all three fields
   if (!app_id || !private_key || installation_id == null)
     return undefined
+
+  let cachedIdentity: BotIdentity | null | undefined
 
   return {
     installationAccessToken: async () => {
@@ -1024,5 +1028,54 @@ export function buildTokenProvider(project: ProjectConfig, platform: GitHubPlatf
         return null
       }
     },
+    botIdentity: async () => {
+      if (cachedIdentity !== undefined)
+        return cachedIdentity
+      cachedIdentity = await fetchBotIdentity(endpoint, bot_username)
+      return cachedIdentity
+    },
+  }
+}
+
+async function fetchBotIdentity(
+  endpoint: string,
+  botUsername: string | null,
+): Promise<BotIdentity | null> {
+  if (!botUsername)
+    return null
+
+  // Normalize: "my-app" → "my-app[bot]", "my-app[bot]" stays as-is
+  const login = botUsername.endsWith('[bot]') ? botUsername : `${botUsername}[bot]`
+
+  try {
+    const res = await fetch(`${endpoint}/users/${encodeURIComponent(login)}`, {
+      headers: { Accept: 'application/vnd.github+json' },
+      signal: AbortSignal.timeout(30_000),
+    })
+    if (!res.ok) {
+      log.warn(`failed to fetch bot user ${login}: ${res.status}`)
+      return null
+    }
+    let data: { id?: number, login?: string }
+    try {
+      data = await res.json() as { id?: number, login?: string }
+    }
+    catch (parseErr) {
+      log.warn(`failed to parse bot user ${login} response body: ${parseErr}`)
+      return null
+    }
+    if (!data.id) {
+      log.warn(`bot user ${login} has no id`)
+      return null
+    }
+
+    return {
+      name: login,
+      email: `${data.id}+${login}@users.noreply.github.com`,
+    }
+  }
+  catch (err) {
+    log.warn(`failed to fetch bot user identity (network error): ${err}`)
+    return null
   }
 }

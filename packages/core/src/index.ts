@@ -1,7 +1,7 @@
 // Agent Environment
 export { resolveAgentEnv } from './agent-env'
 
-export type { TokenProvider } from './agent-env'
+export type { BotIdentity, TokenProvider } from './agent-env'
 
 // Agent Runner
 export { AppServerClient, extractRateLimits, extractUsage, isInputRequired } from './agent-runner'
