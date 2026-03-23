@@ -180,7 +180,7 @@ describe('parseArgs - --help / -h flag', () => {
   })
 })
 
-describe('CLI startup - nonexistent workflow path (Section 17.7)', () => {
+describe('cli startup - nonexistent workflow path (Section 17.7)', () => {
   it('exits nonzero when explicit workflow path does not exist', () => {
     const appDir = resolve(dirname(fileURLToPath(import.meta.url)), '..')
     try {
