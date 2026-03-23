@@ -11,10 +11,10 @@ function makeStateConfig(overrides: Partial<StateConfig> = {}): StateConfig {
   }
 }
 
-const mockMemoryState = { _mock: 'memory' }
-const mockRedisState = { _mock: 'redis' }
-const mockIORedisState = { _mock: 'ioredis' }
-const mockPostgresState = { _mock: 'postgres' }
+const mockMemoryState = { _mock: 'memory' } as any
+const mockRedisState = { _mock: 'redis' } as any
+const mockIORedisState = { _mock: 'ioredis' } as any
+const mockPostgresState = { _mock: 'postgres' } as any
 
 mock.module('@chat-adapter/state-memory', () => ({
   createMemoryState: () => mockMemoryState,

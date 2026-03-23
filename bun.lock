@@ -75,6 +75,7 @@
         "@chat-adapter/state-ioredis": ">=4.0.0",
         "@chat-adapter/state-pg": ">=4.0.0",
         "@chat-adapter/state-redis": ">=4.0.0",
+        "chat": ">=4.0.0",
       },
       "optionalPeers": [
         "@chat-adapter/state-ioredis",
