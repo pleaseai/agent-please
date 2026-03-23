@@ -103,4 +103,89 @@ describe('resolveAgentEnv', () => {
       installationAccessToken: async () => { throw new Error('auth_failed') },
     })).rejects.toThrow('auth_failed')
   })
+
+  describe('default agent env overrides', () => {
+    it('injects GH_TOKEN and GITHUB_TOKEN defaults when tokenProvider is available and env not set', async () => {
+      const config = makeConfig({})
+      const result = await resolveAgentEnv(config, {
+        installationAccessToken: async () => 'ghs_default_token',
+      })
+      expect(result.GH_TOKEN).toBe('ghs_default_token')
+      expect(result.GITHUB_TOKEN).toBe('ghs_default_token')
+    })
+
+    it('injects GIT_AUTHOR/COMMITTER identity from botIdentity when available', async () => {
+      const config = makeConfig({})
+      const result = await resolveAgentEnv(config, {
+        installationAccessToken: async () => 'ghs_token',
+        botIdentity: async () => ({ name: 'my-app[bot]', email: '12345+my-app[bot]@users.noreply.github.com' }),
+      })
+      expect(result.GIT_AUTHOR_NAME).toBe('my-app[bot]')
+      expect(result.GIT_AUTHOR_EMAIL).toBe('12345+my-app[bot]@users.noreply.github.com')
+      expect(result.GIT_COMMITTER_NAME).toBe('my-app[bot]')
+      expect(result.GIT_COMMITTER_EMAIL).toBe('12345+my-app[bot]@users.noreply.github.com')
+    })
+
+    it('does not inject git identity when botIdentity is not provided', async () => {
+      const config = makeConfig({})
+      const result = await resolveAgentEnv(config, {
+        installationAccessToken: async () => 'ghs_token',
+      })
+      expect(result.GIT_AUTHOR_NAME).toBeUndefined()
+      expect(result.GIT_AUTHOR_EMAIL).toBeUndefined()
+    })
+
+    it('does not inject git identity when botIdentity returns null', async () => {
+      const config = makeConfig({})
+      const result = await resolveAgentEnv(config, {
+        installationAccessToken: async () => 'ghs_token',
+        botIdentity: async () => null,
+      })
+      expect(result.GIT_AUTHOR_NAME).toBeUndefined()
+      expect(result.GIT_AUTHOR_EMAIL).toBeUndefined()
+    })
+
+    it('user-defined env overrides defaults', async () => {
+      const config = makeConfig({
+        env: {
+          GH_TOKEN: 'my-explicit-token',
+          GIT_AUTHOR_NAME: 'Custom Author',
+        },
+      })
+      const result = await resolveAgentEnv(config, {
+        installationAccessToken: async () => 'ghs_token',
+        botIdentity: async () => ({ name: 'bot[bot]', email: 'bot@noreply.github.com' }),
+      })
+      expect(result.GH_TOKEN).toBe('my-explicit-token')
+      expect(result.GIT_AUTHOR_NAME).toBe('Custom Author')
+      // GITHUB_TOKEN not explicitly set, so default applies
+      expect(result.GITHUB_TOKEN).toBe('ghs_token')
+    })
+
+    it('does not inject defaults when no tokenProvider', async () => {
+      const config = makeConfig({})
+      const result = await resolveAgentEnv(config)
+      expect(result.GH_TOKEN).toBeUndefined()
+      expect(result.GITHUB_TOKEN).toBeUndefined()
+      expect(result.GIT_AUTHOR_NAME).toBeUndefined()
+    })
+
+    it('does not call botIdentity when git identity keys are all user-defined', async () => {
+      let called = false
+      const config = makeConfig({
+        env: {
+          GIT_AUTHOR_NAME: 'A',
+          GIT_AUTHOR_EMAIL: 'a@b.com',
+          GIT_COMMITTER_NAME: 'A',
+          GIT_COMMITTER_EMAIL: 'a@b.com',
+        },
+      })
+      const result = await resolveAgentEnv(config, {
+        installationAccessToken: async () => 'token',
+        botIdentity: async () => { called = true; return { name: 'bot', email: 'bot@x.com' } },
+      })
+      expect(called).toBe(false)
+      expect(result.GIT_AUTHOR_NAME).toBe('A')
+    })
+  })
 })

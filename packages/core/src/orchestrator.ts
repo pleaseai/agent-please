@@ -994,7 +994,8 @@ export function buildTokenProvider(project: ProjectConfig, platform: GitHubPlatf
   if (platform.kind !== 'github')
     return undefined
 
-  const { api_key, app_id, private_key, installation_id } = platform
+  const { api_key, app_id, private_key, installation_id, bot_username } = platform
+  const endpoint = project.endpoint || 'https://api.github.com'
 
   // PAT auth: provide the api_key directly as the token
   if (api_key) {
@@ -1006,6 +1007,8 @@ export function buildTokenProvider(project: ProjectConfig, platform: GitHubPlatf
   // App auth: requires all three fields
   if (!app_id || !private_key || installation_id == null)
     return undefined
+
+  let cachedIdentity: import('./agent-env').BotIdentity | null | undefined
 
   return {
     installationAccessToken: async () => {
@@ -1024,5 +1027,46 @@ export function buildTokenProvider(project: ProjectConfig, platform: GitHubPlatf
         return null
       }
     },
+    botIdentity: async () => {
+      if (cachedIdentity !== undefined)
+        return cachedIdentity
+      cachedIdentity = await fetchBotIdentity(endpoint, bot_username)
+      return cachedIdentity
+    },
+  }
+}
+
+async function fetchBotIdentity(
+  endpoint: string,
+  botUsername: string | null,
+): Promise<import('./agent-env').BotIdentity | null> {
+  if (!botUsername)
+    return null
+
+  // Normalize: "my-app" → "my-app[bot]", "my-app[bot]" stays as-is
+  const login = botUsername.endsWith('[bot]') ? botUsername : `${botUsername}[bot]`
+
+  try {
+    const res = await fetch(`${endpoint}/users/${encodeURIComponent(login)}`, {
+      headers: { Accept: 'application/vnd.github+json' },
+    })
+    if (!res.ok) {
+      log.warn(`failed to fetch bot user ${login}: ${res.status}`)
+      return null
+    }
+    const data = await res.json() as { id?: number, login?: string }
+    if (!data.id) {
+      log.warn(`bot user ${login} has no id`)
+      return null
+    }
+
+    return {
+      name: login,
+      email: `${data.id}+${login}@users.noreply.github.com`,
+    }
+  }
+  catch (err) {
+    log.warn(`failed to resolve bot identity: ${err}`)
+    return null
   }
 }
