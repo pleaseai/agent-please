@@ -1,3 +1,4 @@
+import type { StateAdapter } from 'chat'
 import type { StateConfig } from './types'
 import { createLogger } from './logger'
 
@@ -14,7 +15,7 @@ const ADAPTER_PACKAGES: Record<string, string> = {
  * Create a Chat SDK StateAdapter from the parsed StateConfig.
  * Uses dynamic imports so packages/core has no hard dependency on any adapter package.
  */
-export async function createStateFromConfig(config: StateConfig): Promise<unknown> {
+export async function createStateFromConfig(config: StateConfig): Promise<StateAdapter> {
   const { adapter, url, key_prefix: keyPrefix } = config
   const pkg = ADAPTER_PACKAGES[adapter]
 
@@ -26,7 +27,7 @@ export async function createStateFromConfig(config: StateConfig): Promise<unknow
   return importAndCreate(adapter, url, keyPrefix)
 }
 
-async function importAndCreate(adapter: string, url: string | null, keyPrefix: string): Promise<unknown> {
+async function importAndCreate(adapter: string, url: string | null, keyPrefix: string): Promise<StateAdapter> {
   const pkg = ADAPTER_PACKAGES[adapter]!
 
   try {
@@ -53,6 +54,9 @@ async function importAndCreate(adapter: string, url: string | null, keyPrefix: s
           ...(url ? { url } : {}),
           keyPrefix,
         })
+
+      default:
+        throw new Error(`unsupported state adapter: ${adapter}`)
     }
   }
   catch (err: unknown) {
