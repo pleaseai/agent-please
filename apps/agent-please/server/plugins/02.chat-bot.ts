@@ -102,6 +102,11 @@ export default defineNitroPlugin(async (nitroApp) => {
 
   try {
     const stateAdapter = await createStateFromConfig(stateConfig)
+    // Connect eagerly so the orchestrator's dispatch lock works
+    // before Chat SDK's lazy initialization triggers.
+    if (stateAdapter && typeof (stateAdapter as any).connect === 'function') {
+      await (stateAdapter as any).connect()
+    }
     const bot = new Chat({
       userName: botUsername,
       adapters,
