@@ -1,0 +1,43 @@
+apps/agent-please/package.json
+  7379b2dab0c30bec 32-33,57,60,63-66
+apps/agent-please/test/nuxt/components.test.ts
+  7379b2dab0c30bec 1-12
+apps/agent-please/nuxt.config.ts
+  7379b2dab0c30bec 4
+apps/agent-please/src/cli.test.ts
+  7379b2dab0c30bec 1-2,5,183,186-200,206-220
+apps/agent-please/src/init.test.ts
+  7379b2dab0c30bec 1-4,180,196,211,235,247,259,273,287,301,315,335,353,367,381,395,409,430,441,471,489,503,511,528,536,559,589
+.claude/agent-memory/testing-test-writer/MEMORY.md
+  7379b2dab0c30bec 4
+apps/agent-please/server/utils/auth.test.ts
+  7379b2dab0c30bec 1
+.claude/agent-memory/testing-test-writer/project_test_conventions.md
+  7379b2dab0c30bec 7-9,21,24,28-29
+apps/agent-please/test/__mocks__/bun-sqlite.ts
+  7379b2dab0c30bec 1-5
+apps/agent-please/test/unit/format.test.ts
+  7379b2dab0c30bec 1-30
+apps/agent-please/vitest.config.ts
+  7379b2dab0c30bec 1-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "9efa082a5d8b42756232b4d056bf22ae5b32b26b",
+  "prompts": {
+    "7379b2dab0c30bec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79767fc8-0365-4e99-8fe9-b2be8d902914",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Minsu Lee <amond@amond.net>",
+      "messages": [],
+      "total_additions": 2,
+      "total_deletions": 1,
+      "accepted_lines": 162,
+      "overriden_lines": 0
+    }
+  }
+}
