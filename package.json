@@ -3,8 +3,6 @@
   "version": "0.1.0",
   "devDependencies": {
     "@antfu/eslint-config": "^7.7.0",
-    "@codecov/nuxt-plugin": "^1.9.1",
-    "@pleaseai/agent": "workspace:*",
     "eslint": "^10.0.3",
     "husky": "^9.1.7",
     "jiti": "^2.6.1",

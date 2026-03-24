@@ -6,8 +6,6 @@
       "name": "work-please",
       "devDependencies": {
         "@antfu/eslint-config": "^7.7.0",
-        "@codecov/nuxt-plugin": "^1.9.1",
-        "@pleaseai/agent": "^0.1.21",
         "eslint": "^10.0.3",
         "husky": "^9.1.7",
         "jiti": "^2.6.1",
@@ -43,6 +41,7 @@
       },
       "devDependencies": {
         "@antfu/eslint-config": "^7.7.0",
+        "@codecov/nuxt-plugin": "^1.9.1",
         "@iconify-json/lucide": "^1.2.98",
         "@nuxt/eslint": "^1.15.2",
         "@nuxt/test-utils": "^4.0.0",

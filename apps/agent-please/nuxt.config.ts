@@ -7,7 +7,7 @@ export default defineNuxtConfig({
     '@vueuse/nuxt',
     '@nuxt/test-utils/module',
     ['@codecov/nuxt-plugin', {
-      enableBundleAnalysis: process.env.CODECOV_TOKEN !== undefined,
+      enableBundleAnalysis: !!process.env.CODECOV_TOKEN,
       bundleName: 'agent-please',
       uploadToken: process.env.CODECOV_TOKEN,
     }],
