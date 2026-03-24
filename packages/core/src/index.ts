@@ -1,3 +1,7 @@
+// DB
+export { createKyselyDb, insertRun, queryRuns, resolveDbPath, runMigrations } from './db'
+export type { AppDatabase, AgentRunsTable } from './db-types'
+
 // Agent Environment
 export { resolveAgentEnv } from './agent-env'
 
