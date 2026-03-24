@@ -99,10 +99,9 @@ export default defineNuxtConfig({
   },
 
   typescript: {
-    tsConfig: {
-      // Suppress upstream Docus type errors (DocsCollectionItem export)
-      exclude: ['../**/node_modules/.bun/docus*/**'],
-    },
+    // Skip typecheck — upstream Docus bug: DocsAsideRight.vue imports
+    // DocsCollectionItem as named export but @nuxt/content only has default export
+    typeCheck: false,
   },
 
   compatibilityDate: '2026-03-24',
