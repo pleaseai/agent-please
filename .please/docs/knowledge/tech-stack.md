@@ -38,6 +38,7 @@
 | Nuxt UI v4 | Vue component library (125+ components, Reka UI + Tailwind CSS) |
 | Tailwind CSS v4 | Utility-first CSS framework |
 | Dashboard layout | `UDashboardGroup` + `UDashboardSidebar` + `UDashboardPanel` |
+| Docus v4 | Documentation site theme (Nuxt layer, Nuxt Content, auto-nav) |
 
 ## Core Dependencies
 
@@ -74,6 +75,9 @@ agent-please/                      # Monorepo root
 │   ├── app/                      # Client-side (pages, components, composables)
 │   ├── server/                   # Server-side (Nitro routes, plugins)
 │   └── src/                      # CLI entry point (Commander.js)
+├── apps/docs/                    # Documentation site (@pleaseai/docs)
+│   ├── content/                  # Markdown documentation pages
+│   └── nuxt.config.ts            # Docus layer configuration
 ├── packages/core/                # @pleaseai/agent-core (orchestrator business logic)
 └── vendor/symphony/              # Upstream reference spec (read-only)
 ```

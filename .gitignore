@@ -18,6 +18,7 @@ WORKFLOW.local.md
 apps/agent-please/WORKFLOW.md
 # Nuxt
 .nuxt/
+.output/
 
 # Turborepo
 .turbo
