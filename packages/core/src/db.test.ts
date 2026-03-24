@@ -112,6 +112,13 @@ describe('runMigrations', () => {
     await db.destroy()
   })
 
+  it('returns false when migration fails on destroyed connection', async () => {
+    const db = createKyselyDb(makeDbConfig(), tmpRoot)!
+    await db.destroy()
+    const ok = await runMigrations(db)
+    expect(ok).toBe(false)
+  })
+
   it('is idempotent', async () => {
     const db = createKyselyDb(makeDbConfig(), tmpRoot)!
     await runMigrations(db)
