@@ -1,0 +1,59 @@
+apps/docs/nuxt.config.ts
+  28c394d3dc5a104d 1-23
+apps/docs/content/3.architecture/3.components.md
+  28c394d3dc5a104d 1-86
+apps/docs/content/2.guides/1.github-projects.md
+  28c394d3dc5a104d 1-88
+apps/docs/content/index.md
+  28c394d3dc5a104d 1-57
+apps/docs/content/1.getting-started/1.introduction.md
+  28c394d3dc5a104d 1-44
+apps/docs/content/3.architecture/2.data-flow.md
+  28c394d3dc5a104d 1-72
+.gitignore
+  28c394d3dc5a104d 21
+apps/docs/content/2.guides/4.chat-bot.md
+  28c394d3dc5a104d 1-53
+apps/docs/app.config.ts
+  28c394d3dc5a104d 1-26
+apps/docs/tsconfig.json
+  28c394d3dc5a104d 1-3
+apps/docs/content/1.getting-started/3.configuration.md
+  28c394d3dc5a104d 1-141
+apps/docs/content/2.guides/3.workspace-hooks.md
+  28c394d3dc5a104d 1-59
+apps/docs/content/2.guides/2.asana.md
+  28c394d3dc5a104d 1-62
+apps/docs/content/3.architecture/1.overview.md
+  28c394d3dc5a104d 1-61
+apps/docs/package.json
+  28c394d3dc5a104d 1-23
+apps/docs/content/2.guides/5.dashboard.md
+  28c394d3dc5a104d 1-60
+apps/docs/content/1.getting-started/2.installation.md
+  28c394d3dc5a104d 1-73
+apps/docs/content/1.getting-started/4.first-run.md
+  28c394d3dc5a104d 1-65
+package.json
+  28c394d3dc5a104d 23-27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "5ed9054657849506cdc80ffaa19902fa3c0324a1",
+  "prompts": {
+    "28c394d3dc5a104d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4596a47d-a425-4600-b806-7b1f917dc1d0",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Minsu Lee <amond@amond.net>",
+      "messages": [],
+      "total_additions": 1002,
+      "total_deletions": 0,
+      "accepted_lines": 1071,
+      "overriden_lines": 0
+    }
+  }
+}
