@@ -50,22 +50,22 @@ server/utils/auth.ts
 
 ### Phase 1: Kysely DB Foundation (core package)
 
-- [ ] T001: Add `kysely` and `@libsql/kysely-libsql` dependencies to `packages/core`
+- [x] (2026-03-24 KST) T001: Add `kysely` and `@libsql/kysely-libsql` dependencies to `packages/core`
   - `bun add kysely @libsql/kysely-libsql` in `packages/core`
   - **Files**: `packages/core/package.json`
 
-- [ ] T002: Define `AppDatabase` type interface (depends on T001)
+- [x] (2026-03-24 KST) T002: Define `AppDatabase` type interface (depends on T001)
   - Create `packages/core/src/db-types.ts` with `AgentRunsTable` and `AppDatabase` interfaces
   - Map existing `agent_runs` columns to Kysely `ColumnType` definitions
   - **Files**: `packages/core/src/db-types.ts`
 
-- [ ] T003: Create Kysely migration for `agent_runs` table (depends on T001)
+- [x] (2026-03-24 KST) T003: Create Kysely migration for `agent_runs` table (depends on T001)
   - Create `packages/core/src/migrations/001_create_agent_runs.ts`
   - Use Kysely schema builder (`db.schema.createTable(...)`) instead of raw SQL
   - Include the `idx_agent_runs_identifier` index
   - **Files**: `packages/core/src/migrations/001_create_agent_runs.ts`
 
-- [ ] T004: Rewrite `db.ts` with Kysely (depends on T002, T003)
+- [x] (2026-03-24 KST) T004: Rewrite `db.ts` with Kysely (depends on T002, T003)
   - Replace `createDbClient()` → `createKyselyDb()` returning `Kysely<AppDatabase> | null`
   - Use `LibsqlDialect` with local file or Turso cloud URL
   - Replace `runMigrations()` with Kysely `Migrator`
@@ -82,13 +82,13 @@ server/utils/auth.ts
 
 ### Phase 2: Orchestrator Integration (core package)
 
-- [ ] T006: Update orchestrator to use Kysely DB (depends on T004)
+- [x] (2026-03-24 KST) T006: Update orchestrator to use Kysely DB (depends on T004)
   - Change `private db: Client | null` → `private db: Kysely<AppDatabase> | null`
   - Update `start()`, `stop()`, `getDb()`, `insertRun` call sites
   - `stop()`: call `db.destroy()` instead of `db.close()`
   - **Files**: `packages/core/src/orchestrator.ts`
 
-- [ ] T007: Update `server.ts` runs endpoint (depends on T004)
+- [x] (2026-03-24 KST) T007: Update `server.ts` runs endpoint (depends on T004)
   - Update `/api/v1/runs` handler to work with new `queryRuns()` signature
   - **Files**: `packages/core/src/server.ts`
 
@@ -173,3 +173,4 @@ server/utils/auth.ts
 - Auth infrastructure (login page, middleware, plugin, utils) is already fully implemented — this track only needs to swap the DB connection from `bun:sqlite` to shared Kysely
 - Better Auth's `createKyselyAdapter` returns the injected `db` instance verbatim (no cloning)
 - `@libsql/kysely-libsql` passes all config options directly to `@libsql/client`, so Turso URL/authToken work unchanged
+- T007: `server.ts` was already compatible with the Kysely `queryRuns()` signature — no `Client` imports existed and the call site used untyped `db` variable passed directly to `queryRuns()`, so no code changes were required
