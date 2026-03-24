@@ -1,7 +1,7 @@
 import type { AuthConfig } from '@pleaseai/agent-core'
+import type { Kysely } from 'kysely'
 import { betterAuth } from 'better-auth'
 import { admin, username } from 'better-auth/plugins'
-import type { Kysely } from 'kysely'
 
 type Auth = ReturnType<typeof betterAuth>
 

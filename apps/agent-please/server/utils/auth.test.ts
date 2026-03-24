@@ -1,7 +1,7 @@
 import type { Kysely } from 'kysely'
 import { LibsqlDialect } from '@libsql/kysely-libsql'
-import { afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { Kysely as KyselyClass } from 'kysely'
+import { afterEach, beforeAll, describe, expect, it } from 'vitest'
 
 // ---------------------------------------------------------------------------
 // Polyfill: createError is a Nitro auto-import, not available in test context

@@ -99,7 +99,7 @@ server/utils/auth.ts
 
 ### Phase 3: Auth Integration (app package)
 
-- [ ] T009: Update `initAuth()` to accept Kysely instance (depends on T004)
+- [x] (2026-03-24 KST) T009: Update `initAuth()` to accept Kysely instance (depends on T004)
   - Change signature: `initAuth(authConfig, kyselyDb)` instead of `initAuth(authConfig, dbPath)`
   - Use `betterAuth({ database: { db: kyselyDb, type: 'sqlite' } })`
   - Remove `import { Database } from 'bun:sqlite'`

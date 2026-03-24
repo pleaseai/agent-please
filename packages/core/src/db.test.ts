@@ -1,6 +1,6 @@
 import type { Kysely } from 'kysely'
-import type { AppDatabase } from './db-types'
 import type { InsertRunParams } from './db'
+import type { AppDatabase } from './db-types'
 import type { DbConfig } from './types'
 import { existsSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'

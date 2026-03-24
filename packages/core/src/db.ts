@@ -4,8 +4,8 @@ import { mkdirSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { LibsqlDialect } from '@libsql/kysely-libsql'
 import { Kysely, Migrator } from 'kysely'
-import * as migration001 from './migrations/001_create_agent_runs'
 import { createLogger } from './logger'
+import * as migration001 from './migrations/001_create_agent_runs'
 
 const log = createLogger('db')
 
