@@ -1,0 +1,27 @@
+.gitignore
+  a83f461ffecc74db 5
+.github/workflows/ci.yml
+  a83f461ffecc74db 119-125
+apps/agent-please/package.json
+  a83f461ffecc74db 33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "4e92e2c5a563a787fae466e255aa10c9054b857c",
+  "prompts": {
+    "a83f461ffecc74db": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "11a58b46-b9c0-4f5b-afee-4d06b53cca15",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Minsu Lee <amond@amond.net>",
+      "messages": [],
+      "total_additions": 10,
+      "total_deletions": 2,
+      "accepted_lines": 9,
+      "overriden_lines": 0
+    }
+  }
+}
