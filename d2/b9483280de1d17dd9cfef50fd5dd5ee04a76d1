@@ -1,0 +1,77 @@
+.please/docs/tracks/active/docs-site-docus-20260324/spec.md
+  28c394d3dc5a104d 1-52
+.please/docs/tracks/active/docs-site-docus-20260324/metadata.json
+  28c394d3dc5a104d 1-9
+.please/docs/tracks/index.md
+  28c394d3dc5a104d 17-18
+apps/docs/content/2.guides/4.chat-bot.md
+  28c394d3dc5a104d 1-53
+apps/docs/content/3.architecture/1.overview.md
+  28c394d3dc5a104d 1-61
+apps/docs/content/3.architecture/2.data-flow.md
+  28c394d3dc5a104d 1-72
+apps/docs/content/index.md
+  28c394d3dc5a104d 1-57
+apps/docs/tsconfig.json
+  28c394d3dc5a104d 1-3
+apps/docs/app.config.ts
+  28c394d3dc5a104d 1-26
+package.json
+  28c394d3dc5a104d 23-27
+apps/docs/content/1.getting-started/1.introduction.md
+  28c394d3dc5a104d 1-44
+.gitignore
+  28c394d3dc5a104d 21
+apps/docs/content/3.architecture/3.components.md
+  28c394d3dc5a104d 1-86
+apps/docs/content/2.guides/3.workspace-hooks.md
+  28c394d3dc5a104d 1-23,27-59
+.please/docs/tracks/active/docs-site-docus-20260324/plan.md
+  28c394d3dc5a104d 1-146
+.please/docs/knowledge/tech-stack.md
+  28c394d3dc5a104d 41,78-80
+apps/docs/content/1.getting-started/2.installation.md
+  28c394d3dc5a104d 1-25,27-80
+apps/docs/content/1.getting-started/3.configuration.md
+  28c394d3dc5a104d 1-43,45-56,58-76,78-163,166-174,177-211
+apps/docs/content/1.getting-started/4.first-run.md
+  28c394d3dc5a104d 1-41,43-68
+apps/docs/content/2.guides/1.github-projects.md
+  28c394d3dc5a104d 1-98
+apps/docs/package.json
+  28c394d3dc5a104d 1-25
+apps/docs/nuxt.config.ts
+  28c394d3dc5a104d 1-50,52,54-102
+apps/docs/content/2.guides/5.dashboard.md
+  28c394d3dc5a104d 1-60
+apps/docs/content/2.guides/2.asana.md
+  28c394d3dc5a104d 1-65
+.please/docs/references/INDEX.md
+  28c394d3dc5a104d 7-8
+.claude/agent-memory/review-review-documentation-analyzer/project_cli_syntax.md
+  28c394d3dc5a104d 1-15
+.claude/agent-memory/review-review-documentation-analyzer/MEMORY.md
+  28c394d3dc5a104d 1-5
+.claude/agent-memory/review-review-documentation-analyzer/project_config_schema.md
+  28c394d3dc5a104d 1-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "d2b9483280de1d17dd9cfef50fd5dd5ee04a76d1",
+  "prompts": {
+    "28c394d3dc5a104d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4596a47d-a425-4600-b806-7b1f917dc1d0",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Minsu Lee <amond@amond.net>",
+      "messages": [],
+      "total_additions": 4,
+      "total_deletions": 4,
+      "accepted_lines": 1413,
+      "overriden_lines": 0
+    }
+  }
+}
