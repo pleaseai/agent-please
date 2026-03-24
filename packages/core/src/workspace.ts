@@ -91,6 +91,12 @@ export function resolveWorktreePath(workspaceRoot: string, repoUrl: string, bran
   return join(repoDir, 'worktrees', branchName)
 }
 
+function redactToken(text: string, token?: string | null): string {
+  if (!token)
+    return text
+  return text.replaceAll(token, '***')
+}
+
 export function ensureSharedClone(repoDir: string, repoUrl: string, token?: string | null): Error | null {
   const authUrl = buildAuthenticatedUrl(repoUrl, token)
   try {
@@ -98,17 +104,24 @@ export function ensureSharedClone(repoDir: string, repoUrl: string, token?: stri
       mkdirSync(resolve(repoDir, '..'), { recursive: true })
       const result = _git.spawnSync(['git', 'clone', authUrl, repoDir])
       if (!result.success) {
-        const output = ((result.stdout?.toString() ?? '') + (result.stderr?.toString() ?? '')).trim().slice(0, 2048)
+        const output = redactToken(((result.stdout?.toString() ?? '') + (result.stderr?.toString() ?? '')).trim().slice(0, 2048), token)
         return new Error(`git clone failed: ${output}`)
       }
     }
     else {
-      // When token is provided, fetch using the authenticated URL directly
-      // to avoid credential prompts. Otherwise fall back to 'origin'.
-      const fetchTarget = token ? authUrl : 'origin'
-      const result = _git.spawnSync(['git', '-C', repoDir, 'fetch', fetchTarget])
+      // When token is provided, temporarily set the remote URL to authenticate,
+      // then fetch from 'origin'. This avoids writing the token to FETCH_HEAD
+      // (git records the raw URL when fetching by URL instead of remote name).
+      if (token) {
+        _git.spawnSync(['git', '-C', repoDir, 'remote', 'set-url', 'origin', authUrl])
+      }
+      const result = _git.spawnSync(['git', '-C', repoDir, 'fetch', 'origin'])
+      if (token) {
+        // Restore the plain URL to avoid persisting the token in .git/config
+        _git.spawnSync(['git', '-C', repoDir, 'remote', 'set-url', 'origin', repoUrl])
+      }
       if (!result.success) {
-        const output = ((result.stdout?.toString() ?? '') + (result.stderr?.toString() ?? '')).trim().slice(0, 2048)
+        const output = redactToken(((result.stdout?.toString() ?? '') + (result.stderr?.toString() ?? '')).trim().slice(0, 2048), token)
         return new Error(`git fetch failed: ${output}`)
       }
     }
