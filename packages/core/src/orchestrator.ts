@@ -128,7 +128,7 @@ export class Orchestrator {
         rmSync(this.sshSigningKeyPath, { force: true })
         log.info(`SSH signing key removed: ${this.sshSigningKeyPath}`)
       }
-      catch (err) {
+      catch (err: unknown) {
         log.warn(`failed to remove SSH signing key: ${err}`)
       }
       this.sshSigningKeyPath = null

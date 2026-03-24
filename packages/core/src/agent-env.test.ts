@@ -1,7 +1,7 @@
 /* eslint-disable no-template-curly-in-string */
 import type { ServiceConfig } from './types'
 import process from 'node:process'
-import { describe, expect, it } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
 import { resolveAgentEnv } from './agent-env'
 import { buildConfig } from './config'
 
@@ -193,6 +193,27 @@ describe('resolveAgentEnv', () => {
   })
 
   describe('commit signing env injection', () => {
+    let savedGitConfigEnv: Record<string, string | undefined> = {}
+
+    beforeEach(() => {
+      savedGitConfigEnv = {}
+      for (const key of Object.keys(process.env)) {
+        if (key.startsWith('GIT_CONFIG_')) {
+          savedGitConfigEnv[key] = process.env[key]
+          delete process.env[key]
+        }
+      }
+    })
+
+    afterEach(() => {
+      for (const [key, val] of Object.entries(savedGitConfigEnv)) {
+        if (val === undefined)
+          delete process.env[key]
+        else
+          process.env[key] = val
+      }
+    })
+
     it('injects GIT_CONFIG_* env vars when mode is ssh and sshSigningKeyPath is provided', async () => {
       const config = makeConfig({
         commit_signing: { mode: 'ssh', ssh_signing_key: 'key-content' },

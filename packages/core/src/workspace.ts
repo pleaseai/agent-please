@@ -441,7 +441,7 @@ export function configureRemoteAuth(wsPath: string, token: string): void {
   // Extract owner/repo from HTTPS URL (e.g., https://github.com/owner/repo.git)
   const match = currentUrl.match(GITHUB_HTTPS_URL_RE)
   if (!match) {
-    log.warn(`configureRemoteAuth: unsupported remote URL format: ${currentUrl}`)
+    log.warn('configureRemoteAuth: unsupported remote URL format for origin')
     return
   }
   const repoPath = match[1]

@@ -1471,6 +1471,7 @@ Prompt for {{ issue.title }}.`
       expect(existsSync(keyPath)).toBe(false)
     }
     finally {
+      await orch.stop()
       globalThis.fetch = origFetch
       rmSync(tmpDir, { recursive: true, force: true })
     }
