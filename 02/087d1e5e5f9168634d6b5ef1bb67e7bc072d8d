@@ -1,0 +1,33 @@
+apps/agent-please/server/utils/auth.ts
+  08e6b08967b9a8d3 39-42,47
+apps/agent-please/server/plugins/03.auth.ts
+  08e6b08967b9a8d3 25-29
+apps/agent-please/server/utils/auth.test.ts
+  08e6b08967b9a8d3 26,38-39,139-149
+packages/core/src/types.ts
+  08e6b08967b9a8d3 156-157
+packages/core/src/config.ts
+  08e6b08967b9a8d3 253-254
+packages/core/src/config.test.ts
+  08e6b08967b9a8d3 1530-1547,1652-1721
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "02087d1e5e5f9168634d6b5ef1bb67e7bc072d8d",
+  "prompts": {
+    "08e6b08967b9a8d3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea061966-541a-455d-bf51-28dcfe0381c9",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Minsu Lee <amond@amond.net>",
+      "messages": [],
+      "total_additions": 116,
+      "total_deletions": 9,
+      "accepted_lines": 116,
+      "overriden_lines": 0
+    }
+  }
+}
