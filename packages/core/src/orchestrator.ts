@@ -366,22 +366,25 @@ export class Orchestrator {
   }
 
   private async executeAgentRun(issue: Issue, attempt: number | null): Promise<void> {
-    // Create/reuse workspace
-    const wsResult = await createWorkspace(this.config, issue.identifier, issue)
+    // Resolve token before workspace creation so clone/fetch can authenticate
+    let token: string | null = null
+    if (issue.url) {
+      const tokenProvider = this.buildTokenProvider()
+      if (tokenProvider) {
+        token = await tokenProvider.installationAccessToken()
+      }
+    }
+
+    // Create/reuse workspace (token enables authenticated clone/fetch)
+    const wsResult = await createWorkspace(this.config, issue.identifier, issue, token)
     if (wsResult instanceof Error) {
       throw wsResult
     }
     log.debug(`workspace ready issue_id=${issue.id} path=${wsResult.path} created_now=${wsResult.created_now}`)
 
-    // Configure authenticated remote URL if token is available
-    if (issue.url) {
-      const tokenProvider = this.buildTokenProvider()
-      if (tokenProvider) {
-        const token = await tokenProvider.installationAccessToken()
-        if (token) {
-          configureRemoteAuth(wsResult.path, token)
-        }
-      }
+    // Configure authenticated remote URL on worktree for push operations
+    if (token) {
+      configureRemoteAuth(wsResult.path, token)
     }
 
     // Before-run hook

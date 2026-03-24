@@ -67,6 +67,18 @@ export function extractRepoUrl(url: string): string | null {
   return match ? url.slice(0, match.index) : null
 }
 
+const GITHUB_HTTPS_PLAIN_RE = /^https:\/\/github\.com\//
+const TRAILING_SLASH_RE = /\/$/
+
+export function buildAuthenticatedUrl(repoUrl: string, token?: string | null): string {
+  if (!token || !GITHUB_HTTPS_PLAIN_RE.test(repoUrl))
+    return repoUrl
+  const url = new URL(repoUrl)
+  url.username = 'x-access-token'
+  url.password = token
+  return url.toString().replace(TRAILING_SLASH_RE, '')
+}
+
 export function resolveRepoDir(workspaceRoot: string, repoUrl: string): string {
   const url = new URL(repoUrl)
   const parts = url.pathname.replace(REPO_GIT_SUFFIX_RE, '').split('/').filter(Boolean)
@@ -79,18 +91,22 @@ export function resolveWorktreePath(workspaceRoot: string, repoUrl: string, bran
   return join(repoDir, 'worktrees', branchName)
 }
 
-export function ensureSharedClone(repoDir: string, repoUrl: string): Error | null {
+export function ensureSharedClone(repoDir: string, repoUrl: string, token?: string | null): Error | null {
+  const authUrl = buildAuthenticatedUrl(repoUrl, token)
   try {
     if (!existsSync(repoDir)) {
       mkdirSync(resolve(repoDir, '..'), { recursive: true })
-      const result = _git.spawnSync(['git', 'clone', repoUrl, repoDir])
+      const result = _git.spawnSync(['git', 'clone', authUrl, repoDir])
       if (!result.success) {
         const output = ((result.stdout?.toString() ?? '') + (result.stderr?.toString() ?? '')).trim().slice(0, 2048)
         return new Error(`git clone failed: ${output}`)
       }
     }
     else {
-      const result = _git.spawnSync(['git', '-C', repoDir, 'fetch', 'origin'])
+      // When token is provided, fetch using the authenticated URL directly
+      // to avoid credential prompts. Otherwise fall back to 'origin'.
+      const fetchTarget = token ? authUrl : 'origin'
+      const result = _git.spawnSync(['git', '-C', repoDir, 'fetch', fetchTarget])
       if (!result.success) {
         const output = ((result.stdout?.toString() ?? '') + (result.stderr?.toString() ?? '')).trim().slice(0, 2048)
         return new Error(`git fetch failed: ${output}`)
@@ -227,6 +243,7 @@ export async function createWorkspace(
   config: ServiceConfig,
   identifier: string,
   issue?: Issue,
+  token?: string | null,
 ): Promise<Workspace | Error> {
   const key = sanitizeIdentifier(identifier)
   let createdNow = false
@@ -235,7 +252,7 @@ export async function createWorkspace(
     const repoUrl = extractRepoUrl(issue.url)
     if (repoUrl) {
       const repoDir = resolveRepoDir(config.workspace.root, repoUrl)
-      const cloneErr = ensureSharedClone(repoDir, repoUrl)
+      const cloneErr = ensureSharedClone(repoDir, repoUrl, token)
       if (cloneErr)
         return cloneErr
       const sanitized = sanitizeIdentifier(issue.identifier)

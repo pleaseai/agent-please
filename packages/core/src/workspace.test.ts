@@ -8,11 +8,13 @@ import { buildConfig } from './config'
 import {
   _git,
   applyBranchPrefix,
+  buildAuthenticatedUrl,
   buildHookEnv,
   checkoutExistingBranch,
   configureRemoteAuth,
   createWorkspace,
   ensureClaudeSettings,
+  ensureSharedClone,
   extractRepoUrl,
   generateClaudeSettings,
   removeWorkspace,
@@ -1195,5 +1197,108 @@ describe('configureRemoteAuth', () => {
     const setUrlCall = calls.find(args => args.includes('set-url'))
     expect(setUrlCall).toBeDefined()
     expect(setUrlCall).toContain(`https://x-access-token:${newToken}@github.com/owner/repo.git`)
+  })
+})
+
+describe('buildAuthenticatedUrl', () => {
+  it('injects token into HTTPS GitHub URL', () => {
+    const url = buildAuthenticatedUrl('https://github.com/org/repo', 'ghs_token123')
+    expect(url).toBe('https://x-access-token:ghs_token123@github.com/org/repo')
+  })
+
+  it('returns original URL when no token provided', () => {
+    const url = buildAuthenticatedUrl('https://github.com/org/repo')
+    expect(url).toBe('https://github.com/org/repo')
+  })
+
+  it('returns original URL for non-GitHub HTTPS URLs', () => {
+    const url = buildAuthenticatedUrl('git@github.com:org/repo.git', 'ghs_token123')
+    expect(url).toBe('git@github.com:org/repo.git')
+  })
+})
+
+describe('ensureSharedClone with token', () => {
+  it('uses authenticated URL for git clone when token is provided', () => {
+    const spy = spyOn(_git, 'spawnSync').mockReturnValue({
+      exitCode: 0,
+      success: true,
+      stdout: Buffer.from(''),
+      stderr: Buffer.from(''),
+      signalCode: null,
+    } as unknown as import('./workspace').SpawnSyncResult)
+
+    const repoDir = '/tmp/nonexistent-repo-dir'
+    const err = ensureSharedClone(repoDir, 'https://github.com/org/repo', 'ghs_abc123')
+
+    const calls = spy.mock.calls.map(args => args[0] as string[])
+    spy.mockRestore()
+
+    expect(err).toBeNull()
+    const cloneCall = calls.find(args => args[0] === 'git' && args[1] === 'clone')
+    expect(cloneCall).toBeDefined()
+    expect(cloneCall?.[2]).toBe('https://x-access-token:ghs_abc123@github.com/org/repo')
+  })
+
+  it('uses authenticated URL for git fetch when token is provided', () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), 'shared-clone-test-'))
+    try {
+      const spy = spyOn(_git, 'spawnSync').mockReturnValue({
+        exitCode: 0,
+        success: true,
+        stdout: Buffer.from(''),
+        stderr: Buffer.from(''),
+        signalCode: null,
+      } as unknown as import('./workspace').SpawnSyncResult)
+
+      const err = ensureSharedClone(tmpDir, 'https://github.com/org/repo', 'ghs_abc123')
+
+      const calls = spy.mock.calls.map(args => args[0] as string[])
+      spy.mockRestore()
+
+      expect(err).toBeNull()
+      const fetchCall = calls.find(args => args[0] === 'git' && args.includes('fetch'))
+      expect(fetchCall).toBeDefined()
+      // fetch uses the authenticated URL as the remote
+      expect(fetchCall).toContain('https://x-access-token:ghs_abc123@github.com/org/repo')
+    }
+    finally {
+      rmSync(tmpDir, { recursive: true, force: true })
+    }
+  })
+})
+
+describe('createWorkspace with token', () => {
+  let tmpRoot: string
+
+  beforeEach(() => {
+    tmpRoot = mkdtempSync(join(tmpdir(), 'agent-please-wt-token-test-'))
+  })
+
+  afterEach(() => {
+    rmSync(tmpRoot, { recursive: true, force: true })
+  })
+
+  it('passes token to ensureSharedClone for authenticated clone', async () => {
+    const spy = spyOn(_git, 'spawnSync').mockReturnValue({
+      exitCode: 0,
+      success: true,
+      stdout: Buffer.from(''),
+      stderr: Buffer.from(''),
+      signalCode: null,
+    } as unknown as import('./workspace').SpawnSyncResult)
+
+    const issue = makeIssue({ identifier: 'MT-42', url: 'https://github.com/org/repo/issues/42' })
+    const config = makeConfig(tmpRoot)
+
+    const result = await createWorkspace(config, 'MT-42', issue, 'ghs_token123')
+
+    const calls = spy.mock.calls.map(args => args[0] as string[])
+    spy.mockRestore()
+
+    expect(result instanceof Error).toBe(false)
+
+    const cloneCall = calls.find(args => args[0] === 'git' && args[1] === 'clone')
+    expect(cloneCall).toBeDefined()
+    expect(cloneCall?.[2]).toBe('https://x-access-token:ghs_token123@github.com/org/repo')
   })
 })

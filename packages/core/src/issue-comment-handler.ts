@@ -7,7 +7,7 @@ import { toDispatchLockKey } from './dispatch-lock'
 import { createLogger } from './logger'
 import { buildPrompt, isPromptBuildError } from './prompt-builder'
 import { DEFAULT_ALLOWED_ASSOCIATIONS } from './types'
-import { createWorkspace, runAfterRunHook, runBeforeRunHook } from './workspace'
+import { configureRemoteAuth, createWorkspace, runAfterRunHook, runBeforeRunHook } from './workspace'
 
 const log = createLogger('issue-comment')
 
@@ -160,10 +160,16 @@ export async function handleIssueCommentMention(
     // 2. Build an Issue-like object from the webhook payload
     const issue = payloadToIssue(payload)
 
-    // 3. Create/reuse workspace
-    const wsResult = await createWorkspace(config, issue.identifier, issue)
+    // 3. Create/reuse workspace (with token for authenticated clone/fetch)
+    const cloneToken = tokenProvider ? await tokenProvider.installationAccessToken() : null
+    const wsResult = await createWorkspace(config, issue.identifier, issue, cloneToken)
     if (wsResult instanceof Error) {
       throw wsResult
+    }
+
+    // Configure authenticated remote URL on worktree for push operations
+    if (cloneToken) {
+      configureRemoteAuth(wsResult.path, cloneToken)
     }
 
     // 4. Before-run hook
