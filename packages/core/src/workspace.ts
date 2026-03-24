@@ -60,6 +60,7 @@ const LEADING_PATH_SEP_RE = /^[/\\]/
 const RELATIVE_PARTS_RE = /[/\\]/
 const REPO_URL_STRIP_RE = /\/(?:issues|pull)\/\d+/
 const REPO_GIT_SUFFIX_RE = /\.git$/
+const GITHUB_HTTPS_URL_RE = /^https:\/\/(?:[^@]+@)?github\.com\/([^/]+\/[^/]+?)(?:\.git)?$/
 
 export function extractRepoUrl(url: string): string | null {
   const match = REPO_URL_STRIP_RE.exec(url)
@@ -424,6 +425,32 @@ export function runHook(script: string, cwd: string, timeoutMs: number, env: Rec
   }
 
   return null
+}
+
+export function configureRemoteAuth(wsPath: string, token: string): void {
+  // Read current remote URL
+  const result = _git.spawnSync(['git', '-C', wsPath, 'remote', 'get-url', 'origin'])
+  if (!result.success) {
+    log.warn(`configureRemoteAuth: failed to read remote URL for ${wsPath}`)
+    return
+  }
+  const currentUrl = result.stdout.toString().trim()
+  if (!currentUrl)
+    return
+
+  // Extract owner/repo from HTTPS URL (e.g., https://github.com/owner/repo.git)
+  const match = currentUrl.match(GITHUB_HTTPS_URL_RE)
+  if (!match) {
+    log.warn('configureRemoteAuth: unsupported remote URL format for origin')
+    return
+  }
+  const repoPath = match[1]
+  const authUrl = `https://x-access-token:${token}@github.com/${repoPath}.git`
+
+  const setResult = _git.spawnSync(['git', '-C', wsPath, 'remote', 'set-url', 'origin', authUrl])
+  if (!setResult.success) {
+    log.warn(`configureRemoteAuth: failed to set remote URL for ${wsPath}`)
+  }
 }
 
 function cleanArtifacts(wsPath: string): void {
