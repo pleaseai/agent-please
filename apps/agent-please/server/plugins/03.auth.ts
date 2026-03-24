@@ -22,9 +22,11 @@ export default defineNitroPlugin(async (nitroApp) => {
   }
 
   const dbPath = resolve(config.workspace.root, config.db.path)
-  const host = process.env.HOST || process.env.NITRO_HOST || 'localhost'
-  const port = config.server.port ?? Number(process.env.PORT || process.env.NITRO_PORT || 3000)
-  const baseURL = `http://${host}:${port}`
+  const baseURL = config.auth.base_url ?? (() => {
+    const host = process.env.HOST || process.env.NITRO_HOST || 'localhost'
+    const port = config.server.port ?? Number(process.env.PORT || process.env.NITRO_PORT || 3000)
+    return `http://${host}:${port}`
+  })()
   const auth = initAuth(config.auth, dbPath, baseURL)
 
   try {

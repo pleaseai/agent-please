@@ -1527,12 +1527,24 @@ describe('buildConfig — commit_signing', () => {
 
 describe('buildConfig — auth', () => {
   it('returns all-null auth config when auth section is missing', () => {
-    const config = buildConfig(makeWorkflow({}))
-    expect(config.auth).toEqual({
-      secret: null,
-      github: { client_id: null, client_secret: null },
-      admin: { email: null, password: null },
-    } satisfies AuthConfig)
+    const prev = process.env.BETTER_AUTH_URL
+    delete process.env.BETTER_AUTH_URL
+    try {
+      const config = buildConfig(makeWorkflow({}))
+      expect(config.auth).toEqual({
+        secret: null,
+        github: { client_id: null, client_secret: null },
+        admin: { email: null, password: null },
+        base_url: null,
+        trusted_origins: [],
+      } satisfies AuthConfig)
+    }
+    finally {
+      if (prev !== undefined)
+        process.env.BETTER_AUTH_URL = prev
+      else
+        delete process.env.BETTER_AUTH_URL
+    }
   })
 
   it('parses auth section with literal values', () => {
@@ -1636,5 +1648,75 @@ describe('buildConfig — auth', () => {
       if (prevSecret !== undefined)
         process.env.NONEXISTENT_SECRET = prevSecret
     }
+  })
+
+  it('parses base_url from auth config', () => {
+    const config = buildConfig(makeWorkflow({
+      auth: { base_url: 'https://dora.passionfactory.ai' },
+    }))
+    expect(config.auth.base_url).toBe('https://dora.passionfactory.ai')
+  })
+
+  it('resolves $VAR for auth.base_url', () => {
+    const prev = process.env.TEST_AUTH_BASE_URL
+    process.env.TEST_AUTH_BASE_URL = 'https://env-base.example.com'
+    try {
+      const config = buildConfig(makeWorkflow({
+        auth: { base_url: '$TEST_AUTH_BASE_URL' },
+      }))
+      expect(config.auth.base_url).toBe('https://env-base.example.com')
+    }
+    finally {
+      if (prev !== undefined)
+        process.env.TEST_AUTH_BASE_URL = prev
+      else delete process.env.TEST_AUTH_BASE_URL
+    }
+  })
+
+  it('falls back to BETTER_AUTH_URL env var when base_url absent', () => {
+    const prev = process.env.BETTER_AUTH_URL
+    process.env.BETTER_AUTH_URL = 'https://fallback-auth.example.com'
+    try {
+      const config = buildConfig(makeWorkflow({ auth: {} }))
+      expect(config.auth.base_url).toBe('https://fallback-auth.example.com')
+    }
+    finally {
+      if (prev !== undefined)
+        process.env.BETTER_AUTH_URL = prev
+      else delete process.env.BETTER_AUTH_URL
+    }
+  })
+
+  it('defaults base_url to null when not configured and no env var', () => {
+    const prev = process.env.BETTER_AUTH_URL
+    delete process.env.BETTER_AUTH_URL
+    try {
+      const config = buildConfig(makeWorkflow({}))
+      expect(config.auth.base_url).toBeNull()
+    }
+    finally {
+      if (prev !== undefined)
+        process.env.BETTER_AUTH_URL = prev
+      else delete process.env.BETTER_AUTH_URL
+    }
+  })
+
+  it('parses trusted_origins from YAML array', () => {
+    const config = buildConfig(makeWorkflow({
+      auth: { trusted_origins: ['https://dora.passionfactory.ai', 'http://localhost:3000'] },
+    }))
+    expect(config.auth.trusted_origins).toEqual(['https://dora.passionfactory.ai', 'http://localhost:3000'])
+  })
+
+  it('parses trusted_origins from CSV string', () => {
+    const config = buildConfig(makeWorkflow({
+      auth: { trusted_origins: 'https://a.example.com, https://b.example.com' },
+    }))
+    expect(config.auth.trusted_origins).toEqual(['https://a.example.com', 'https://b.example.com'])
+  })
+
+  it('defaults trusted_origins to empty array when not configured', () => {
+    const config = buildConfig(makeWorkflow({}))
+    expect(config.auth.trusted_origins).toEqual([])
   })
 })

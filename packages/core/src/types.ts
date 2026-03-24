@@ -153,6 +153,8 @@ export interface AuthConfig {
     email: string | null
     password: string | null
   }
+  base_url: string | null
+  trusted_origins: string[]
 }
 
 export interface DbConfig {

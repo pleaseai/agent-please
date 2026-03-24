@@ -23,6 +23,7 @@ function makeAuthConfig(overrides?: {
   githubClientId?: string | null
   githubClientSecret?: string | null
   secret?: string | null
+  trustedOrigins?: string[]
 }) {
   return {
     secret: overrides !== undefined && 'secret' in overrides ? overrides.secret : 'test-secret',
@@ -34,6 +35,8 @@ function makeAuthConfig(overrides?: {
       email: null,
       password: null,
     },
+    base_url: null,
+    trusted_origins: overrides?.trustedOrigins ?? [],
   }
 }
 
@@ -132,6 +135,17 @@ describe('initAuth', () => {
   it('passes undefined secret when config secret is null', () => {
     const auth = initAuth(makeAuthConfig({ secret: null }), ':memory:')
     expect((auth as any).options?.secret).toBeUndefined()
+  })
+
+  it('passes trustedOrigins when trusted_origins is non-empty', () => {
+    const origins = ['https://dora.passionfactory.ai', 'http://localhost:3000']
+    const auth = initAuth(makeAuthConfig({ trustedOrigins: origins }), ':memory:')
+    expect((auth as any).options?.trustedOrigins).toEqual(origins)
+  })
+
+  it('does not pass trustedOrigins when trusted_origins is empty', () => {
+    const auth = initAuth(makeAuthConfig({ trustedOrigins: [] }), ':memory:')
+    expect((auth as any).options?.trustedOrigins).toBeUndefined()
   })
 })
 
