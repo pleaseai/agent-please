@@ -1,0 +1,37 @@
+apps/docs/content/1.getting-started/2.installation.md
+  28c394d3dc5a104d 18,21,23-25,27,45-53,62-63
+apps/docs/content/1.getting-started/4.first-run.md
+  28c394d3dc5a104d 14,41,43-44,47-48
+apps/docs/content/2.guides/2.asana.md
+  28c394d3dc5a104d 16-23,31,39-44,47-48,54-58
+apps/docs/nuxt.config.ts
+  28c394d3dc5a104d 8,12,48,50-51,53
+apps/docs/content/2.guides/5.dashboard.md
+  28c394d3dc5a104d 16
+apps/docs/package.json
+  28c394d3dc5a104d 7,17
+apps/docs/content/1.getting-started/3.configuration.md
+  28c394d3dc5a104d 13-22,31-33,35,37,43,45,50-71,73-76,78-80,86-104,106-111,113-120,128-130,137,144,153-155,162,168-174,181-183
+apps/docs/content/2.guides/1.github-projects.md
+  28c394d3dc5a104d 18-26,37-47,80-82,90-97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "60278e6d3cfb3ef8aa23f01fb46c743de26a71ad",
+  "prompts": {
+    "28c394d3dc5a104d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4596a47d-a425-4600-b806-7b1f917dc1d0",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Minsu Lee <amond@amond.net>",
+      "messages": [],
+      "total_additions": 235,
+      "total_deletions": 102,
+      "accepted_lines": 300,
+      "overriden_lines": 0
+    }
+  }
+}
