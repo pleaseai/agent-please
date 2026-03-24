@@ -2,6 +2,7 @@ node_modules/
 dist/
 .turbo/
 coverage/
+test-report.junit.xml
 *.tsbuildinfo
 .claude/settings.local.json
 .claude/worktrees/
