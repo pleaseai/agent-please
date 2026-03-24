@@ -1458,6 +1458,73 @@ describe('buildConfig state section', () => {
   })
 })
 
+describe('buildConfig — commit_signing', () => {
+  it('defaults to mode none and null ssh_signing_key when commit_signing absent', () => {
+    const config = buildConfig(makeWorkflow({}))
+    expect(config.commit_signing.mode).toBe('none')
+    expect(config.commit_signing.ssh_signing_key).toBeNull()
+  })
+
+  it('parses mode ssh', () => {
+    const config = buildConfig(makeWorkflow({ commit_signing: { mode: 'ssh', ssh_signing_key: '/path/to/key' } }))
+    expect(config.commit_signing.mode).toBe('ssh')
+  })
+
+  it('parses mode api', () => {
+    const config = buildConfig(makeWorkflow({ commit_signing: { mode: 'api' } }))
+    expect(config.commit_signing.mode).toBe('api')
+  })
+
+  it('parses explicit mode none', () => {
+    const config = buildConfig(makeWorkflow({ commit_signing: { mode: 'none' } }))
+    expect(config.commit_signing.mode).toBe('none')
+  })
+
+  it('falls back to none for invalid mode', () => {
+    const config = buildConfig(makeWorkflow({ commit_signing: { mode: 'gpg' } }))
+    expect(config.commit_signing.mode).toBe('none')
+  })
+
+  it('resolves $ENV_VAR for ssh_signing_key when mode is ssh', () => {
+    const orig = process.env.TEST_SSH_SIGNING_KEY
+    process.env.TEST_SSH_SIGNING_KEY = '/home/user/.ssh/signing_key'
+    try {
+      const config = buildConfig(makeWorkflow({
+        commit_signing: { mode: 'ssh', ssh_signing_key: '$TEST_SSH_SIGNING_KEY' },
+      }))
+      expect(config.commit_signing.ssh_signing_key).toBe('/home/user/.ssh/signing_key')
+    }
+    finally {
+      if (orig !== undefined)
+        process.env.TEST_SSH_SIGNING_KEY = orig
+      else
+        delete process.env.TEST_SSH_SIGNING_KEY
+    }
+  })
+
+  it('returns null for ssh_signing_key when mode is not ssh', () => {
+    const config = buildConfig(makeWorkflow({
+      commit_signing: { mode: 'api', ssh_signing_key: '/path/to/key' },
+    }))
+    expect(config.commit_signing.ssh_signing_key).toBeNull()
+  })
+
+  it('falls back to SSH_SIGNING_KEY env var when ssh_signing_key not specified and mode is ssh', () => {
+    const orig = process.env.SSH_SIGNING_KEY
+    process.env.SSH_SIGNING_KEY = '/env/ssh/signing_key'
+    try {
+      const config = buildConfig(makeWorkflow({ commit_signing: { mode: 'ssh' } }))
+      expect(config.commit_signing.ssh_signing_key).toBe('/env/ssh/signing_key')
+    }
+    finally {
+      if (orig !== undefined)
+        process.env.SSH_SIGNING_KEY = orig
+      else
+        delete process.env.SSH_SIGNING_KEY
+    }
+  })
+})
+
 describe('buildConfig — auth', () => {
   it('returns all-null auth config when auth section is missing', () => {
     const config = buildConfig(makeWorkflow({}))
