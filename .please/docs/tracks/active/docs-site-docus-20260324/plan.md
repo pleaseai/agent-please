@@ -34,15 +34,15 @@ The content structure follows Docus conventions with a landing page at `content/
 
 ## Tasks
 
-- [ ] T001 Scaffold apps/docs package with package.json, nuxt.config.ts, and tsconfig.json (file: apps/docs/package.json)
-- [ ] T002 Configure Docus app.config.ts with branding, SEO, GitHub integration, and social links (file: apps/docs/app.config.ts) (depends on T001)
-- [ ] T003 Create landing page content (file: apps/docs/content/index.md) (depends on T001)
-- [ ] T004 Create Getting Started section content — introduction, installation, WORKFLOW.md configuration, first run (file: apps/docs/content/1.getting-started/) (depends on T001)
-- [ ] T005 [P] Create Guides section content — tracker setup (GitHub/Asana), workspace hooks, chat bot, dashboard (file: apps/docs/content/2.guides/) (depends on T001)
-- [ ] T006 [P] Create Architecture section content — system overview, data flow, components (file: apps/docs/content/3.architecture/) (depends on T001)
-- [ ] T007 Update root .gitignore and root package.json scripts for docs workspace (file: .gitignore) (depends on T001)
-- [ ] T008 Add Cloudflare Pages deployment configuration (file: apps/docs/nuxt.config.ts) (depends on T002)
-- [ ] T009 Verify full build pipeline — dev server, production build, lint, type-check (depends on T003, T004, T005, T006, T007, T008)
+- [x] T001 Scaffold apps/docs package with package.json, nuxt.config.ts, and tsconfig.json (file: apps/docs/package.json)
+- [x] T002 Configure Docus app.config.ts with branding, SEO, GitHub integration, and social links (file: apps/docs/app.config.ts) (depends on T001)
+- [x] T003 Create landing page content (file: apps/docs/content/index.md) (depends on T001)
+- [x] T004 Create Getting Started section content — introduction, installation, WORKFLOW.md configuration, first run (file: apps/docs/content/1.getting-started/) (depends on T001)
+- [x] T005 [P] Create Guides section content — tracker setup (GitHub/Asana), workspace hooks, chat bot, dashboard (file: apps/docs/content/2.guides/) (depends on T001)
+- [x] T006 [P] Create Architecture section content — system overview, data flow, components (file: apps/docs/content/3.architecture/) (depends on T001)
+- [x] T007 Update root .gitignore and root package.json scripts for docs workspace (file: .gitignore) (depends on T001)
+- [x] T008 Add Cloudflare Pages deployment configuration (file: apps/docs/nuxt.config.ts) (depends on T002)
+- [x] T009 Verify full build pipeline — dev server, production build, lint, type-check (depends on T003, T004, T005, T006, T007, T008)
 
 ## Key Files
 
@@ -108,3 +108,39 @@ The content structure follows Docus conventions with a landing page at `content/
 - Decision: English only, no i18n setup
   Rationale: Simplicity; i18n can be added later as a separate track
   Date/Author: 2026-03-24 / Claude
+
+- Decision: Use bun Nitro preset (not cloudflare_pages) for local builds
+  Rationale: h3 v2 RC compatibility issues with Docus dependencies (MCP toolkit, nuxt-og-image). Cloudflare Pages preset via NITRO_PRESET env var for deployment.
+  Date/Author: 2026-03-24 / Claude
+
+- Decision: Disable prerendering for docs site
+  Rationale: h3 v2 RC (pulled in by @nuxt/test-utils) causes `event.req.headers.entries is not a function` in prerender context. SSR at the edge handles rendering.
+  Date/Author: 2026-03-24 / Claude
+
+- Decision: Custom Rollup plugin for Docus .ts server route transpilation
+  Rationale: Bun hoists Docus to `node_modules/.bun/docus@.../` path which Nitro's esbuild plugin excludes via `/node_modules/` regex. Custom load hook pre-transpiles.
+  Date/Author: 2026-03-24 / Claude
+
+## Progress
+
+- [x] (2026-03-24 14:00 KST) T001 Scaffold apps/docs package
+- [x] (2026-03-24 14:10 KST) T002 Configure Docus app.config.ts
+- [x] (2026-03-24 14:10 KST) T003 Create landing page content
+- [x] (2026-03-24 14:15 KST) T004 Create Getting Started section content
+- [x] (2026-03-24 14:15 KST) T005 Create Guides section content
+- [x] (2026-03-24 14:15 KST) T006 Create Architecture section content
+- [x] (2026-03-24 14:20 KST) T007 Update root .gitignore and package.json scripts
+- [x] (2026-03-24 14:25 KST) T008 Add Cloudflare Pages deployment configuration
+- [x] (2026-03-24 14:35 KST) T009 Verify full build pipeline
+  Evidence: `bun run build:docs` → Client built + Server built successfully, prerender warnings non-blocking
+
+## Surprises & Discoveries
+
+- Observation: Bun's hoisted dependency path (`node_modules/.bun/pkg@version/`) bypasses Nitro's esbuild plugin `/node_modules/` exclude regex, causing Rollup to fail parsing raw .ts files from Nuxt layers
+  Evidence: sitemap.xml.ts from Docus layer fails with "Expression expected" — interface keyword not valid JS
+
+- Observation: @nuxt/test-utils@4.0.0 pulls in h3@2.0.1-rc.11 which conflicts with h3@1.15.x used by Nuxt ecosystem
+  Evidence: `bun pm why h3` shows h3 v2 RC from test-utils, causes `toWebRequest` not found and `headers.entries` errors
+
+- Observation: Docus's @nuxtjs/mcp-toolkit module uses h3 `toWebRequest()` which doesn't exist in any released h3 version
+  Evidence: Not found in h3@2.0.1-rc.11 through rc.19
