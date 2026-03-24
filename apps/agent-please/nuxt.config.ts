@@ -1,7 +1,17 @@
 import process from 'node:process'
 
 export default defineNuxtConfig({
-  modules: ['@nuxt/ui', '@nuxt/eslint', '@vueuse/nuxt', '@nuxt/test-utils/module'],
+  modules: [
+    '@nuxt/ui',
+    '@nuxt/eslint',
+    '@vueuse/nuxt',
+    '@nuxt/test-utils/module',
+    ['@codecov/nuxt-plugin', {
+      enableBundleAnalysis: !!process.env.CODECOV_TOKEN,
+      bundleName: 'agent-please',
+      uploadToken: process.env.CODECOV_TOKEN,
+    }],
+  ],
 
   eslint: {
     config: {
