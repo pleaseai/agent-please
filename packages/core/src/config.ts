@@ -250,6 +250,13 @@ function buildAuthConfig(auth: Record<string, unknown>): AuthConfig {
       email: resolveEnvValue(stringValue(admin.email), process.env.AUTH_ADMIN_EMAIL),
       password: resolveEnvValue(stringValue(admin.password), process.env.AUTH_ADMIN_PASSWORD),
     },
+    base_url: resolveEnvValue(stringValue(auth.base_url), process.env.BETTER_AUTH_URL),
+    trusted_origins: Array.isArray(auth.trusted_origins)
+      ? auth.trusted_origins.flatMap((v) => {
+          const resolved = resolveEnvValue(stringValue(v), undefined)
+          return resolved ? [resolved] : []
+        })
+      : csvValue(resolveEnvValue(stringValue(auth.trusted_origins), undefined)) ?? [],
   }
 }
 

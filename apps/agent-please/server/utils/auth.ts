@@ -36,10 +36,15 @@ export function initAuth(authConfig: AuthConfig, dbPath: string, baseURL?: strin
     }
   }
 
+  const trustedOrigins = authConfig.trusted_origins.length > 0
+    ? authConfig.trusted_origins
+    : undefined
+
   _auth = betterAuth({
     baseURL: baseURL || 'http://localhost:3000',
     database: new Database(dbPath),
     secret: authConfig.secret ?? undefined,
+    trustedOrigins,
     emailAndPassword: {
       enabled: true,
     },
