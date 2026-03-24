@@ -1,0 +1,23 @@
+packages/core/src/tracker/github.ts
+  6f15bddb4691d714 397-406
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "6fd1c24246ceb6bd50f0276ff539488d0924330c",
+  "prompts": {
+    "6f15bddb4691d714": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3ad8ddda-c2c7-4035-bcc6-69820a274511",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Minsu Lee <amond@amond.net>",
+      "messages": [],
+      "total_additions": 10,
+      "total_deletions": 3,
+      "accepted_lines": 10,
+      "overriden_lines": 0
+    }
+  }
+}
