@@ -1719,4 +1719,36 @@ describe('buildConfig — auth', () => {
     const config = buildConfig(makeWorkflow({}))
     expect(config.auth.trusted_origins).toEqual([])
   })
+
+  it('resolves $VAR in trusted_origins array items', () => {
+    const prev = process.env.TEST_TRUSTED_ORIGIN
+    process.env.TEST_TRUSTED_ORIGIN = 'https://resolved.example.com'
+    try {
+      const config = buildConfig(makeWorkflow({
+        auth: { trusted_origins: ['$TEST_TRUSTED_ORIGIN', 'https://literal.example.com'] },
+      }))
+      expect(config.auth.trusted_origins).toEqual(['https://resolved.example.com', 'https://literal.example.com'])
+    }
+    finally {
+      if (prev !== undefined)
+        process.env.TEST_TRUSTED_ORIGIN = prev
+      else delete process.env.TEST_TRUSTED_ORIGIN
+    }
+  })
+
+  it('resolves $VAR in trusted_origins CSV string', () => {
+    const prev = process.env.TEST_ORIGINS_CSV
+    process.env.TEST_ORIGINS_CSV = 'https://a.example.com, https://b.example.com'
+    try {
+      const config = buildConfig(makeWorkflow({
+        auth: { trusted_origins: '$TEST_ORIGINS_CSV' },
+      }))
+      expect(config.auth.trusted_origins).toEqual(['https://a.example.com', 'https://b.example.com'])
+    }
+    finally {
+      if (prev !== undefined)
+        process.env.TEST_ORIGINS_CSV = prev
+      else delete process.env.TEST_ORIGINS_CSV
+    }
+  })
 })
