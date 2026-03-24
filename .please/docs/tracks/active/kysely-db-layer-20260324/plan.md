@@ -75,7 +75,7 @@ server/utils/auth.ts
   - Keep graceful degradation (null DB = no-op)
   - **Files**: `packages/core/src/db.ts`, `packages/core/src/types.ts`
 
-- [ ] T005: Update `db.test.ts` for Kysely (depends on T004)
+- [x] (2026-03-24 KST) T005: Update `db.test.ts` for Kysely (depends on T004)
   - Update all tests to use `Kysely<AppDatabase>` instead of `Client`
   - Keep same test scenarios and assertions
   - **Files**: `packages/core/src/db.test.ts`
@@ -92,7 +92,7 @@ server/utils/auth.ts
   - Update `/api/v1/runs` handler to work with new `queryRuns()` signature
   - **Files**: `packages/core/src/server.ts`
 
-- [ ] T008: Remove `@libsql/client` direct dependency from core (depends on T006, T007)
+- [x] (2026-03-24 KST) T008: Remove `@libsql/client` direct dependency from core (depends on T006, T007)
   - `@libsql/client` remains as transitive dep (via `@libsql/kysely-libsql`)
   - Remove direct import of `createClient` from `db.ts`
   - **Files**: `packages/core/package.json`
@@ -105,7 +105,7 @@ server/utils/auth.ts
   - Remove `import { Database } from 'bun:sqlite'`
   - **Files**: `apps/agent-please/server/utils/auth.ts`
 
-- [ ] T010: Update `03.auth.ts` plugin to pass Kysely instance (depends on T009)
+- [x] (2026-03-24 KST) T010: Update `03.auth.ts` plugin to pass Kysely instance (depends on T009)
   - Get Kysely instance from `orchestrator.getDb()`
   - Pass it to `initAuth(config.auth, kyselyDb)`
   - Remove `resolve(config.workspace.root, config.db.path)` dbPath construction
@@ -114,7 +114,7 @@ server/utils/auth.ts
 
 ### Phase 4: Cleanup & Verification
 
-- [ ] T011: Update barrel exports and types (depends on T008)
+- [x] (2026-03-24 KST) T011: Update barrel exports and types (depends on T008)
   - Update `packages/core/src/index.ts` to export new types
   - Ensure `Kysely<AppDatabase>` is accessible from app package
   - **Files**: `packages/core/src/index.ts`
