@@ -10,6 +10,7 @@ import {
   applyBranchPrefix,
   buildHookEnv,
   checkoutExistingBranch,
+  configureRemoteAuth,
   createWorkspace,
   ensureClaudeSettings,
   extractRepoUrl,
@@ -1051,5 +1052,117 @@ describe('createWorkspace uses checkoutExistingBranch for PRs', () => {
     const worktreeCall = calls.find(args => args.includes('worktree') && args.includes('add'))
     expect(worktreeCall).toBeDefined()
     expect(worktreeCall).toContain('-b')
+  })
+})
+
+describe('configureRemoteAuth', () => {
+  const wsPath = '/fake/worktree'
+  const token = 'ghs_abc123'
+
+  it('rewrites HTTPS remote URL with access token', () => {
+    const spy = spyOn(_git, 'spawnSync').mockImplementation((args: string[]) => {
+      if (args.includes('get-url')) {
+        return {
+          exitCode: 0,
+          success: true,
+          stdout: Buffer.from('https://github.com/owner/repo.git\n'),
+          stderr: Buffer.from(''),
+          signalCode: null,
+        } as unknown as import('./workspace').SpawnSyncResult
+      }
+      return {
+        exitCode: 0,
+        success: true,
+        stdout: Buffer.from(''),
+        stderr: Buffer.from(''),
+        signalCode: null,
+      } as unknown as import('./workspace').SpawnSyncResult
+    })
+
+    configureRemoteAuth(wsPath, token)
+
+    const calls = spy.mock.calls.map(args => args[0] as string[])
+    spy.mockRestore()
+
+    const setUrlCall = calls.find(args => args.includes('set-url'))
+    expect(setUrlCall).toBeDefined()
+    expect(setUrlCall).toContain(`https://x-access-token:${token}@github.com/owner/repo.git`)
+  })
+
+  it('handles URLs without .git suffix', () => {
+    const spy = spyOn(_git, 'spawnSync').mockImplementation((args: string[]) => {
+      if (args.includes('get-url')) {
+        return {
+          exitCode: 0,
+          success: true,
+          stdout: Buffer.from('https://github.com/owner/repo\n'),
+          stderr: Buffer.from(''),
+          signalCode: null,
+        } as unknown as import('./workspace').SpawnSyncResult
+      }
+      return {
+        exitCode: 0,
+        success: true,
+        stdout: Buffer.from(''),
+        stderr: Buffer.from(''),
+        signalCode: null,
+      } as unknown as import('./workspace').SpawnSyncResult
+    })
+
+    configureRemoteAuth(wsPath, token)
+
+    const calls = spy.mock.calls.map(args => args[0] as string[])
+    spy.mockRestore()
+
+    const setUrlCall = calls.find(args => args.includes('set-url'))
+    expect(setUrlCall).toBeDefined()
+    expect(setUrlCall).toContain(`https://x-access-token:${token}@github.com/owner/repo.git`)
+  })
+
+  it('is a no-op when get-url fails', () => {
+    const spy = spyOn(_git, 'spawnSync').mockReturnValue({
+      exitCode: 1,
+      success: false,
+      stdout: Buffer.from(''),
+      stderr: Buffer.from('error: No such remote'),
+      signalCode: null,
+    } as unknown as import('./workspace').SpawnSyncResult)
+
+    configureRemoteAuth(wsPath, token)
+
+    const calls = spy.mock.calls.map(args => args[0] as string[])
+    spy.mockRestore()
+
+    const setUrlCall = calls.find(args => args.includes('set-url'))
+    expect(setUrlCall).toBeUndefined()
+  })
+
+  it('is a no-op when remote URL is not a GitHub HTTPS URL', () => {
+    const spy = spyOn(_git, 'spawnSync').mockImplementation((args: string[]) => {
+      if (args.includes('get-url')) {
+        return {
+          exitCode: 0,
+          success: true,
+          stdout: Buffer.from('git@github.com:owner/repo.git\n'),
+          stderr: Buffer.from(''),
+          signalCode: null,
+        } as unknown as import('./workspace').SpawnSyncResult
+      }
+      return {
+        exitCode: 0,
+        success: true,
+        stdout: Buffer.from(''),
+        stderr: Buffer.from(''),
+        signalCode: null,
+      } as unknown as import('./workspace').SpawnSyncResult
+    })
+
+    configureRemoteAuth(wsPath, token)
+
+    const calls = spy.mock.calls.map(args => args[0] as string[])
+    spy.mockRestore()
+
+    const setUrlCall = calls.find(args => args.includes('set-url'))
+    expect(setUrlCall).toBeUndefined()
   })
 })

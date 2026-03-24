@@ -115,6 +115,7 @@ export {
   _git,
   buildHookEnv,
   checkoutExistingBranch,
+  configureRemoteAuth,
   createWorktree,
   ensureClaudeSettings,
   ensureSharedClone,
