@@ -43,6 +43,7 @@
         "@antfu/eslint-config": "^7.7.0",
         "@codecov/nuxt-plugin": "^1.9.1",
         "@iconify-json/lucide": "^1.2.98",
+        "@libsql/kysely-libsql": "^0.4.1",
         "@nuxt/eslint": "^1.15.2",
         "@nuxt/test-utils": "^4.0.0",
         "@types/js-yaml": "^4.0.9",
