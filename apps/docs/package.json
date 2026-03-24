@@ -1,0 +1,23 @@
+{
+  "name": "@pleaseai/docs",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "nuxt dev --extends docus",
+    "build": "nuxt build --extends docus",
+    "generate": "nuxt generate --extends docus",
+    "preview": "nuxt preview --extends docus",
+    "check": "nuxt typecheck",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "prepare": "nuxt prepare --extends docus"
+  },
+  "dependencies": {
+    "docus": "latest",
+    "better-sqlite3": "^12.2.0",
+    "nuxt": "^4.4.2"
+  },
+  "devDependencies": {
+    "@nuxt/eslint": "^1.4.1"
+  }
+}
