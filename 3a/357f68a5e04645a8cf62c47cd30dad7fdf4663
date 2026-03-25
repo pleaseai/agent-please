@@ -1,0 +1,23 @@
+.claude/agent-memory/review-review-security-reviewer/MEMORY.md
+  a449cedc59cf596a 89-94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "3a357f68a5e04645a8cf62c47cd30dad7fdf4663",
+  "prompts": {
+    "a449cedc59cf596a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a72a98d7-ff43-41df-8c04-d967662b7425",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Minsu Lee <amond@amond.net>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 6,
+      "overriden_lines": 0
+    }
+  }
+}
