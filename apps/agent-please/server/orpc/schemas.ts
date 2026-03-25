@@ -135,7 +135,7 @@ export const projectsResponseSchema = z.object({
 })
 
 export const projectBoardInputSchema = z.object({
-  id: z.number().nonnegative(),
+  id: z.number().int().nonnegative(),
 })
 
 export const boardIssueSchema = z.object({
