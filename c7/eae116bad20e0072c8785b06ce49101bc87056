@@ -1,0 +1,43 @@
+apps/agent-please/app/components/BoardColumn.vue
+  27418102d8800b91 1-42
+apps/agent-please/server/orpc/schemas.ts
+  27418102d8800b91 121-165
+apps/agent-please/app/composables/useProjects.ts
+  27418102d8800b91 1-17
+apps/agent-please/app/pages/projects/index.vue
+  27418102d8800b91 1-80
+apps/agent-please/server/orpc/router.ts
+  27418102d8800b91 1,3,6-7,10-11,225-295,297-343,358-361
+apps/agent-please/app/layouts/dashboard.vue
+  27418102d8800b91 5-15
+apps/agent-please/app/pages/index.vue
+  27418102d8800b91 8,102-126
+apps/agent-please/app/pages/projects/[id].vue
+  27418102d8800b91 1-65
+apps/agent-please/app/composables/useProjectBoard.ts
+  27418102d8800b91 1-20
+.please/docs/tracks/active/project-board-view-20260325/plan.md
+  27418102d8800b91 41,43-45,49-50,54-55,59-62,68-69,77-78,84,140-143
+apps/agent-please/app/components/IssueCard.vue
+  27418102d8800b91 1-75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.19",
+  "base_commit_sha": "c7eae116bad20e0072c8785b06ce49101bc87056",
+  "prompts": {
+    "27418102d8800b91": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "398f1848-d9b1-4660-ae44-5c1bc95071ce",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Minsu Lee <amond@amond.net>",
+      "messages": [],
+      "total_additions": 533,
+      "total_deletions": 29,
+      "accepted_lines": 531,
+      "overriden_lines": 1
+    }
+  }
+}
