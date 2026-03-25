@@ -27,7 +27,7 @@ const priorityColor = computed(() => {
 
 <template>
   <NuxtLink
-    :to="url ? undefined : `/issues/${encodeURIComponent(issue.identifier)}`"
+    :to="issue.url ? undefined : `/issues/${encodeURIComponent(issue.identifier)}`"
     :href="issue.url ?? undefined"
     :target="issue.url ? '_blank' : undefined"
     class="block"
