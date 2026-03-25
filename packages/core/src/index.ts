@@ -45,13 +45,13 @@ export { createLogger, isVerbose, setVerbose } from './logger'
 
 // Orchestrator
 export { buildTokenProvider, getLinkedPrUpdateMs, isWatchedUnchanged, Orchestrator } from './orchestrator'
-// Relay Transport
-export { RelayTransport } from './relay-transport'
-
 // Prompt Builder
 export { buildContinuationPrompt, buildPrompt, isPromptBuildError } from './prompt-builder'
 
 export type { PromptBuildError } from './prompt-builder'
+
+// Relay Transport
+export { RelayTransport } from './relay-transport'
 
 // Server
 export { HttpServer } from './server'

@@ -38,7 +38,7 @@ export class RelayTransport {
       query,
     })
 
-    this.socket.addEventListener('message', (event) => {
+    this.socket.addEventListener('message', (_event) => {
       log.info(`received relay event for room=${this.room}`)
       this.triggerRefresh()
     })
