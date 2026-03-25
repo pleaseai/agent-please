@@ -141,3 +141,24 @@ Alternative considered: WebSocket for real-time updates. Rejected because SSE is
 - Decision: Use oRPC procedures instead of Nitro REST routes
   Rationale: The codebase has already migrated to oRPC + TanStack Query (orpc-tanstack-migration track). New endpoints should follow the established oRPC pattern with Zod schemas, authed middleware, and eventIterator for SSE
   Date/Author: 2026-03-25 / Claude
+
+## Outcomes & Retrospective
+
+### What Was Shipped
+- Kanban board view for GitHub Projects v2 with real-time SSE updates
+- oRPC procedures (projects.list, projects.board, projects.live) with Zod schemas
+- Two new pages (/projects, /projects/[id]) with composables and components
+- Dashboard sidebar navigation and home page quick-links
+
+### What Went Well
+- Codebase exploration identified the oRPC migration early, avoiding a plan rewrite later
+- Existing patterns (oRPC, TanStack Query, UDashboardPanel) made implementation straightforward
+- Spec compliance check caught a real bug (IssueCard navigation variable reference)
+
+### What Could Improve
+- Plan was initially written for REST routes before discovering the oRPC migration — exploring the codebase before planning would have saved a revision
+- No automated tests were written — should be added in a follow-up
+
+### Tech Debt Created
+- No automated tests for new oRPC procedures, composables, or components
+- Assignee avatars show initials only — core Issue type stores assignees as string[] without avatar URLs
