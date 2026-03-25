@@ -1,0 +1,20 @@
+{
+  "name": "@pleaseai/relay-worker",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Cloudflare Worker relay for Agent Please webhook events",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "partyserver": "^0.0.66"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250313.0",
+    "typescript": "^5.7.0",
+    "wrangler": "^4.14.0"
+  }
+}
