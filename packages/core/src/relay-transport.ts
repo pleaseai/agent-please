@@ -4,12 +4,22 @@ import { createLogger } from './logger'
 
 const log = createLogger('relay')
 
+const MAX_SEEN_EVENT_IDS = 100
+
+interface RelayEnvelope {
+  type: string
+  event_id?: string
+  event?: string
+  action?: string | null
+}
+
 export class RelayTransport {
   private socket: PartySocket | null = null
   private readonly url: string
   private readonly room: string
   private readonly token: string | null
   private readonly triggerRefresh: () => void
+  private readonly seenEventIds = new Set<string>()
 
   constructor(config: RelayConfig, triggerRefresh: () => void) {
     if (!config.url)
@@ -38,9 +48,8 @@ export class RelayTransport {
       query,
     })
 
-    this.socket.addEventListener('message', (_event) => {
-      log.info(`received relay event for room=${this.room}`)
-      this.triggerRefresh()
+    this.socket.addEventListener('message', (event) => {
+      this.handleMessage(event.data)
     })
 
     this.socket.addEventListener('open', () => {
@@ -51,8 +60,8 @@ export class RelayTransport {
       log.warn(`relay connection closed — partysocket will auto-reconnect`)
     })
 
-    this.socket.addEventListener('error', (event) => {
-      log.error(`relay connection error:`, event)
+    this.socket.addEventListener('error', (err) => {
+      log.error(`relay connection error:`, err)
     })
   }
 
@@ -66,5 +75,35 @@ export class RelayTransport {
 
   isConnected(): boolean {
     return this.socket !== null && this.socket.readyState === WebSocket.OPEN
+  }
+
+  private handleMessage(data: unknown): void {
+    let envelope: RelayEnvelope
+    try {
+      envelope = JSON.parse(typeof data === 'string' ? data : String(data))
+    }
+    catch {
+      log.warn('failed to parse relay message — triggering refresh anyway')
+      this.triggerRefresh()
+      return
+    }
+
+    // Deduplicate by event_id to prevent duplicate processing after reconnect
+    if (envelope.event_id) {
+      if (this.seenEventIds.has(envelope.event_id)) {
+        log.info(`skipping duplicate event_id=${envelope.event_id}`)
+        return
+      }
+      this.seenEventIds.add(envelope.event_id)
+      // Evict oldest entries when cache exceeds limit
+      if (this.seenEventIds.size > MAX_SEEN_EVENT_IDS) {
+        const first = this.seenEventIds.values().next().value
+        if (first)
+          this.seenEventIds.delete(first)
+      }
+    }
+
+    log.info(`received relay event for room=${this.room} event_id=${envelope.event_id ?? 'none'}`)
+    this.triggerRefresh()
   }
 }

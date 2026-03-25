@@ -2,9 +2,14 @@ import type { RelayConfig } from './types'
 import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test'
 import { RelayTransport } from './relay-transport'
 
-// Mock partysocket - we test the transport logic, not the WebSocket library
+// Capture message handlers so we can simulate incoming messages
+let messageHandlers: Array<(event: { data: string }) => void> = []
+
 const mockSocket = {
-  addEventListener: mock(() => {}),
+  addEventListener: mock((event: string, handler: (...args: any[]) => void) => {
+    if (event === 'message')
+      messageHandlers.push(handler as (event: { data: string }) => void)
+  }),
   removeEventListener: mock(() => {}),
   close: mock(() => {}),
   readyState: 1, // OPEN
@@ -26,6 +31,7 @@ describe('RelayTransport', () => {
       secret: null,
     }
     triggerRefresh = mock(() => {})
+    messageHandlers = []
     mockSocket.addEventListener.mockClear()
     mockSocket.close.mockClear()
   })
@@ -65,5 +71,39 @@ describe('RelayTransport', () => {
   it('isConnected returns false before connect', () => {
     const transport = new RelayTransport(config, triggerRefresh)
     expect(transport.isConnected()).toBe(false)
+  })
+
+  it('calls triggerRefresh on message with event_id', () => {
+    const transport = new RelayTransport(config, triggerRefresh)
+    transport.connect()
+    expect(messageHandlers.length).toBeGreaterThan(0)
+    messageHandlers[0]({ data: JSON.stringify({ type: 'webhook_event', event_id: 'abc-123' }) })
+    expect(triggerRefresh).toHaveBeenCalledTimes(1)
+  })
+
+  it('deduplicates events with same event_id', () => {
+    const transport = new RelayTransport(config, triggerRefresh)
+    transport.connect()
+    const envelope = JSON.stringify({ type: 'webhook_event', event_id: 'dup-001' })
+    messageHandlers[0]({ data: envelope })
+    messageHandlers[0]({ data: envelope })
+    messageHandlers[0]({ data: envelope })
+    expect(triggerRefresh).toHaveBeenCalledTimes(1)
+  })
+
+  it('processes events without event_id (no dedup)', () => {
+    const transport = new RelayTransport(config, triggerRefresh)
+    transport.connect()
+    const envelope = JSON.stringify({ type: 'webhook_event' })
+    messageHandlers[0]({ data: envelope })
+    messageHandlers[0]({ data: envelope })
+    expect(triggerRefresh).toHaveBeenCalledTimes(2)
+  })
+
+  it('handles unparseable message gracefully', () => {
+    const transport = new RelayTransport(config, triggerRefresh)
+    transport.connect()
+    messageHandlers[0]({ data: 'not json' })
+    expect(triggerRefresh).toHaveBeenCalledTimes(1)
   })
 })

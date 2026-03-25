@@ -23,11 +23,11 @@ export default {
       }
 
       const stub = getServerByName(env.RelayParty, room)
-      return stub.fetch(request)
+      return (await stub).fetch(request)
     }
 
     // WebSocket connections: /parties/relay-party/:room
-    const partyResponse = await routePartykitRequest(request, env)
+    const partyResponse = await routePartykitRequest(request, env as Record<string, unknown>)
     if (partyResponse)
       return partyResponse
 

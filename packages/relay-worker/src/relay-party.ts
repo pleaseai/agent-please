@@ -64,6 +64,7 @@ export class RelayParty extends Server<Env> {
 
     const envelope = JSON.stringify({
       type: 'webhook_event',
+      event_id: crypto.randomUUID(),
       event,
       action,
       received_at: new Date().toISOString(),

@@ -368,6 +368,8 @@ export type ValidationError
     | { code: 'incomplete_platform_app_config', platform: string, missing: string[] }
     | { code: 'missing_github_project_config' }
     | { code: 'missing_asana_project_config' }
+    | { code: 'missing_relay_url' }
+    | { code: 'missing_relay_room' }
 
 export function validateConfig(config: ServiceConfig): ValidationError | null {
   if (config.projects.length === 0)
