@@ -39,6 +39,7 @@ function makeGithubConfig(labelPrefix: string | null): ServiceConfig {
     env: {},
     db: { path: '.agent-please/agent_runs.db', turso_url: null, turso_auth_token: null },
     state: { adapter: 'memory' as const, url: null, key_prefix: 'chat-sdk', on_lock_conflict: 'drop' as const },
+    relay: { url: null, token: null, room: null, secret: null },
     server: { port: null, webhook: { secret: null, events: null } },
   }
 }
@@ -58,6 +59,7 @@ function makeAsanaConfig(): ServiceConfig {
     env: {},
     db: { path: '.agent-please/agent_runs.db', turso_url: null, turso_auth_token: null },
     state: { adapter: 'memory' as const, url: null, key_prefix: 'chat-sdk', on_lock_conflict: 'drop' as const },
+    relay: { url: null, token: null, room: null, secret: null },
     server: { port: null, webhook: { secret: null, events: null } },
   }
 }
