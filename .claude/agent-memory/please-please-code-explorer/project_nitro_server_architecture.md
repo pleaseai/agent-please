@@ -20,11 +20,25 @@ Nuxt 4 app with Nitro preset `bun`. Server layer is entirely in `apps/agent-plea
 
 **API route structure:**
 - `server/api/auth/[...all].ts` — catch-all for better-auth; calls `auth.handler(toWebRequest(event))`
-- `server/api/v1/state.get.ts` — returns orchestrator state snapshot
-- `server/api/v1/[identifier].get.ts` — per-issue state
-- `server/api/v1/refresh.post.ts` — trigger poll refresh
-- `server/api/v1/sessions/[sessionId]/messages.get.ts` — agent session messages
+- `server/api/v1/state.get.ts` — returns orchestrator state snapshot (no auth param, only reads `getState()`)
+- `server/api/v1/[identifier].get.ts` — per-issue state; calls both `getState()` and `getConfig()`; uses `workspacePath()` from core
+- `server/api/v1/refresh.post.ts` — calls `orchestrator.triggerRefresh()`, returns 202
+- `server/api/v1/sessions/[sessionId]/messages.get.ts` — reads `config.workspace.root`, calls `fetchSessionMessages()` from core
 - `server/api/webhooks/{github,slack,asana}.post.ts` — webhook endpoints (auth-exempt)
+
+**API route pattern (consistent across all v1 routes):**
+1. `const orchestrator = useOrchestrator(event)` — retrieves singleton from nitroApp
+2. `orchestrator.getState()` and/or `orchestrator.getConfig()` — no direct DB access from routes
+3. Route params via `getRouterParam(event, 'param')`, query via `getQuery(event)`
+4. Helper functions extract/shape data; routes return plain objects (no Response wrappers)
+5. Errors via `throw createError({ statusCode, statusMessage })`
+
+**Orchestrator public API (used by routes):**
+- `getState(): OrchestratorState` — in-memory Maps/Sets for running, retry_attempts, claimed, completed
+- `getConfig(): ServiceConfig` — full parsed config including workspace.root
+- `getWorkflow(): WorkflowDefinition`
+- `getDb(): Kysely<AppDatabase> | null`
+- `triggerRefresh(): void` — reschedules tick immediately (delay=0)
 
 **Frontend auth:**
 - `app/lib/auth-client.ts` — `createAuthClient` from `better-auth/vue` with `adminClient` + `usernameClient` plugins
