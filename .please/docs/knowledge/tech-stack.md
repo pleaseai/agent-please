@@ -62,6 +62,8 @@
 | `@orpc/zod` | Zod schema converter for oRPC OpenAPI generation |
 | `@tanstack/vue-query` | Async state management with caching, refetching, and SSE support |
 | consola | Structured logging |
+| `partysocket` | Auto-reconnecting WebSocket client for cloud relay transport |
+| `partyserver` | Cloudflare Workers + Durable Objects server framework for relay worker |
 
 ## Infrastructure
 
@@ -84,6 +86,7 @@ agent-please/                      # Monorepo root
 │   ├── content/                  # Markdown documentation pages
 │   └── nuxt.config.ts            # Docus layer configuration
 ├── packages/core/                # @pleaseai/agent-core (orchestrator business logic)
+├── packages/relay-worker/        # @pleaseai/relay-worker (Cloudflare Worker cloud relay)
 └── vendor/symphony/              # Upstream reference spec (read-only)
 ```
 
