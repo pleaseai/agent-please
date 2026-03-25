@@ -28,13 +28,13 @@ Extract into two sibling packages under `packages/`. Each package uses `consola`
 
 ## Tasks
 
-- [ ] T001 [P] Scaffold `@pleaseai/relay-client` package (file: packages/relay-client/package.json)
-- [ ] T002 [P] Scaffold `@pleaseai/relay-server` package (file: packages/relay-server/package.json)
-- [ ] T003 Move RelayTransport and types to relay-client (file: packages/relay-client/src/index.ts, depends on T001)
-- [ ] T004 Move RelayParty and verification logic to relay-server (file: packages/relay-server/src/index.ts, depends on T002)
-- [ ] T005 Update core to import from relay-client and re-export (file: packages/core/src/relay-transport.ts, depends on T003)
-- [ ] T006 Update relay-worker to import from relay-server (file: apps/relay-worker/src/index.ts, depends on T004)
-- [ ] T007 Run full workspace verification (depends on T005, T006)
+- [x] T001 [P] Scaffold `@pleaseai/relay-client` package (file: packages/relay-client/package.json)
+- [x] T002 [P] Scaffold `@pleaseai/relay-server` package (file: packages/relay-server/package.json)
+- [x] T003 Move RelayTransport and types to relay-client (file: packages/relay-client/src/index.ts, depends on T001)
+- [x] T004 Move RelayParty and verification logic to relay-server (file: packages/relay-server/src/index.ts, depends on T002)
+- [x] T005 Update core to import from relay-client and re-export (file: packages/core/src/relay-transport.ts, depends on T003)
+- [x] T006 Update relay-worker to import from relay-server (file: apps/relay-worker/src/index.ts, depends on T004)
+- [x] T007 Run full workspace verification (depends on T005, T006)
 
 ## Key Files
 
