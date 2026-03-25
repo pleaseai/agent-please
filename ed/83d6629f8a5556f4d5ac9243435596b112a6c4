@@ -1,0 +1,25 @@
+.please/docs/research/md/007-webhook-websocket-relay-npm-naming.md
+  524f76086ce1a102 1-128
+.please/docs/research/index.md
+  524f76086ce1a102 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.19",
+  "base_commit_sha": "ed83d6629f8a5556f4d5ac9243435596b112a6c4",
+  "prompts": {
+    "524f76086ce1a102": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f276d595-8e93-40fe-877f-58a419140911",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Minsu Lee <amond@amond.net>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 129,
+      "overriden_lines": 0
+    }
+  }
+}
