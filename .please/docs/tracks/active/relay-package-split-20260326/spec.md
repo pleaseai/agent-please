@@ -36,7 +36,7 @@ Extract the relay transport client from `@pleaseai/agent-core` and the relay ser
 
 ## Success Criteria
 
-- [ ] SC-1: `@pleaseai/relay-client` is a standalone package with `partysocket` as its only runtime dependency
+- [ ] SC-1: `@pleaseai/relay-client` is a standalone package with `partysocket` and `consola` as its only runtime dependencies
 - [ ] SC-2: `@pleaseai/relay-server` is a standalone package with `partyserver` as its only runtime dependency
 - [ ] SC-3: Existing imports from `@pleaseai/agent-core` (`RelayTransport`, `RelayConfig`) continue to work via re-exports
 - [ ] SC-4: `apps/relay-worker` uses `@pleaseai/relay-server` and deploys successfully
