@@ -1,0 +1,31 @@
+apps/agent-please/app/components/BoardColumn.vue
+  27418102d8800b91 2-3,6
+apps/agent-please/app/types/board.ts
+  27418102d8800b91 1-10
+.please/docs/tracks/active/project-board-view-20260325/spec.md
+  27418102d8800b91 14
+apps/agent-please/app/pages/projects/index.vue
+  27418102d8800b91 52,61
+apps/agent-please/app/components/IssueCard.vue
+  27418102d8800b91 2-3,5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.19",
+  "base_commit_sha": "0aca6a17c9a2b952b038729fe1a191a5a99fd9fc",
+  "prompts": {
+    "27418102d8800b91": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "398f1848-d9b1-4660-ae44-5c1bc95071ce",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Minsu Lee <amond@amond.net>",
+      "messages": [],
+      "total_additions": 19,
+      "total_deletions": 23,
+      "accepted_lines": 19,
+      "overriden_lines": 0
+    }
+  }
+}
