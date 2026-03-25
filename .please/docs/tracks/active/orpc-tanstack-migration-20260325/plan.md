@@ -147,3 +147,26 @@ Rationale: oRPC's Nuxt playground demonstrates this exact pattern. No custom ada
 - Decision: Use `EventPublisher` (not `MemoryPublisher`) for orchestrator state broadcasting
   Rationale: `EventPublisher` is lightweight with synchronous publishing, sufficient for single-process dashboard. `MemoryPublisher` adds resume support we don't need.
   Date/Author: 2026-03-25 / Claude
+
+## Outcomes & Retrospective
+
+### What Was Shipped
+- oRPC router with 5 typed procedures replacing 4 REST endpoints + 1 new SSE live stream
+- TanStack Query integration with SSR-optimized split plugins
+- End-to-end type safety from Zod schemas to Vue composables (zero codegen)
+- SSE-based real-time orchestrator state via experimental_liveOptions
+
+### What Went Well
+- oRPC's Nuxt playground provided an exact reference for the H3 adapter pattern
+- Package name research caught the `@orpc/vue-query` → `@orpc/tanstack-query` rename before implementation
+- Zero type errors throughout — TypeScript inference works seamlessly
+
+### What Could Improve
+- Should have researched oRPC's Nuxt adapter before comparing Pinia Colada (no @orpc/h3 exists)
+- EventPublisher integration requires core Orchestrator changes — should have identified this dependency earlier
+- sessions.events SSE not implemented (no event source in core)
+
+### Tech Debt Created
+- `orchestrator.live` uses interval-based yielding (3s) instead of EventPublisher-driven push — requires Orchestrator event emitter
+- `sessions.events` procedure not implemented — requires core per-session event emission
+- No automated tests for oRPC procedures or composables
