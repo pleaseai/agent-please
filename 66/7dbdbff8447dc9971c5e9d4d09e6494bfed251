@@ -1,0 +1,25 @@
+release-please-config.json
+  d076f0a8d67bf161 18-29
+.release-please-manifest.json
+  d076f0a8d67bf161 4-5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.19",
+  "base_commit_sha": "667dbdbff8447dc9971c5e9d4d09e6494bfed251",
+  "prompts": {
+    "d076f0a8d67bf161": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8d70ed17-6833-411f-84da-f039de6d1daa",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Minsu Lee <amond@amond.net>",
+      "messages": [],
+      "total_additions": 14,
+      "total_deletions": 0,
+      "accepted_lines": 14,
+      "overriden_lines": 0
+    }
+  }
+}
