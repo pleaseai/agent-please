@@ -1,0 +1,53 @@
+apps/relay-worker/src/index.ts
+  524f76086ce1a102 1,4
+packages/relay-client/src/relay-transport.ts
+  524f76086ce1a102 1-101
+packages/relay-client/src/index.ts
+  524f76086ce1a102 1-2
+apps/relay-worker/package.json
+  524f76086ce1a102 13
+packages/relay-client/tsconfig.json
+  524f76086ce1a102 1-9
+packages/relay-server/tsconfig.json
+  524f76086ce1a102 1-13
+packages/relay-server/src/relay-party.ts
+  524f76086ce1a102 1-110
+packages/relay-server/package.json
+  524f76086ce1a102 1-35
+packages/relay-client/package.json
+  524f76086ce1a102 1-38
+packages/relay-server/src/index.ts
+  524f76086ce1a102 1-2
+packages/relay-client/src/relay-transport.test.ts
+  524f76086ce1a102 1-109
+packages/core/src/types.ts
+  524f76086ce1a102 1,117
+packages/relay-client/src/types.ts
+  524f76086ce1a102 1-13
+packages/core/src/relay-transport.ts
+  524f76086ce1a102 1-2
+packages/core/src/orchestrator.ts
+  524f76086ce1a102 17
+packages/core/package.json
+  524f76086ce1a102 58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.19",
+  "base_commit_sha": "0987c3f85873d172a4f1fc5ef63d5cb81047babf",
+  "prompts": {
+    "524f76086ce1a102": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f276d595-8e93-40fe-877f-58a419140911",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Minsu Lee <amond@amond.net>",
+      "messages": [],
+      "total_additions": 446,
+      "total_deletions": 123,
+      "accepted_lines": 570,
+      "overriden_lines": 0
+    }
+  }
+}
