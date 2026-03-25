@@ -1,0 +1,25 @@
+.please/docs/tracks/active/project-board-view-20260325/plan.md
+  27418102d8800b91 144-164
+.please/docs/tracks/active/project-board-view-20260325/metadata.json
+  27418102d8800b91 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.19",
+  "base_commit_sha": "7fae1ff0706a1746166a106529f56144faab0ac2",
+  "prompts": {
+    "27418102d8800b91": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "398f1848-d9b1-4660-ae44-5c1bc95071ce",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Minsu Lee <amond@amond.net>",
+      "messages": [],
+      "total_additions": 22,
+      "total_deletions": 1,
+      "accepted_lines": 22,
+      "overriden_lines": 0
+    }
+  }
+}
