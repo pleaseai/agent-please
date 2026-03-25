@@ -23,6 +23,7 @@ Engineering teams running autonomous coding agents at scale. Teams that need to 
 - **Multi-platform chat integration** — GitHub issue comment bot, Slack bot, and Asana task comment bot via Chat SDK adapters. Respond to @mentions with agent status.
 - **Minimal tracker writes** — The orchestrator applies only status labels. All state transitions, PR creation, and comments are performed by the agent itself.
 - **Dashboard & observability** — Nuxt-based HTTP dashboard with real-time orchestrator state, per-issue detail, and session history (libsql/Turso storage).
+- **Cloud relay transport** — Optional Cloudflare Workers + PartyServer relay for webhook event delivery over WebSocket. Enables operation behind NAT/firewalls without public endpoints.
 
 ## Near-Term Goals
 

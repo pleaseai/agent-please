@@ -1,4 +1,4 @@
-import type { AuthConfig, AuthorAssociation, ChannelConfig, ClaudeEffort, CommitSigningConfig, CommitSigningMode, DbConfig, IssueFilter, PlatformConfig, PollingMode, ProjectConfig, SandboxConfig, ServiceConfig, SettingSource, StateAdapterKind, StateConfig, SystemPromptConfig, WorkflowDefinition } from './types'
+import type { AuthConfig, AuthorAssociation, ChannelConfig, ClaudeEffort, CommitSigningConfig, CommitSigningMode, DbConfig, IssueFilter, PlatformConfig, PollingMode, ProjectConfig, RelayConfig, SandboxConfig, ServiceConfig, SettingSource, StateAdapterKind, StateConfig, SystemPromptConfig, WorkflowDefinition } from './types'
 import { tmpdir } from 'node:os'
 import { join, sep } from 'node:path'
 import process from 'node:process'
@@ -48,6 +48,7 @@ export function buildConfig(workflow: WorkflowDefinition): ServiceConfig {
   const state = sectionMap(raw, 'state')
   const server = sectionMap(raw, 'server')
 
+  const relay = sectionMap(raw, 'relay')
   const commitSigning = sectionMap(raw, 'commit_signing')
   const platforms = buildPlatformsConfig(raw)
 
@@ -82,6 +83,7 @@ export function buildConfig(workflow: WorkflowDefinition): ServiceConfig {
     env: buildEnvConfig(raw),
     db: buildDbConfig(db),
     state: buildStateConfig(state),
+    relay: buildRelayConfig(relay),
     server: {
       port: nonNegIntOrNull(server.port),
       webhook: buildWebhookConfig(sectionMap(server, 'webhook')),
@@ -335,6 +337,15 @@ function buildClaudeConfig(claude: Record<string, unknown>): ServiceConfig['clau
   }
 }
 
+function buildRelayConfig(relay: Record<string, unknown>): RelayConfig {
+  return {
+    url: resolveEnvValue(stringValue(relay.url), undefined),
+    token: resolveEnvValue(stringValue(relay.token), process.env.RELAY_TOKEN),
+    room: resolveEnvValue(stringValue(relay.room), undefined),
+    secret: resolveEnvValue(stringValue(relay.secret), process.env.RELAY_SECRET),
+  }
+}
+
 function buildWebhookConfig(webhook: Record<string, unknown>): ServiceConfig['server']['webhook'] {
   return {
     secret: resolveEnvValue(stringValue(webhook.secret), process.env.WEBHOOK_SECRET),
@@ -357,6 +368,8 @@ export type ValidationError
     | { code: 'incomplete_platform_app_config', platform: string, missing: string[] }
     | { code: 'missing_github_project_config' }
     | { code: 'missing_asana_project_config' }
+    | { code: 'missing_relay_url' }
+    | { code: 'missing_relay_room' }
 
 export function validateConfig(config: ServiceConfig): ValidationError | null {
   if (config.projects.length === 0)
@@ -410,6 +423,14 @@ export function validateConfig(config: ServiceConfig): ValidationError | null {
 
   if (!config.claude.command.trim())
     return { code: 'missing_claude_command' }
+
+  // Validate relay config when mode is relay
+  if (config.polling.mode === 'relay') {
+    if (!config.relay.url)
+      return { code: 'missing_relay_url' }
+    if (!config.relay.room)
+      return { code: 'missing_relay_room' }
+  }
 
   return null
 }
@@ -674,7 +695,11 @@ function effortValue(val: unknown, fallback: ClaudeEffort): ClaudeEffort {
 
 function pollingModeValue(val: unknown): PollingMode {
   const s = typeof val === 'string' ? val.trim().toLowerCase() : ''
-  return s === 'webhook' ? 'webhook' : 'poll'
+  if (s === 'webhook')
+    return 'webhook'
+  if (s === 'relay')
+    return 'relay'
+  return 'poll'
 }
 
 function commandValue(val: unknown): string | null {

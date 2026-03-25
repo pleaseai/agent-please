@@ -50,6 +50,9 @@ export { buildContinuationPrompt, buildPrompt, isPromptBuildError } from './prom
 
 export type { PromptBuildError } from './prompt-builder'
 
+// Relay Transport
+export { RelayTransport } from './relay-transport'
+
 // Server
 export { HttpServer } from './server'
 // Session Renderer
@@ -92,6 +95,7 @@ export type {
   PollingMode,
   ProjectConfig,
   ProjectItemContext,
+  RelayConfig,
   RetryEntry,
   RunningEntry,
   SandboxConfig,

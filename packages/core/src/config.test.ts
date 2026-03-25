@@ -119,6 +119,42 @@ describe('buildConfig', () => {
     expect(config.polling.mode).toBe('webhook')
   })
 
+  it('parses polling.mode "relay"', () => {
+    const config = buildConfig(makeWorkflow({ polling: { mode: 'relay' } }))
+    expect(config.polling.mode).toBe('relay')
+  })
+
+  it('parses relay config from YAML', () => {
+    const config = buildConfig(makeWorkflow({
+      relay: {
+        url: 'https://my-relay.workers.dev',
+        token: '$TEST_RELAY_TOKEN_PARSE',
+        room: 'my-project',
+        secret: 'webhook-secret',
+      },
+    }))
+    expect(config.relay.url).toBe('https://my-relay.workers.dev')
+    expect(config.relay.room).toBe('my-project')
+    expect(config.relay.secret).toBe('webhook-secret')
+  })
+
+  it('defaults relay config to all nulls', () => {
+    const config = buildConfig(makeWorkflow({}))
+    expect(config.relay.url).toBeNull()
+    expect(config.relay.token).toBeNull()
+    expect(config.relay.room).toBeNull()
+    expect(config.relay.secret).toBeNull()
+  })
+
+  it('resolves $ENV_VAR in relay.token', () => {
+    process.env.TEST_RELAY_TOKEN = 'resolved-token'
+    const config = buildConfig(makeWorkflow({
+      relay: { token: '$TEST_RELAY_TOKEN' },
+    }))
+    expect(config.relay.token).toBe('resolved-token')
+    delete process.env.TEST_RELAY_TOKEN
+  })
+
   it('parses string integer for polling interval', () => {
     const config = buildConfig(makeWorkflow({ polling: { interval_ms: '60000' } }))
     expect(config.polling.interval_ms).toBe(60_000)
@@ -607,6 +643,44 @@ describe('validateConfig', () => {
       platforms: { asana: { api_key: 'tok' } },
       projects: [{ platform: 'asana', project_gid: 'gid' }],
       polling: { mode: 'webhook' },
+    }))
+    expect(validateConfig(config)).toBeNull()
+  })
+
+  it('returns missing_relay_url when relay mode has no url', () => {
+    const config = buildConfig(makeWorkflow({
+      platforms: { asana: { api_key: 'tok' } },
+      projects: [{ platform: 'asana', project_gid: 'gid' }],
+      polling: { mode: 'relay' },
+    }))
+    expect(validateConfig(config)?.code).toBe('missing_relay_url')
+  })
+
+  it('returns missing_relay_room when relay mode has url but no room', () => {
+    const config = buildConfig(makeWorkflow({
+      platforms: { asana: { api_key: 'tok' } },
+      projects: [{ platform: 'asana', project_gid: 'gid' }],
+      polling: { mode: 'relay' },
+      relay: { url: 'https://relay.example.com' },
+    }))
+    expect(validateConfig(config)?.code).toBe('missing_relay_room')
+  })
+
+  it('returns null for valid relay mode config', () => {
+    const config = buildConfig(makeWorkflow({
+      platforms: { asana: { api_key: 'tok' } },
+      projects: [{ platform: 'asana', project_gid: 'gid' }],
+      polling: { mode: 'relay' },
+      relay: { url: 'https://relay.example.com', room: 'my-project' },
+    }))
+    expect(validateConfig(config)).toBeNull()
+  })
+
+  it('accepts poll/webhook modes without relay config', () => {
+    const config = buildConfig(makeWorkflow({
+      platforms: { asana: { api_key: 'tok' } },
+      projects: [{ platform: 'asana', project_gid: 'gid' }],
+      polling: { mode: 'poll' },
     }))
     expect(validateConfig(config)).toBeNull()
   })

@@ -1,0 +1,20 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "agent-please-relay",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-03-14",
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "RelayParty",
+        "class_name": "RelayParty"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["RelayParty"]
+    }
+  ]
+}
