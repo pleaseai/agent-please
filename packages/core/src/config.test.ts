@@ -647,6 +647,44 @@ describe('validateConfig', () => {
     expect(validateConfig(config)).toBeNull()
   })
 
+  it('returns missing_relay_url when relay mode has no url', () => {
+    const config = buildConfig(makeWorkflow({
+      platforms: { asana: { api_key: 'tok' } },
+      projects: [{ platform: 'asana', project_gid: 'gid' }],
+      polling: { mode: 'relay' },
+    }))
+    expect(validateConfig(config)?.code).toBe('missing_relay_url')
+  })
+
+  it('returns missing_relay_room when relay mode has url but no room', () => {
+    const config = buildConfig(makeWorkflow({
+      platforms: { asana: { api_key: 'tok' } },
+      projects: [{ platform: 'asana', project_gid: 'gid' }],
+      polling: { mode: 'relay' },
+      relay: { url: 'https://relay.example.com' },
+    }))
+    expect(validateConfig(config)?.code).toBe('missing_relay_room')
+  })
+
+  it('returns null for valid relay mode config', () => {
+    const config = buildConfig(makeWorkflow({
+      platforms: { asana: { api_key: 'tok' } },
+      projects: [{ platform: 'asana', project_gid: 'gid' }],
+      polling: { mode: 'relay' },
+      relay: { url: 'https://relay.example.com', room: 'my-project' },
+    }))
+    expect(validateConfig(config)).toBeNull()
+  })
+
+  it('accepts poll/webhook modes without relay config', () => {
+    const config = buildConfig(makeWorkflow({
+      platforms: { asana: { api_key: 'tok' } },
+      projects: [{ platform: 'asana', project_gid: 'gid' }],
+      polling: { mode: 'poll' },
+    }))
+    expect(validateConfig(config)).toBeNull()
+  })
+
   it('returns missing_claude_command when claude.command is blank (Section 17.1)', () => {
     // buildConfig always applies default when command is empty, so we test validateConfig
     // directly with a ServiceConfig that has a blank command

@@ -422,6 +422,14 @@ export function validateConfig(config: ServiceConfig): ValidationError | null {
   if (!config.claude.command.trim())
     return { code: 'missing_claude_command' }
 
+  // Validate relay config when mode is relay
+  if (config.polling.mode === 'relay') {
+    if (!config.relay.url)
+      return { code: 'missing_relay_url' }
+    if (!config.relay.room)
+      return { code: 'missing_relay_room' }
+  }
+
   return null
 }
 
