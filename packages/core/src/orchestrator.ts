@@ -12,6 +12,7 @@ import { buildConfig, getActiveStates, getTerminalStates, getWatchedStates, maxC
 import { createKyselyDb, insertRun, runMigrations } from './db'
 import { toDispatchLockKey } from './dispatch-lock'
 import { createLabelService } from './label'
+import { RelayTransport } from './relay-transport'
 import { createLogger } from './logger'
 import { buildContinuationPrompt, buildPrompt, isPromptBuildError } from './prompt-builder'
 import { createTrackerAdapter, formatTrackerError, isTrackerError } from './tracker/index'
@@ -36,6 +37,7 @@ export class Orchestrator {
   private db: Kysely<AppDatabase> | null = null
   private pendingDbWrites: Promise<void>[] = []
   private dispatchLockAdapter: DispatchLockAdapter | null = null
+  private relayTransport: RelayTransport | null = null
   private sshSigningKeyPath: string | null = null
 
   constructor(workflowPath: string, options?: { dispatchLockAdapter?: DispatchLockAdapter }) {
@@ -95,6 +97,12 @@ export class Orchestrator {
     const { mode, interval_ms } = this.config.polling
     log.info(`starting mode=${mode} interval_ms=${interval_ms}`)
 
+    // Start relay transport if in relay mode
+    if (mode === 'relay') {
+      this.relayTransport = new RelayTransport(this.config.relay, () => this.triggerRefresh())
+      this.relayTransport.connect()
+    }
+
     // Schedule immediate first tick
     this.scheduleTick(0)
   }
@@ -107,6 +115,11 @@ export class Orchestrator {
     if (this.fileWatcher) {
       this.fileWatcher.close()
       this.fileWatcher = null
+    }
+    // Disconnect relay transport
+    if (this.relayTransport) {
+      this.relayTransport.disconnect()
+      this.relayTransport = null
     }
     // Stop all running agents
     for (const [issueId] of this.state.running) {

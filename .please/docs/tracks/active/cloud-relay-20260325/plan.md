@@ -42,9 +42,9 @@ The worker and client are decoupled: the worker only needs `partyserver` (Cloudf
 
 - [x] T001 Extend PollingMode type and add RelayConfig interface (file: packages/core/src/types.ts)
 - [x] T002 Add relay config builder and extend pollingModeValue (file: packages/core/src/config.ts) (depends on T001)
-- [ ] T003 Create RelayTransport client with partysocket (file: packages/core/src/relay-transport.ts) (depends on T001)
-- [ ] T004 Integrate relay transport into Orchestrator start/stop lifecycle (file: packages/core/src/orchestrator.ts) (depends on T002, T003)
-- [ ] T005 Export relay transport from core barrel (file: packages/core/src/index.ts) (depends on T003)
+- [x] T003 Create RelayTransport client with partysocket (file: packages/core/src/relay-transport.ts) (depends on T001)
+- [x] T004 Integrate relay transport into Orchestrator start/stop lifecycle (file: packages/core/src/orchestrator.ts) (depends on T002, T003)
+- [x] T005 Export relay transport from core barrel (file: packages/core/src/index.ts) (depends on T003)
 - [ ] T006 [P] Scaffold relay-worker package with wrangler config (file: packages/relay-worker/package.json)
 - [ ] T007 Implement RelayParty server class with broadcast (file: packages/relay-worker/src/relay-party.ts) (depends on T006)
 - [ ] T008 Add webhook ingress handler with signature verification (file: packages/relay-worker/src/relay-party.ts) (depends on T007)
