@@ -1,0 +1,35 @@
+.please/docs/tracks/active/orpc-tanstack-migration-20260325/spec.md
+  36b0d6eda4dca5f6 1-70
+.please/docs/research/index.md
+  36b0d6eda4dca5f6 11-12
+.please/docs/research/md/005-orpc-overview.md
+  36b0d6eda4dca5f6 1-214
+.please/docs/tracks/index.md
+  36b0d6eda4dca5f6 19
+.please/docs/tracks/active/orpc-tanstack-migration-20260325/metadata.json
+  36b0d6eda4dca5f6 1-9
+.please/docs/research/md/006-pinia-colada-vs-tanstack-query.md
+  36b0d6eda4dca5f6 1-351
+.please/docs/tracks/active/orpc-tanstack-migration-20260325/plan.md
+  36b0d6eda4dca5f6 1-149
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.19",
+  "base_commit_sha": "facc94889115995025a4b1f9b4eeb9e1f614d85e",
+  "prompts": {
+    "36b0d6eda4dca5f6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "74ae7c25-1134-4c3e-aff6-617704bd92e5",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Minsu Lee <amond@amond.net>",
+      "messages": [],
+      "total_additions": 798,
+      "total_deletions": 2,
+      "accepted_lines": 796,
+      "overriden_lines": 0
+    }
+  }
+}
