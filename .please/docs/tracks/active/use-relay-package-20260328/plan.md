@@ -30,12 +30,12 @@ Direct replacement — remove local packages, install from npm, adapt call sites
 
 ## Tasks
 
-- [ ] T001 Remove local relay packages and release-please config (file: packages/relay-client)
-- [ ] T002 Install external relay packages from npm (file: packages/core/package.json, depends on T001)
-- [ ] T003 Adapt core orchestrator for new triggerRefresh callback signature (file: packages/core/src/orchestrator.ts, depends on T002)
-- [ ] T004 Update relay-worker to provider-based routing (file: apps/relay-worker/src/index.ts, depends on T002)
-- [ ] T005 [P] Update documentation references (file: ARCHITECTURE.md, depends on T001)
-- [ ] T006 Verify build, type-check, lint, and tests pass (depends on T003, T004, T005)
+- [x] T001 Remove local relay packages and release-please config (file: packages/relay-client)
+- [x] T002 Install external relay packages from npm (file: packages/core/package.json, depends on T001)
+- [x] T003 Adapt core orchestrator for new triggerRefresh callback signature (file: packages/core/src/orchestrator.ts, depends on T002)
+- [x] T004 Update relay-worker to provider-based routing (file: apps/relay-worker/src/index.ts, depends on T002)
+- [x] T005 [P] Update documentation references (file: ARCHITECTURE.md, depends on T001)
+- [x] T006 Verify build, type-check, lint, and tests pass (depends on T003, T004, T005)
 
 ## Key Files
 
@@ -76,8 +76,28 @@ Direct replacement — remove local packages, install from npm, adapt call sites
 - [ ] `@pleaseai/relay-server` installed from npm at `^0.1.0`
 - [ ] No `workspace:*` references to relay packages remain
 
+## Progress
+
+- [x] (2026-03-28 21:40 KST) T001 Remove local relay packages and release-please config
+- [x] (2026-03-28 21:41 KST) T002 Install external relay packages from npm
+- [x] (2026-03-28 21:42 KST) T003 Adapt core orchestrator (no change needed — npm 0.1.0 has same API)
+- [x] (2026-03-28 21:42 KST) T004 Update relay-worker (no change needed — npm 0.1.0 has same API)
+- [x] (2026-03-28 21:43 KST) T005 Update documentation references
+- [x] (2026-03-28 21:44 KST) T006 Verify build, type-check, lint, and tests pass
+  Evidence: `bun run check` → all 5 tasks pass; `bun run lint` → all pass; `bun run test` → 766 pass, 2 fail (pre-existing)
+
 ## Decision Log
 
 - Decision: Direct replacement without compatibility wrapper
   Rationale: API differences are minor (callback signature, route pattern), no special constraints
   Date/Author: 2026-03-28 / Claude
+- Decision: Keep existing relay-worker routing unchanged
+  Rationale: npm @pleaseai/relay-server@0.1.0 still has the old API (no provider system). Provider-based routing is in the external repo's main branch but not yet released.
+  Date/Author: 2026-03-28 / Claude
+
+## Surprises & Discoveries
+
+- Observation: npm @pleaseai/relay-client@0.1.0 and @pleaseai/relay-server@0.1.0 still have the original API without provider-based changes
+  Evidence: Installed packages use `triggerRefresh: () => void` and `RelayParty` without `X-Relay-Provider` header — the enhanced API is only in the external repo's main branch, not yet released
+- Observation: 2 pre-existing test failures unrelated to relay changes
+  Evidence: `runMigrations > returns false when migration fails on destroyed connection` and `ensureSharedClone with token > redacts token from error message when fetch fails` both fail on clean main branch
