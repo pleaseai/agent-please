@@ -1,0 +1,25 @@
+packages/core/src/orchestrator.ts
+  3c8f2f6207c49198 102
+apps/relay-worker/src/index.ts
+  3c8f2f6207c49198 6-7,17,19-22,24,29-31,33,37-40,43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.22",
+  "base_commit_sha": "d1ef4483bdefc8547226852d17ec3853228b06bb",
+  "prompts": {
+    "3c8f2f6207c49198": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "34424be2-2ea9-4fee-8e86-3b84e14ea7b0",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Minsu Lee <amond@amond.net>",
+      "messages": [],
+      "total_additions": 23,
+      "total_deletions": 6,
+      "accepted_lines": 23,
+      "overriden_lines": 0
+    }
+  }
+}
