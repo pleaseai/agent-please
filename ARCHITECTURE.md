@@ -98,8 +98,8 @@ agent-please/                      # Monorepo root (Bun + Turborepo)
 │       ├── types.ts              # Shared type definitions
 │       ├── tracker/              # Issue tracker adapters (GitHub, Asana)
 │       └── index.ts              # Barrel export
-├── packages/relay-client/        # @pleaseai/relay-client — WebSocket relay client
-├── packages/relay-server/        # @pleaseai/relay-server — PartyServer relay server
+├── (external) @pleaseai/relay-client  # WebSocket relay client (npm, from pleaseai/relay)
+├── (external) @pleaseai/relay-server  # PartyServer relay server (npm, from pleaseai/relay)
 ├── apps/relay-worker/             # @pleaseai/relay-worker — Cloudflare Worker deployment
 ├── apps/docs/                    # @pleaseai/docs — Documentation site (Docus)
 ├── vendor/symphony/              # Upstream Symphony reference spec (read-only)

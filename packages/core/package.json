@@ -51,7 +51,7 @@
     "@octokit/auth-app": "^8.2.0",
     "@octokit/graphql": "^9.0.3",
     "@octokit/webhooks": "^14.2.0",
-    "@pleaseai/relay-client": "workspace:*",
+    "@pleaseai/relay-client": "^0.1.0",
     "consola": "^3.4.2",
     "js-yaml": "^4.1.1",
     "kysely": "^0.28.14",
