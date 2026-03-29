@@ -116,3 +116,31 @@ Rationale: GitHub's GraphQL API (POST) cannot use HTTP caching. A pure REST migr
 - Decision: Use `make-fetch-happen` with `cache: 'no-cache'` mode
   Rationale: Always revalidate with server (sends If-None-Match), but still returns cached body on 304. Best for polling where freshness matters.
   Date/Author: 2026-03-29 / Claude
+
+## Surprises & Discoveries
+
+- Observation: GitHub GraphQL API uses POST, making HTTP caching impossible
+  Evidence: POST requests are not cacheable per HTTP spec; make-fetch-happen only caches GET responses
+- Observation: GitHub Projects V2 REST API lacks `reviewDecision`, `headRefName`, and `closedByPullRequestsReferences`
+  Evidence: REST response schema uses `pull-request-simple` which predates Projects V2 fields
+
+## Outcomes & Retrospective
+
+### What Was Shipped
+- Cached fetch factory (`make-fetch-happen` wrapper) with filesystem-based HTTP cache
+- Hybrid REST ETag guard for GitHub polling (REST change detection + GraphQL data fetch)
+- Automatic ETag/Last-Modified caching for Asana REST API
+- Configurable cache path via WORKFLOW.md `cache.path`
+- Cache hit/miss logging in both adapters
+
+### What Went Well
+- Discovery that GitHub GraphQL is POST-only early in planning saved time vs attempting a full REST migration
+- Librarian research confirmed REST API field gaps before implementation
+- Existing tests stayed green throughout — lazy fetch resolution pattern preserved test compatibility
+
+### What Could Improve
+- Aggregate per-poll-cycle cache statistics (FR-8) implemented as per-request logging rather than summary counts
+- Could add integration tests with a real HTTP server to verify end-to-end ETag behavior
+
+### Tech Debt Created
+- Per-poll-cycle aggregate cache statistics not yet implemented (per-request logging exists)
