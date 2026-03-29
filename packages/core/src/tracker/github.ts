@@ -10,6 +10,7 @@ import { createStatusUpdateContext } from './github-status-update'
 const log = createLogger('github')
 
 const PAGE_SIZE = 50
+const TRAILING_SLASH_RE = /\/$/
 
 export interface GitHubAdapterOptions {
   /** Optional cached fetch for REST ETag checks */
@@ -38,7 +39,7 @@ export function createGitHubAdapter(project: ProjectConfig, platform: GitHubPlat
   }
 
   function buildRestUrl(): string | null {
-    const endpoint = (project.endpoint ?? 'https://api.github.com').replace(/\/$/, '')
+    const endpoint = (project.endpoint ?? 'https://api.github.com').replace(TRAILING_SLASH_RE, '')
     if (!owner || !projectNumber)
       return null
     return `${endpoint}/orgs/${encodeURIComponent(owner)}/projectsV2/${projectNumber}/items?per_page=1`

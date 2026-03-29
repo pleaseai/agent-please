@@ -2232,7 +2232,7 @@ describe('GitHub REST ETag guard', () => {
     let restCallCount = 0
     let graphqlCallCount = 0
 
-    const cachedFetch = mock(async (url: string) => {
+    const cachedFetch = mock(async (_url: string) => {
       restCallCount++
       if (restCallCount === 1) {
         // First call: 200 (data changed)
