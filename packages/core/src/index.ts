@@ -73,6 +73,10 @@ export type { TrackerAdapter, TrackerError } from './tracker'
 // Constants
 export { DEFAULT_ALLOWED_ASSOCIATIONS } from './types'
 // Types
+// Cached Fetch
+export { createCachedFetch } from './cached-fetch'
+export type { CachedFetch, CachedFetchOptions } from './cached-fetch'
+
 export type {
   AgentEvent,
   AgentMessage,
@@ -81,6 +85,7 @@ export type {
   AuthConfig,
   AuthorAssociation,
   BlockerRef,
+  CacheConfig,
   ChannelConfig,
   ClaudeEffort,
   CommitSigningConfig,
