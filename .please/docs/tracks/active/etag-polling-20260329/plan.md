@@ -37,21 +37,21 @@ Rationale: GitHub's GraphQL API (POST) cannot use HTTP caching. A pure REST migr
 
 ### Phase 1: Cache Infrastructure
 
-- [ ] T001 Create cached fetch factory (file: packages/core/src/cached-fetch.ts)
-- [ ] T002 Add cache config to types and config parser (file: packages/core/src/types.ts, packages/core/src/config.ts) (depends on T001)
+- [x] T001 Create cached fetch factory (file: packages/core/src/cached-fetch.ts)
+- [x] T002 Add cache config to types and config parser (file: packages/core/src/types.ts, packages/core/src/config.ts) (depends on T001)
 
 ### Phase 2: Asana ETag Support
 
-- [ ] T003 [P] Replace Asana plain fetch with cached fetch (file: packages/core/src/tracker/asana.ts) (depends on T001)
+- [x] T003 [P] Replace Asana plain fetch with cached fetch (file: packages/core/src/tracker/asana.ts) (depends on T001)
 
 ### Phase 3: GitHub Hybrid ETag
 
-- [ ] T004 Add GitHub REST auth helper for ETag check (file: packages/core/src/tracker/github-auth.ts) (depends on T001)
-- [ ] T005 Implement GitHub REST ETag guard with Issue[] cache (file: packages/core/src/tracker/github.ts) (depends on T004)
+- [x] T004 Add GitHub REST auth helper for ETag check (file: packages/core/src/tracker/github-auth.ts) (depends on T001)
+- [x] T005 Implement GitHub REST ETag guard with Issue[] cache (file: packages/core/src/tracker/github.ts) (depends on T004)
 
 ### Phase 4: Logging & Integration
 
-- [ ] T006 Add cache hit/miss logging to poll cycle (file: packages/core/src/tracker/github.ts, packages/core/src/tracker/asana.ts) (depends on T003, T005)
+- [x] T006 Add cache hit/miss logging to poll cycle (file: packages/core/src/tracker/github.ts, packages/core/src/tracker/asana.ts) (depends on T003, T005)
 
 ## Key Files
 
@@ -94,6 +94,18 @@ Rationale: GitHub's GraphQL API (POST) cannot use HTTP caching. A pure REST migr
 - [ ] AC-4: make-fetch-happen used for all REST calls
 - [ ] AC-5: Cache persists across restarts
 - [ ] AC-6: Logs include cache hit/miss
+
+## Progress
+
+- [x] (2026-03-29 16:35 KST) T001 Create cached fetch factory
+  Evidence: `bun test -- cached-fetch` → 5 tests passed
+- [x] (2026-03-29 16:38 KST) T002 Add cache config to types and config parser
+  Evidence: `bun test -- config` → 3 new cache config tests passed, 774 total pass
+- [x] (2026-03-29 16:40 KST) T003 Replace Asana plain fetch with cached fetch
+- [x] (2026-03-29 16:40 KST) T004 Add GitHub REST auth helper for ETag check
+- [x] (2026-03-29 16:42 KST) T005 Implement GitHub REST ETag guard with Issue[] cache
+  Evidence: 774 tests pass (2 pre-existing failures unrelated)
+- [x] (2026-03-29 16:44 KST) T006 Add cache hit/miss logging to poll cycle
 
 ## Decision Log
 
