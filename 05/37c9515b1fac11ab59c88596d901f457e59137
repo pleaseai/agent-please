@@ -1,0 +1,25 @@
+.please/docs/tracks/active/use-relay-package-20260328/metadata.json
+  f41ddcc4cface97e 7
+.please/docs/tracks/active/use-relay-package-20260328/plan.md
+  f41ddcc4cface97e 21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.22",
+  "base_commit_sha": "0537c9515b1fac11ab59c88596d901f457e59137",
+  "prompts": {
+    "f41ddcc4cface97e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a6d7fc08-730e-46aa-adab-1845aebcd0b6",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Minsu Lee <amond@amond.net>",
+      "messages": [],
+      "total_additions": 2,
+      "total_deletions": 6,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    }
+  }
+}
