@@ -1,0 +1,25 @@
+.please/docs/knowledge/tech-stack.md
+  1e30f4ac99bf2c60 65
+.please/docs/tracks/active/etag-polling-20260329/plan.md
+  1e30f4ac99bf2c60 40-41,45,49-50,54,98-109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.22",
+  "base_commit_sha": "8e7fa5588be3b3fcd5f3314c488718622c576c5b",
+  "prompts": {
+    "1e30f4ac99bf2c60": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d46b37ae-1bff-43f7-8529-0e67a656039b",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Minsu Lee <amond@amond.net>",
+      "messages": [],
+      "total_additions": 19,
+      "total_deletions": 6,
+      "accepted_lines": 185,
+      "overriden_lines": 0
+    }
+  }
+}
