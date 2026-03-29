@@ -1,0 +1,25 @@
+.please/docs/tracks/index.md
+  1e30f4ac99bf2c60 23
+.please/docs/tracks/active/etag-polling-20260329/metadata.json
+  1e30f4ac99bf2c60 4,6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.22",
+  "base_commit_sha": "dcb4329238701ee5d4b5b38e2d4074d2710e4213",
+  "prompts": {
+    "1e30f4ac99bf2c60": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d46b37ae-1bff-43f7-8529-0e67a656039b",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Minsu Lee <amond@amond.net>",
+      "messages": [],
+      "total_additions": 3,
+      "total_deletions": 3,
+      "accepted_lines": 169,
+      "overriden_lines": 0
+    }
+  }
+}
