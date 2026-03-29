@@ -7,7 +7,12 @@ import { isTrackerError } from './types'
 const PAGE_SIZE = 50
 const NETWORK_TIMEOUT_MS = 30_000
 
-export function createAsanaAdapter(project: ProjectConfig, platform: AsanaPlatformConfig): TrackerAdapter {
+export interface AsanaAdapterOptions {
+  /** Optional cached fetch for ETag/Last-Modified conditional requests on GET calls */
+  cachedFetch?: typeof fetch
+}
+
+export function createAsanaAdapter(project: ProjectConfig, platform: AsanaPlatformConfig, options?: AsanaAdapterOptions): TrackerAdapter {
   const endpoint = project.endpoint ?? 'https://app.asana.com/api/1.0'
   const apiKey = platform.api_key
   const projectGid = project.project_gid ?? ''
@@ -22,12 +27,16 @@ export function createAsanaAdapter(project: ProjectConfig, platform: AsanaPlatfo
     }
   }
 
+  function getFetch(): typeof fetch {
+    return options?.cachedFetch ?? globalThis.fetch
+  }
+
   async function request(url: string, init?: RequestInit): Promise<{ data: unknown } | TrackerError> {
     let response: Response
     const ctrl = new AbortController()
     const timeout = setTimeout(() => ctrl.abort(), NETWORK_TIMEOUT_MS)
     try {
-      response = await fetch(url, { headers: headers(), signal: ctrl.signal, ...init })
+      response = await getFetch()(url, { headers: headers(), signal: ctrl.signal, ...init })
     }
     catch (cause) {
       clearTimeout(timeout)

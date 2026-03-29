@@ -11,7 +11,12 @@ const log = createLogger('github')
 
 const PAGE_SIZE = 50
 
-export function createGitHubAdapter(project: ProjectConfig, platform: GitHubPlatformConfig): TrackerAdapter {
+export interface GitHubAdapterOptions {
+  /** Optional cached fetch for REST ETag checks */
+  cachedFetch?: typeof fetch
+}
+
+export function createGitHubAdapter(project: ProjectConfig, platform: GitHubPlatformConfig, options?: GitHubAdapterOptions): TrackerAdapter {
   const owner = platform.owner ?? ''
   const projectNumber = project.project_number ?? 0
   const projectId = project.project_id ?? null
