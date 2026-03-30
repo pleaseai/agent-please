@@ -4,7 +4,7 @@ import { mkdirSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { LibsqlDialect } from '@libsql/kysely-libsql'
 import { Database } from 'bun:sqlite'
-import { Kysely, Migrator } from 'kysely'
+import { Kysely, Migrator, sql } from 'kysely'
 import { BunSqliteDialect } from 'kysely-bun-sqlite'
 import { createLogger } from './logger'
 import * as migration001 from './migrations/001_create_agent_runs'
@@ -21,7 +21,7 @@ export function resolveDbPath(dbPath: string, workspaceRoot: string): string | n
   return resolved
 }
 
-export function createKyselyDb(config: DbConfig, workspaceRoot: string): Kysely<AppDatabase> | null {
+export async function createKyselyDb(config: DbConfig, workspaceRoot: string): Promise<Kysely<AppDatabase> | null> {
   if (config.turso_url) {
     const allowedSchemes = ['libsql:', 'libsqls:', 'https:']
     let scheme: string
@@ -68,6 +68,9 @@ export function createKyselyDb(config: DbConfig, workspaceRoot: string): Kysely<
       database: new Database(dbFilePath, { create: true }),
     })
     const db = new Kysely<AppDatabase>({ dialect })
+    // Force driver initialization so that destroy() properly closes the
+    // underlying bun:sqlite Database handle (lazy init + destroy is a no-op).
+    await sql`SELECT 1`.execute(db)
     log.info(`db opened: ${dbFilePath}`)
     return db
   }

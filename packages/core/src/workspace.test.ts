@@ -1299,17 +1299,17 @@ describe('ensureSharedClone with token', () => {
       let callCount = 0
       const spy = spyOn(_git, 'spawnSync').mockImplementation(() => {
         callCount++
-        // First two calls: set-url (success), third call: fetch (fail)
-        if (callCount <= 1) {
-          return { exitCode: 0, success: true, stdout: Buffer.from(''), stderr: Buffer.from(''), signalCode: null } as unknown as import('./workspace').SpawnSyncResult
+        // Call 1: set-url (success), Call 2: fetch (fail), Call 3: restore set-url (success)
+        if (callCount === 2) {
+          return {
+            exitCode: 1,
+            success: false,
+            stdout: Buffer.from(''),
+            stderr: Buffer.from('fatal: could not read from remote https://x-access-token:ghs_leak_me@github.com/org/repo'),
+            signalCode: null,
+          } as unknown as import('./workspace').SpawnSyncResult
         }
-        return {
-          exitCode: 1,
-          success: false,
-          stdout: Buffer.from(''),
-          stderr: Buffer.from('fatal: could not read from remote https://x-access-token:ghs_leak_me@github.com/org/repo'),
-          signalCode: null,
-        } as unknown as import('./workspace').SpawnSyncResult
+        return { exitCode: 0, success: true, stdout: Buffer.from(''), stderr: Buffer.from(''), signalCode: null } as unknown as import('./workspace').SpawnSyncResult
       })
 
       const err = ensureSharedClone(tmpDir, 'https://github.com/org/repo', 'ghs_leak_me')
