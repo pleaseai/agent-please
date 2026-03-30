@@ -82,7 +82,7 @@
       "name": "@pleaseai/relay-worker",
       "version": "0.1.0",
       "dependencies": {
-        "@pleaseai/relay-server": "^0.1.0",
+        "@pleaseai/relay-server": "0.1.0",
         "partyserver": "^0.3.3",
       },
       "devDependencies": {
@@ -101,7 +101,7 @@
         "@octokit/auth-app": "^8.2.0",
         "@octokit/graphql": "^9.0.3",
         "@octokit/webhooks": "^14.2.0",
-        "@pleaseai/relay-client": "^0.1.0",
+        "@pleaseai/relay-client": "^0.1.1",
         "consola": "^3.4.2",
         "js-yaml": "^4.1.1",
         "kysely": "^0.28.14",
@@ -847,7 +847,7 @@
 
     "@pleaseai/docs": ["@pleaseai/docs@workspace:apps/docs"],
 
-    "@pleaseai/relay-client": ["@pleaseai/relay-client@0.1.0", "", { "dependencies": { "consola": "^3.4.2", "partysocket": "^1.1.16" } }, "sha512-aGLz1j5hUKRKFOet7Zh7cKT1IHRVEE+XwNhLLTku7gA6gmxMvnxmzTMsB57DQCY/hJynQ108HUF2ec+MGK8OlQ=="],
+    "@pleaseai/relay-client": ["@pleaseai/relay-client@0.1.1", "", { "dependencies": { "consola": "^3.4.2", "partysocket": "^1.1.16" } }, "sha512-ogoDheIKXhvnHP5/SHfW8lcwSPlMOopnxjth+UaAskdXVQsktELcRGQiCnTVXxdemtmAYgGKRvRdqVpvNLaaWA=="],
 
     "@pleaseai/relay-server": ["@pleaseai/relay-server@0.1.0", "", { "dependencies": { "partyserver": "^0.3.3" } }, "sha512-jqb3CQj9KtJ99Cx8KoeqwGlheI2auWP8/XI0DX6MukCC6g/0x13otF6uPiNqL5Gw42WJOjnc33gw3pQw+P2csw=="],
 
