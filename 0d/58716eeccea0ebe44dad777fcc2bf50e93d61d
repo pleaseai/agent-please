@@ -1,0 +1,23 @@
+apps/agent-please/nuxt.config.ts
+  f41ddcc4cface97e 30-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.22",
+  "base_commit_sha": "0d58716eeccea0ebe44dad777fcc2bf50e93d61d",
+  "prompts": {
+    "f41ddcc4cface97e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a6d7fc08-730e-46aa-adab-1845aebcd0b6",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Minsu Lee <amond@amond.net>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 5,
+      "overriden_lines": 0
+    }
+  }
+}
