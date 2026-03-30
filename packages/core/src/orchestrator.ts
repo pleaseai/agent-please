@@ -73,7 +73,7 @@ export class Orchestrator {
     }
 
     // Initialize database for run history
-    this.db = createKyselyDb(this.config.db, this.config.workspace.root)
+    this.db = await createKyselyDb(this.config.db, this.config.workspace.root)
     if (this.db) {
       const migrated = await runMigrations(this.db)
       if (!migrated) {

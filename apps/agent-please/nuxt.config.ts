@@ -27,6 +27,11 @@ export default defineNuxtConfig({
 
   nitro: {
     preset: 'bun',
+    // @pleaseai/relay-server@0.1.1 ships TypeScript source only (no dist/).
+    // Bun handles .ts at runtime, so externalize it from the Rollup bundle.
+    rollupConfig: {
+      external: ['@pleaseai/relay-server'],
+    },
   },
 
   runtimeConfig: {

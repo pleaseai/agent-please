@@ -72,19 +72,19 @@ describe('createKyselyDb', () => {
   })
 
   it('creates embedded client with auto-created directory', async () => {
-    const db = createKyselyDb(makeDbConfig(), tmpRoot)
+    const db = await createKyselyDb(makeDbConfig(), tmpRoot)
     expect(db).not.toBeNull()
     expect(existsSync(join(tmpRoot, '.agent-please'))).toBe(true)
     await db?.destroy()
   })
 
-  it('returns null for path traversal', () => {
-    const db = createKyselyDb(makeDbConfig({ path: '../../etc/evil.db' }), tmpRoot)
+  it('returns null for path traversal', async () => {
+    const db = await createKyselyDb(makeDbConfig({ path: '../../etc/evil.db' }), tmpRoot)
     expect(db).toBeNull()
   })
 
   it('returns null for invalid turso URL', async () => {
-    const db = createKyselyDb(makeDbConfig({ turso_url: 'not-a-valid-url' }), tmpRoot)
+    const db = await createKyselyDb(makeDbConfig({ turso_url: 'not-a-valid-url' }), tmpRoot)
     expect(db).toBeNull()
     if (db)
       await db.destroy()
@@ -103,7 +103,7 @@ describe('runMigrations', () => {
   })
 
   it('creates agent_runs table', async () => {
-    const db = createKyselyDb(makeDbConfig(), tmpRoot)!
+    const db = (await createKyselyDb(makeDbConfig(), tmpRoot))!
     const ok = await runMigrations(db)
     expect(ok).toBe(true)
 
@@ -113,14 +113,14 @@ describe('runMigrations', () => {
   })
 
   it('returns false when migration fails on destroyed connection', async () => {
-    const db = createKyselyDb(makeDbConfig(), tmpRoot)!
+    const db = (await createKyselyDb(makeDbConfig(), tmpRoot))!
     await db.destroy()
     const ok = await runMigrations(db)
     expect(ok).toBe(false)
   })
 
   it('is idempotent', async () => {
-    const db = createKyselyDb(makeDbConfig(), tmpRoot)!
+    const db = (await createKyselyDb(makeDbConfig(), tmpRoot))!
     await runMigrations(db)
     const ok = await runMigrations(db)
     expect(ok).toBe(true)
@@ -140,7 +140,7 @@ describe('insertRun', () => {
   })
 
   it('inserts a run record', async () => {
-    const db = createKyselyDb(makeDbConfig(), tmpRoot)!
+    const db = (await createKyselyDb(makeDbConfig(), tmpRoot))!
     await runMigrations(db)
 
     await insertRun(db, makeInsertParams())
@@ -159,7 +159,7 @@ describe('insertRun', () => {
   })
 
   it('handles failure status with error message', async () => {
-    const db = createKyselyDb(makeDbConfig(), tmpRoot)!
+    const db = (await createKyselyDb(makeDbConfig(), tmpRoot))!
     await runMigrations(db)
 
     await insertRun(db, makeInsertParams({
@@ -192,7 +192,7 @@ describe('queryRuns', () => {
   }
 
   it('returns all runs when no filters', async () => {
-    const db = createKyselyDb(makeDbConfig(), tmpRoot)!
+    const db = (await createKyselyDb(makeDbConfig(), tmpRoot))!
     await runMigrations(db)
     await seedRuns(db)
 
@@ -205,7 +205,7 @@ describe('queryRuns', () => {
   })
 
   it('filters by identifier', async () => {
-    const db = createKyselyDb(makeDbConfig(), tmpRoot)!
+    const db = (await createKyselyDb(makeDbConfig(), tmpRoot))!
     await runMigrations(db)
     await seedRuns(db)
 
@@ -216,7 +216,7 @@ describe('queryRuns', () => {
   })
 
   it('filters by status', async () => {
-    const db = createKyselyDb(makeDbConfig(), tmpRoot)!
+    const db = (await createKyselyDb(makeDbConfig(), tmpRoot))!
     await runMigrations(db)
     await seedRuns(db)
 
@@ -227,7 +227,7 @@ describe('queryRuns', () => {
   })
 
   it('respects limit and offset', async () => {
-    const db = createKyselyDb(makeDbConfig(), tmpRoot)!
+    const db = (await createKyselyDb(makeDbConfig(), tmpRoot))!
     await runMigrations(db)
     await seedRuns(db)
 
