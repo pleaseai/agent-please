@@ -71,7 +71,7 @@
     "happy-dom": "^20.8.4",
     "kysely": "^0.28.14",
     "playwright-core": "^1.58.2",
-    "typescript": "^5.7.0",
+    "typescript": "^6.0.2",
     "vitest": "^4.1.0"
   }
 }
