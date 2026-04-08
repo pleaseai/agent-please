@@ -2,7 +2,7 @@
   "name": "agent-please",
   "version": "0.1.0",
   "devDependencies": {
-    "@antfu/eslint-config": "^7.7.0",
+    "@antfu/eslint-config": "^8.1.0",
     "eslint": "^10.0.3",
     "husky": "^9.1.7",
     "jiti": "^2.6.1",
