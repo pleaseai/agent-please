@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "better-sqlite3": "^12.2.0",
-    "docus": "^5.8.1",
+    "docus": "^5.9.0",
     "h3": "^1.15.8",
     "nuxt": "^4.4.2"
   },
