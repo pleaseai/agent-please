@@ -10,8 +10,8 @@
     "check": "tsc --noEmit"
   },
   "dependencies": {
-    "@pleaseai/relay-server": "0.1.0",
-    "partyserver": "^0.3.3"
+    "@pleaseai/relay-server": "0.1.1",
+    "partyserver": "^0.4.1"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250313.0",
