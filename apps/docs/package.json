@@ -13,10 +13,10 @@
     "prepare": "nuxt prepare"
   },
   "dependencies": {
-    "better-sqlite3": "^12.2.0",
-    "docus": "^5.8.1",
+    "better-sqlite3": "^12.10.0",
+    "docus": "^5.11.0",
     "h3": "^1.15.8",
-    "nuxt": "^4.4.2"
+    "nuxt": "^4.4.7"
   },
   "devDependencies": {
     "@nuxt/eslint": "^1.4.1",
